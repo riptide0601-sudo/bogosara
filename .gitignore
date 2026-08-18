@@ -43,6 +43,13 @@ model
 vscode_cli_alpine_x64_cli.tar.gz
 vscode-server-linux-x64.tar.gz
 
+# --- Claude Code 세션/설정 (개인 로컬 상태) ---
+.claude/
+.claude.json
+
+# --- 셸 리다이렉션 오탈자로 생긴 빈 파일 (예: pip install cuda>=12.8 처럼 따옴표 누락) ---
+/=*
+
 # --- 기타 에디터 (JetBrains·vim swap 등) ---
 .idea/
 *.swp
