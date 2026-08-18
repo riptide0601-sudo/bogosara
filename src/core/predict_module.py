@@ -1,10 +1,22 @@
+import base64
+import io
 import os
+import re
 import sys
 import traceback
 
+from PIL import Image
+
+import ocr_engines
 from oneflowai import handler, minio_client, postgres, utils
 from oneflowai.fptr_util import send_notification
 from oneflowai.orchestrator import generate_job
+
+# LabelLens OCR - 성분 토큰 분리용 구분자(쉼표류 + 개행). 실제 라벨 샘플 검증하며 보완 예정.
+_INGREDIENT_SPLIT_PATTERN = re.compile(r"[,，;\n]+")
+
+# message에 engine을 지정하지 않았을 때 사용하는 기본 엔진.
+_DEFAULT_ENGINE = "paddleocr"
 
 
 def init():
@@ -13,12 +25,38 @@ def init():
     """
     try:
         print("모듈 초기화 함수가 실행되었습니다.")
+        availability = ocr_engines.check_engine_availability()
+        for name, installed in availability.items():
+            print(f"[LabelLens OCR] 엔진 설치 상태 - {name}: {'OK' if installed else '미설치'}")
 
     except Exception as e:
         print("모듈 초기화 중 에러가 발생하였습니다.")
         print(str(e))
         traceback.print_exc()
         sys.exit(1)
+
+
+def _load_image(message: dict) -> Image.Image:
+    """message에서 이미지를 읽어 PIL Image로 반환합니다.
+
+    - image_base64: base64로 인코딩된 이미지 문자열
+    - image_path: 개발환경 내 로컬 테스트용 이미지 경로
+    """
+    if message.get("image_base64"):
+        image_bytes = base64.b64decode(message["image_base64"])
+        return Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    if message.get("image_path"):
+        return Image.open(message["image_path"]).convert("RGB")
+    raise ValueError("message에 'image_base64' 또는 'image_path'가 필요합니다.")
+
+
+def _split_ingredients(raw_text: str) -> list:
+    """OCR 원문 텍스트를 쉼표/개행 기준으로 분리해 성분 토큰 리스트로 반환합니다.
+
+    리스트의 순서가 곧 전성분표 배합 순서(label_rank)에 대응합니다.
+    """
+    tokens = _INGREDIENT_SPLIT_PATTERN.split(raw_text)
+    return [token.strip() for token in tokens if token.strip()]
 
 
 def predict(
@@ -29,45 +67,58 @@ def predict(
     is_stream: str = "",
 ) -> dict:
     """
-    주어진 메시지를 기반으로 예측이나 메세지에 대한 처리를 수행합니다.
-    결과는 dictionary 형태로 반환하는 것을 권장합니다.
+    화장품 전성분 라벨 이미지를 받아 OCR로 텍스트를 추출하고,
+    쉼표/개행 기준으로 분리한 성분 토큰 리스트를 반환합니다.
+    (표준 성분명 매칭·규제 조회는 이 모듈의 책임 범위가 아닙니다.)
+
+    message["engine"]:
+      - 미지정 시 기본 엔진(paddleocr) 하나로 실행
+      - "tesseract" / "easyocr" / "paddleocr" / "doctr" 중 하나로 특정 엔진 지정
+      - "all" 이면 4개 엔진을 모두 실행해 비교 결과를 반환 (미설치 엔진은 자동 건너뜀)
     """
     print("예측 함수가 실행되었습니다.")
     message["uuid"] = uuid_id
-    async_mode = True if is_async_mode == "true" else False
 
-    if message["use_batch_job"]:  # 페이로드에 정의함
-        env = "vfx"
-        valkey_stream_key = os.getenv("VALKEY_STREAM_KEY")
+    try:
+        image = _load_image(message)
+        language = message.get("language", "kor+eng")
+        engine = message.get("engine", _DEFAULT_ENGINE)
 
-        job_info = generate_job(
-            env=env,
-            payload=message,
-            valkey_stream_key=valkey_stream_key,
-            extra_values=[{"name": "ASYNC_MODE", "value": is_async_mode}],
-        )  # minio 파일 저장, job 등록
+        if engine == "all":
+            engine_results = ocr_engines.run_all_engines(image, language=language)
+            data = {
+                "engines": [
+                    {
+                        **result,
+                        "ingredients": _split_ingredients(result["text"]) if result["ok"] else [],
+                    }
+                    for result in engine_results
+                ]
+            }
+        else:
+            result = ocr_engines.run_engine(engine, image, language=language)
+            if not result["ok"]:
+                raise RuntimeError(result["error"])
+            data = {
+                "engine": engine,
+                "elapsed_ms": result["elapsed_ms"],
+                "raw_text": result["text"],
+                "ingredients": _split_ingredients(result["text"]),
+            }
 
         return {
             "status": 200,
-            "message": f"UUID {uuid_id} job registered",
-            "job_info": job_info,
+            "message": f"UUID {uuid_id} OCR 완료",
+            "data": data,
         }
-    else:
-        # 메인 코드 실행 예시
-
-        # 클러스터 내 다른 모델/서비스에 다시 요청해야 할 경우, 아래의 코드와 같이 oneflowai 라이브러리의 Handler를 사용하여 요청을 전송할 수 있습니다
-        # response_data = handler.send_request(data=message, async_mode=async_mode) # execute handler
-
-        response_status = 200
-        response_message = f"UUID {uuid_id} job is succeded"
-        response = {
-            "status": response_status,
-            "message": response_message,
-            "data": {
-                "result": "Hello World",
-            },
+    except Exception as e:
+        print(f"[-] OCR 처리 중 에러가 발생하였습니다: {str(e)}")
+        traceback.print_exc()
+        return {
+            "status": 500,
+            "message": f"UUID {uuid_id} OCR 실패: {str(e)}",
+            "data": None,
         }
-        return response
 
 
 ####################

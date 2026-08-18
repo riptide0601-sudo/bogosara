@@ -6,3 +6,12 @@ psycopg2-binary>=2.9.10,<3.0.0
 # oneflowai>=1.1.24,<2.0.0
 
 # 유저가 사용할 라이브러리를 정의합니다.
+pytesseract>=0.3.10,<0.4.0
+Pillow>=10.0.0,<13.0.0
+
+# LabelLens OCR 4개 엔진 비교(트랙 A)
+easyocr>=1.7.0,<2.0.0
+paddlepaddle>=3.0.0,<4.0.0
+paddleocr>=3.0.0,<4.0.0
+python-doctr>=1.0.0,<2.0.0
+matplotlib>=3.9.0,<4.0.0
