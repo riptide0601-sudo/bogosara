@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>LabelLens 검색</title>
+<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    background: #f5f6f8;
+    color: #1c1c1e;
+    margin: 0;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 16px;
+  }
+  .search-box {
+    display: flex;
+    gap: 8px;
+    max-width: 640px;
+    margin-bottom: 24px;
+  }
+  input[type=text] {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #d0d3d9;
+    border-radius: 8px;
+    font-size: 15px;
+  }
+  input[type=text]:focus { outline: 2px solid #4f7cff; }
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 1000px;
+  }
+  .panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+    min-height: 200px;
+  }
+  .panel h2 {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 10px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .item {
+    padding: 10px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .item:hover { background: #f0f2f5; }
+  .item .name { font-weight: 600; font-size: 14px; }
+  .item .sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .empty { color: #9ca3af; font-size: 13px; padding: 8px; }
+  .detail {
+    max-width: 1000px;
+    margin-top: 20px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+    display: none;
+  }
+  .detail h2 { margin: 0 0 4px; font-size: 17px; }
+  .detail .brand { color: #6b7280; font-size: 13px; margin-bottom: 12px; }
+  .ing-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f2f5;
+    font-size: 13px;
+  }
+  .purpose-tag {
+    display: inline-block;
+    background: #eef1ff;
+    color: #4f5bd5;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin: 2px 4px 0 0;
+  }
+</style>
+</head>
+<body>
+  <h1>LabelLens 검색</h1>
+  <div class="search-box">
+    <input type="text" id="q" placeholder="제품명 또는 성분명 검색 (예: 히알루론산, 아누아)" autofocus>
+  </div>
+
+  <div class="columns">
+    <div class="panel">
+      <h2>제품</h2>
+      <div id="products" class="empty">검색어를 입력하세요</div>
+    </div>
+    <div class="panel">
+      <h2>성분</h2>
+      <div id="ingredients" class="empty">검색어를 입력하세요</div>
+    </div>
+  </div>
+
+  <div class="detail" id="detail"></div>
+
+<script>
+const qInput = document.getElementById('q');
+const productsEl = document.getElementById('products');
+const ingredientsEl = document.getElementById('ingredients');
+const detailEl = document.getElementById('detail');
+
+let debounceTimer = null;
+
+qInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => runSearch(qInput.value.trim()), 200);
+});
+
+function runSearch(query) {
+  detailEl.style.display = 'none';
+
+  if (!query) {
+    productsEl.className = 'empty';
+    productsEl.textContent = '검색어를 입력하세요';
+    ingredientsEl.className = 'empty';
+    ingredientsEl.textContent = '검색어를 입력하세요';
+    return;
+  }
+
+  fetch('products?query=' + encodeURIComponent(query))
+    .then(r => r.json())
+    .then(renderProducts)
+    .catch(() => { productsEl.className = 'empty'; productsEl.textContent = '검색 중 오류가 발생했습니다'; });
+
+  fetch('ingredients?query=' + encodeURIComponent(query))
+    .then(r => r.json())
+    .then(renderIngredients)
+    .catch(() => { ingredientsEl.className = 'empty'; ingredientsEl.textContent = '검색 중 오류가 발생했습니다'; });
+}
+
+function renderProducts(list) {
+  if (list.length === 0) {
+    productsEl.className = 'empty';
+    productsEl.textContent = '결과 없음';
+    return;
+  }
+  productsEl.className = '';
+  productsEl.innerHTML = '';
+  list.slice(0, 30).forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `<div class="name">${escapeHtml(p.product_name)}</div><div class="sub">${escapeHtml(p.brand || '')}</div>`;
+    div.addEventListener('click', () => showProductDetail(p.product_id));
+    productsEl.appendChild(div);
+  });
+}
+
+function renderIngredients(list) {
+  if (list.length === 0) {
+    ingredientsEl.className = 'empty';
+    ingredientsEl.textContent = '결과 없음';
+    return;
+  }
+  ingredientsEl.className = '';
+  ingredientsEl.innerHTML = '';
+  list.slice(0, 30).forEach(i => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    const purposeTags = (i.purposes || [])
+      .map(p => `<span class="purpose-tag">${escapeHtml(p.purpose_name)}</span>`)
+      .join('');
+    div.innerHTML = `
+      <div class="name">${escapeHtml(i.name_kr || '')}</div>
+      <div class="sub">${escapeHtml(i.name_en || '')}</div>
+      <div>${purposeTags}</div>
+    `;
+    div.addEventListener('click', () => showIngredientDetail(i.ingredient_id));
+    ingredientsEl.appendChild(div);
+  });
+}
+
+function showProductDetail(productId) {
+  fetch('products/' + encodeURIComponent(productId))
+    .then(r => r.json())
+    .then(p => {
+      detailEl.style.display = 'block';
+      const rows = p.ingredients.map(pi => {
+        const purposeTags = (pi.ingredient.purposes || [])
+          .map(pur => `<span class="purpose-tag">${escapeHtml(pur.purpose_name)}</span>`)
+          .join('');
+        return `
+          <div class="ing-row">
+            <span>${escapeHtml(pi.ingredient.name_kr || pi.ingredient.name_en || '')}</span>
+            <span>${escapeHtml(pi.matched_text || '')}</span>
+          </div>
+          <div>${purposeTags}</div>
+        `;
+      }).join('');
+      detailEl.innerHTML = `
+        <h2>${escapeHtml(p.product_name)}</h2>
+        <div class="brand">${escapeHtml(p.brand || '')}</div>
+        ${rows || '<div class="empty">등록된 성분 없음</div>'}
+      `;
+    });
+}
+
+function showIngredientDetail(ingredientId) {
+  fetch('ingredients/' + ingredientId)
+    .then(r => r.json())
+    .then(i => {
+      detailEl.style.display = 'block';
+      const purposes = (i.purposes || []).map(p => `<span class="purpose-tag">${escapeHtml(p.purpose_name)}</span>`).join('');
+      const summary = i.llm_summary && i.llm_summary.summary_text
+        ? `<p>${escapeHtml(i.llm_summary.summary_text)}</p>` : '';
+      detailEl.innerHTML = `
+        <h2>${escapeHtml(i.name_kr || '')}</h2>
+        <div class="brand">${escapeHtml(i.name_en || '')}</div>
+        <div>${purposes || '<span class="empty">배합목적 정보 없음</span>'}</div>
+        ${summary}
+      `;
+    });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: labellens
+      POSTGRES_PASSWORD: labellens
+      POSTGRES_DB: labellens
+    ports:
+      - "5432:5432"
+    volumes:
+      - labellens_pgdata:/var/lib/postgresql/data
+
+volumes:
+  labellens_pgdata:
