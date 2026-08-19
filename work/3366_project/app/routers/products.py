@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
@@ -97,7 +97,7 @@ def link_ingredient(
         raise HTTPException(status_code=404, detail="Ingredient not found")
 
     stmt = (
-        sqlite_insert(ProductIngredient)
+        pg_insert(ProductIngredient)
         .values(
             product_id=product_id,
             ingredient_id=payload.ingredient_id,

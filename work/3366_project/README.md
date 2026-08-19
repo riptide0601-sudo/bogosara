@@ -1,6 +1,6 @@
 # LabelLens API
 
-`LabelLens_ERD_v7.md` 스키마를 그대로 구현한 FastAPI 백엔드입니다. `data/labellens.db`(SQLite)에 실제 제품·성분 데이터가 들어있습니다.
+`LabelLens_ERD_v7.md` 스키마를 그대로 구현한 FastAPI 백엔드입니다. PostgreSQL에 실제 제품·성분 데이터가 들어있고, `data/labellens.db`(SQLite)는 그 원본 데이터 백업/마이그레이션 소스로 남아 있습니다.
 
 ## 로컬 실행 (개발용)
 
@@ -12,8 +12,51 @@ pip install -r requirements.txt
 
 # 2. .env 생성
 copy .env.example .env
+```
 
-# 3. 서버 실행
+`.env`의 `DATABASE_URL`은 기본적으로 `postgresql+psycopg2://labellens:labellens@localhost:5432/labellens`를 가리킵니다. PostgreSQL을 아래 두 방법 중 편한 쪽으로 띄우세요.
+
+### PostgreSQL 기동 — 방법 A: Docker (권장)
+
+```bash
+docker compose up -d db
+```
+
+`db` 서비스가 `postgres:16-alpine` 이미지로 뜨고, `postgres_data` named volume에 데이터가 영속됩니다. 컨테이너를 내렸다 올려도 데이터는 유지됩니다.
+
+### PostgreSQL 기동 — 방법 B: 네이티브 설치 (Docker를 못 쓰는 환경, 예: 이 devenv sandbox)
+
+Docker-in-Docker가 막혀 있는 환경(권한 없는 컨테이너 등)에서는 PostgreSQL을 직접 설치해서 띄워야 합니다.
+
+```bash
+# 최초 1회 설치
+sudo apt-get install -y postgresql postgresql-contrib
+
+# 기동 (systemd가 없는 환경이라 수동으로 클러스터를 켜야 함)
+sudo pg_ctlcluster 14 main start
+
+# 계정/DB 생성 (.env와 동일한 자격증명, 최초 1회)
+sudo -u postgres psql -c "CREATE USER labellens WITH PASSWORD 'labellens';"
+sudo -u postgres psql -c "CREATE DATABASE labellens OWNER labellens;"
+```
+
+⚠️ 이 방식은 PostgreSQL 데이터 디렉터리(`/var/lib/postgresql/`)가 컨테이너 로컬(비영속) 파일시스템에 있는 경우가 많습니다. `/home` 같은 영속 스토리지가 아니라면 devenv가 재시작될 때 데이터가 사라질 수 있으니, 그때는 위 설치·기동·계정 생성 과정과 아래 마이그레이션을 다시 실행하면 됩니다.
+
+- 상태 확인: `sudo pg_lsclusters`
+- 정지: `sudo pg_ctlcluster 14 main stop`
+- 접속 확인: `psql "postgresql://labellens:labellens@localhost:5432/labellens"`
+
+### 데이터 이관 (방법 A/B 공통, 최초 1회 또는 data/labellens.db 갱신 시)
+
+```bash
+python -m scripts.migrate_sqlite_to_postgres
+```
+
+`data/labellens.db`(SQLite)의 전체 데이터를 PostgreSQL로 복사합니다. 실행할 때마다 기존 PostgreSQL 데이터를 지우고 SQLite 원본 기준으로 다시 채우므로(멱등), 원본이 최신 상태(source of truth)입니다.
+
+### 백엔드 서버 실행
+
+```bash
 uvicorn app.main:app --reload
 ```
 
@@ -27,7 +70,13 @@ uvicorn app.main:app --reload
 docker compose up -d --build
 ```
 
-`app`(FastAPI, 포트 8000)과 `ollama`(gemma2:2b, 포트 11434) 두 컨테이너가 함께 뜨고, `ollama` 컨테이너가 최초 기동 시 모델을 자동으로 pull합니다(최초 1회는 다운로드 시간이 걸립니다). `data/` 폴더는 볼륨으로 마운트되어 있어 컨테이너를 내려도 DB가 유지됩니다.
+`db`(PostgreSQL 16, 포트 5432), `app`(FastAPI, 포트 8000), `ollama`(gemma2:2b, 포트 11434) 세 컨테이너가 함께 뜨고, `ollama` 컨테이너가 최초 기동 시 모델을 자동으로 pull합니다(최초 1회는 다운로드 시간이 걸립니다). `db`는 named volume(`postgres_data`)에, `data/`는 바인드 마운트로 유지되어 컨테이너를 내려도 데이터가 보존됩니다. `app`은 `db`가 healthy 상태가 될 때까지 기동을 기다립니다.
+
+최초 기동 후 PostgreSQL이 비어 있으므로 한 번은 마이그레이션을 실행해야 합니다:
+
+```bash
+docker compose exec app python -m scripts.migrate_sqlite_to_postgres
+```
 
 ## 구조
 
@@ -42,7 +91,9 @@ app/
   config.py    # 환경변수 설정
   main.py      # FastAPI 앱 엔트리포인트
 data/
-  labellens.db # SQLite DB (실데이터)
+  labellens.db # SQLite DB (마이그레이션 원본 데이터, 운영 DB는 PostgreSQL)
+scripts/
+  migrate_sqlite_to_postgres.py # SQLite → PostgreSQL 1회성 데이터 이관 스크립트
 Dockerfile
 docker-compose.yml
 ```

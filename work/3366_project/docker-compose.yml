@@ -1,15 +1,34 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: labellens
+      POSTGRES_PASSWORD: labellens
+      POSTGRES_DB: labellens
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labellens"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   app:
     build: .
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: sqlite:///./data/labellens.db
+      DATABASE_URL: postgresql+psycopg2://labellens:labellens@db:5432/labellens
       OLLAMA_URL: http://ollama:11434/api/generate
     volumes:
       - ./data:/app/data
     depends_on:
-      - ollama
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_started
 
   ollama:
     image: ollama/ollama:latest
@@ -21,3 +40,4 @@ services:
 
 volumes:
   ollama_data:
+  postgres_data:
