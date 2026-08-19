@@ -159,6 +159,11 @@ def generate_summary(ingredient_id: int, db: Session = Depends(get_db)):
     if existing is not None and existing.summary_text:
         return existing
 
+    purpose_names = [
+        ip.purpose.purpose_name
+        for ip in ingredient.ingredient_purposes
+        if ip.purpose and ip.purpose.purpose_name
+    ]
     descriptions = [
         ip.purpose.description
         for ip in ingredient.ingredient_purposes
@@ -169,10 +174,17 @@ def generate_summary(ingredient_id: int, db: Session = Depends(get_db)):
             status_code=422, detail="No purpose description available to summarize"
         )
 
+    description_text = " ".join(descriptions)
+    purpose_text = ", ".join(purpose_names)
+
     try:
-        summary_text = rewrite_description(" ".join(descriptions))
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"LLM request failed: {e}")
+        summary_text = rewrite_description(
+            ingredient_name=ingredient.name_kr,
+            description=description_text,
+            purpose=purpose_text,
+        )
+    except (requests.exceptions.RequestException, ValueError):
+        summary_text = description_text
 
     generated_at = datetime.now(timezone.utc)
     stmt = (
