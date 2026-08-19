@@ -2,6 +2,3 @@
 __pycache__/
 *.pyc
 .env
-
-# SQLite is no longer used in production (replaced by PostgreSQL)
-data/labellens.db
