@@ -2,8 +2,8 @@ import re
 
 import requests
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "gemma2:2b"
+from app.config import settings
+
 TIMEOUT_SECONDS = 120
 
 PROMPT_TEMPLATE = """아래는 화장품 성분/제품 관련 원본 설명이야.
@@ -28,11 +28,11 @@ def _strip_markdown(text: str) -> str:
 
 def rewrite_description(description: str) -> str:
     payload = {
-        "model": MODEL_NAME,
+        "model": settings.ollama_model,
         "prompt": PROMPT_TEMPLATE.format(description=description),
         "stream": False,
     }
-    resp = requests.post(OLLAMA_URL, json=payload, timeout=TIMEOUT_SECONDS)
+    resp = requests.post(settings.ollama_url, json=payload, timeout=TIMEOUT_SECONDS)
     resp.raise_for_status()
     raw = resp.json().get("response", "")
     return _strip_markdown(raw)
