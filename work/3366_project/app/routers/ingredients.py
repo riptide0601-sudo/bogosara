@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 
+import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import String, cast, or_, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
+from app.llm_client import rewrite_description
 from app.models.ingredient import Ingredient
 from app.models.ingredient_purpose import IngredientPurpose
 from app.models.llm_summary import LLMSummary
@@ -139,3 +141,52 @@ def upsert_llm_summary(
     db.commit()
     db.refresh(summary)
     return summary
+
+
+@router.post("/{ingredient_id}/generate-summary", response_model=LLMSummaryRead)
+def generate_summary(ingredient_id: int, db: Session = Depends(get_db)):
+    ingredient = db.scalars(
+        select(Ingredient)
+        .options(
+            selectinload(Ingredient.ingredient_purposes).selectinload(IngredientPurpose.purpose)
+        )
+        .where(Ingredient.ingredient_id == ingredient_id)
+    ).first()
+    if ingredient is None:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+
+    existing = db.get(LLMSummary, ingredient_id)
+    if existing is not None and existing.summary_text:
+        return existing
+
+    descriptions = [
+        ip.purpose.description
+        for ip in ingredient.ingredient_purposes
+        if ip.purpose and ip.purpose.description
+    ]
+    if not descriptions:
+        raise HTTPException(
+            status_code=422, detail="No purpose description available to summarize"
+        )
+
+    try:
+        summary_text = rewrite_description(" ".join(descriptions))
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"LLM request failed: {e}")
+
+    generated_at = datetime.now(timezone.utc)
+    stmt = (
+        sqlite_insert(LLMSummary)
+        .values(
+            ingredient_id=ingredient_id,
+            summary_text=summary_text,
+            summary_generated_at=generated_at,
+        )
+        .on_conflict_do_update(
+            index_elements=["ingredient_id"],
+            set_={"summary_text": summary_text, "summary_generated_at": generated_at},
+        )
+    )
+    db.execute(stmt)
+    db.commit()
+    return db.get(LLMSummary, ingredient_id)

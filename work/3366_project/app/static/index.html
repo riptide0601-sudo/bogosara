@@ -87,6 +87,18 @@
     border-radius: 999px;
     margin: 2px 4px 0 0;
   }
+  .llm-summary {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f2f5;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #374151;
+  }
+  .llm-summary.loading {
+    color: #9ca3af;
+    font-style: italic;
+  }
 </style>
 </head>
 <body>
@@ -209,26 +221,66 @@ function showProductDetail(productId) {
     });
 }
 
+const summaryRequestsInFlight = new Set();
+
 function showIngredientDetail(ingredientId) {
   fetch('ingredients/' + ingredientId)
     .then(r => r.json())
     .then(i => {
       detailEl.style.display = 'block';
-      const purposes = (i.purposes || []).map(p => `<span class="purpose-tag">${escapeHtml(p.purpose_name)}</span>`).join('');
-      const summary = i.llm_summary && i.llm_summary.summary_text
-        ? `<p>${escapeHtml(i.llm_summary.summary_text)}</p>` : '';
-      const benefit = i.llm_summary && i.llm_summary.benefit_text
-        ? `<p><strong>좋은 점</strong><br>${escapeHtml(i.llm_summary.benefit_text)}</p>` : '';
-      const caution = i.llm_summary && i.llm_summary.caution_text
-        ? `<p><strong>주의할 점</strong><br>${escapeHtml(i.llm_summary.caution_text)}</p>` : '';
-      detailEl.innerHTML = `
-        <h2>${escapeHtml(i.name_kr || '')}</h2>
-        <div class="brand">${escapeHtml(i.name_en || '')}</div>
-        <div>${purposes || '<span class="empty">배합목적 정보 없음</span>'}</div>
-        ${summary}
-        ${benefit}
-        ${caution}
-      `;
+      renderIngredientDetail(i);
+      if (!i.llm_summary || !i.llm_summary.summary_text) {
+        requestLlmSummary(ingredientId);
+      }
+    });
+}
+
+function renderIngredientDetail(i) {
+  const purposes = (i.purposes || []).map(p => `<span class="purpose-tag">${escapeHtml(p.purpose_name)}</span>`).join('');
+  const summaryHtml = i.llm_summary && i.llm_summary.summary_text
+    ? `<p class="llm-summary">${escapeHtml(i.llm_summary.summary_text)}</p>`
+    : `<p class="llm-summary loading">쉬운 설명 생성 중...</p>`;
+  const benefit = i.llm_summary && i.llm_summary.benefit_text
+    ? `<p><strong>좋은 점</strong><br>${escapeHtml(i.llm_summary.benefit_text)}</p>` : '';
+  const caution = i.llm_summary && i.llm_summary.caution_text
+    ? `<p><strong>주의할 점</strong><br>${escapeHtml(i.llm_summary.caution_text)}</p>` : '';
+  detailEl.dataset.ingredientId = i.ingredient_id;
+  detailEl.innerHTML = `
+    <h2>${escapeHtml(i.name_kr || '')}</h2>
+    <div class="brand">${escapeHtml(i.name_en || '')}</div>
+    <div>${purposes || '<span class="empty">배합목적 정보 없음</span>'}</div>
+    ${summaryHtml}
+    ${benefit}
+    ${caution}
+  `;
+}
+
+function requestLlmSummary(ingredientId) {
+  if (summaryRequestsInFlight.has(ingredientId)) return;
+  summaryRequestsInFlight.add(ingredientId);
+
+  fetch('ingredients/' + ingredientId + '/generate-summary', { method: 'POST' })
+    .then(r => {
+      if (!r.ok) throw new Error('generate-summary failed: ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      summaryRequestsInFlight.delete(ingredientId);
+      if (String(detailEl.dataset.ingredientId) !== String(ingredientId)) return;
+      const loadingEl = detailEl.querySelector('.llm-summary.loading');
+      if (loadingEl) {
+        loadingEl.textContent = data.summary_text || '설명을 생성하지 못했습니다.';
+        loadingEl.classList.remove('loading');
+      }
+    })
+    .catch(() => {
+      summaryRequestsInFlight.delete(ingredientId);
+      if (String(detailEl.dataset.ingredientId) !== String(ingredientId)) return;
+      const loadingEl = detailEl.querySelector('.llm-summary.loading');
+      if (loadingEl) {
+        loadingEl.textContent = '설명 생성 중 오류가 발생했습니다.';
+        loadingEl.classList.remove('loading');
+      }
     });
 }
 
