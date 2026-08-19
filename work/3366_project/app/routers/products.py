@@ -1,9 +1,13 @@
+from datetime import datetime, timezone
+
+import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
+from app.llm_client import summarize_product
 from app.models.ingredient import Ingredient
 from app.models.ingredient_purpose import IngredientPurpose
 from app.models.product import Product
@@ -115,3 +119,38 @@ def unlink_ingredient(
         raise HTTPException(status_code=404, detail="Link not found")
     db.delete(link)
     db.commit()
+
+
+@router.post("/{product_id}/generate-summary", response_model=ProductRead)
+def generate_product_summary(product_id: str, db: Session = Depends(get_db)):
+    product = db.scalars(
+        _detail_query().where(Product.product_id == product_id)
+    ).first()
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    if product.summary:
+        return product
+
+    ingredient_names = [
+        pi.ingredient.name_kr or pi.ingredient.name_en
+        for pi in sorted(
+            product.product_ingredients, key=lambda x: (x.label_rank is None, x.label_rank)
+        )
+        if pi.ingredient.name_kr or pi.ingredient.name_en
+    ]
+    if not ingredient_names:
+        raise HTTPException(
+            status_code=422, detail="No ingredients available to summarize"
+        )
+
+    try:
+        summary_text = summarize_product(product.product_name, ingredient_names)
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"LLM request failed: {e}")
+
+    product.summary = summary_text
+    product.summary_generated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(product)
+    return product

@@ -196,28 +196,71 @@ function renderIngredients(list) {
   });
 }
 
+const productSummaryRequestsInFlight = new Set();
+
 function showProductDetail(productId) {
   fetch('products/' + encodeURIComponent(productId))
     .then(r => r.json())
     .then(p => {
       detailEl.style.display = 'block';
-      const rows = p.ingredients.map(pi => {
-        const purposeTags = (pi.ingredient.purposes || [])
-          .map(pur => `<span class="purpose-tag">${escapeHtml(pur.purpose_name)}</span>`)
-          .join('');
-        return `
-          <div class="ing-row">
-            <span>${escapeHtml(pi.ingredient.name_kr || pi.ingredient.name_en || '')}</span>
-            <span>${escapeHtml(pi.matched_text || '')}</span>
-          </div>
-          <div>${purposeTags}</div>
-        `;
-      }).join('');
-      detailEl.innerHTML = `
-        <h2>${escapeHtml(p.product_name)}</h2>
-        <div class="brand">${escapeHtml(p.brand || '')}</div>
-        ${rows || '<div class="empty">등록된 성분 없음</div>'}
-      `;
+      renderProductDetail(p);
+      if (!p.summary) {
+        requestProductSummary(productId);
+      }
+    });
+}
+
+function renderProductDetail(p) {
+  const rows = p.ingredients.map(pi => {
+    const purposeTags = (pi.ingredient.purposes || [])
+      .map(pur => `<span class="purpose-tag">${escapeHtml(pur.purpose_name)}</span>`)
+      .join('');
+    return `
+      <div class="ing-row">
+        <span>${escapeHtml(pi.ingredient.name_kr || pi.ingredient.name_en || '')}</span>
+        <span>${escapeHtml(pi.matched_text || '')}</span>
+      </div>
+      <div>${purposeTags}</div>
+    `;
+  }).join('');
+  const summaryHtml = p.summary
+    ? `<p class="llm-summary">${escapeHtml(p.summary)}</p>`
+    : `<p class="llm-summary loading">전성분 기반 요약 생성 중...</p>`;
+  detailEl.dataset.productId = p.product_id;
+  detailEl.innerHTML = `
+    <h2>${escapeHtml(p.product_name)}</h2>
+    <div class="brand">${escapeHtml(p.brand || '')}</div>
+    ${summaryHtml}
+    ${rows || '<div class="empty">등록된 성분 없음</div>'}
+  `;
+}
+
+function requestProductSummary(productId) {
+  if (productSummaryRequestsInFlight.has(productId)) return;
+  productSummaryRequestsInFlight.add(productId);
+
+  fetch('products/' + encodeURIComponent(productId) + '/generate-summary', { method: 'POST' })
+    .then(r => {
+      if (!r.ok) throw new Error('generate-summary failed: ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      productSummaryRequestsInFlight.delete(productId);
+      if (String(detailEl.dataset.productId) !== String(productId)) return;
+      const loadingEl = detailEl.querySelector('.llm-summary.loading');
+      if (loadingEl) {
+        loadingEl.textContent = data.summary || '요약을 생성하지 못했습니다.';
+        loadingEl.classList.remove('loading');
+      }
+    })
+    .catch(() => {
+      productSummaryRequestsInFlight.delete(productId);
+      if (String(detailEl.dataset.productId) !== String(productId)) return;
+      const loadingEl = detailEl.querySelector('.llm-summary.loading');
+      if (loadingEl) {
+        loadingEl.textContent = '요약 생성 중 오류가 발생했습니다.';
+        loadingEl.classList.remove('loading');
+      }
     });
 }
 
