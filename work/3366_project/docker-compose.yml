@@ -1,14 +1,23 @@
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: labellens
-      POSTGRES_PASSWORD: labellens
-      POSTGRES_DB: labellens
+  app:
+    build: .
     ports:
-      - "5432:5432"
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:///./data/labellens.db
+      OLLAMA_URL: http://ollama:11434/api/generate
     volumes:
-      - labellens_pgdata:/var/lib/postgresql/data
+      - ./data:/app/data
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull gemma2:2b; wait"]
 
 volumes:
-  labellens_pgdata:
+  ollama_data:

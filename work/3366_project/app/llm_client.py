@@ -2,8 +2,8 @@ import re
 
 import requests
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "gemma2:2b"
+from app.config import settings
+
 TIMEOUT_SECONDS = 120
 
 # 출력에 섞이면 안 되는 표현 (의학적 효능 단정 표현)
@@ -61,7 +61,7 @@ def rewrite_description(
     정의 원문이 없으면 배합목적만으로 담백하게 생성하도록 프롬프트에서 유도.
     """
     payload = {
-        "model": MODEL_NAME,
+        "model": settings.ollama_model,
         "prompt": PROMPT_TEMPLATE.format(
             ingredient_name=ingredient_name,
             description=description or "정보 없음",
@@ -70,7 +70,7 @@ def rewrite_description(
         "stream": False,
         "options": {"temperature": 0.3},  # 재구성 목적이므로 창작성 낮게
     }
-    resp = requests.post(OLLAMA_URL, json=payload, timeout=TIMEOUT_SECONDS)
+    resp = requests.post(settings.ollama_url, json=payload, timeout=TIMEOUT_SECONDS)
     resp.raise_for_status()
     raw = resp.json().get("response", "")
     result = _strip_markdown(raw)
