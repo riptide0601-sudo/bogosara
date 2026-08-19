@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import String, cast, or_, select
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
@@ -97,7 +97,7 @@ def link_purpose(ingredient_id: int, purpose_id: int, db: Session = Depends(get_
         raise HTTPException(status_code=404, detail="Purpose not found")
 
     stmt = (
-        sqlite_insert(IngredientPurpose)
+        pg_insert(IngredientPurpose)
         .values(ingredient_id=ingredient_id, purpose_id=purpose_id)
         .on_conflict_do_nothing(index_elements=["ingredient_id", "purpose_id"])
     )
@@ -188,7 +188,7 @@ def generate_summary(ingredient_id: int, db: Session = Depends(get_db)):
 
     generated_at = datetime.now(timezone.utc)
     stmt = (
-        sqlite_insert(LLMSummary)
+        pg_insert(LLMSummary)
         .values(
             ingredient_id=ingredient_id,
             summary_text=summary_text,
