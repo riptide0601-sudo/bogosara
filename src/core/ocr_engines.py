@@ -61,29 +61,37 @@ def _get_easyocr_reader(languages: tuple, gpu: bool):
     return _reader_cache[key]
 
 
-def _get_paddleocr_reader(lang: str):
+def _get_paddleocr_reader(lang: str, gpu: bool):
     from paddleocr import PaddleOCR
 
-    key = ("paddleocr", lang)
+    key = ("paddleocr", lang, gpu)
     if key not in _reader_cache:
-        # enable_mkldnn=False: 이 환경의 CPU용 paddlepaddle이 oneDNN 백엔드로 PP-OCRv5
-        # 모델을 못 돌리고 NotImplementedError를 내는 이슈가 있어 명시적으로 꺼둔다.
-        _reader_cache[key] = PaddleOCR(
-            lang=lang,
-            use_doc_orientation_classify=False,
-            use_doc_unwarping=False,
-            use_textline_orientation=False,
-            enable_mkldnn=False,
-        )
+        kwargs = {
+            "lang": lang,
+            "use_doc_orientation_classify": False,
+            "use_doc_unwarping": False,
+            "use_textline_orientation": False,
+        }
+        if gpu:
+            kwargs["device"] = "gpu:0"
+        else:
+            # enable_mkldnn=False: 이 환경의 CPU용 paddlepaddle이 oneDNN 백엔드로 PP-OCRv5
+            # 모델을 못 돌리고 NotImplementedError를 내는 이슈가 있어 명시적으로 꺼둔다.
+            # (GPU 경로는 oneDNN을 안 타서 이 옵션이 필요 없다.)
+            kwargs["enable_mkldnn"] = False
+        _reader_cache[key] = PaddleOCR(**kwargs)
     return _reader_cache[key]
 
 
-def _get_doctr_model():
+def _get_doctr_model(gpu: bool):
     from doctr.models import ocr_predictor
 
-    key = ("doctr",)
+    key = ("doctr", gpu)
     if key not in _reader_cache:
-        _reader_cache[key] = ocr_predictor(pretrained=True)
+        model = ocr_predictor(pretrained=True)
+        if gpu:
+            model = model.cuda()
+        _reader_cache[key] = model
     return _reader_cache[key]
 
 
@@ -100,7 +108,7 @@ def _run_easyocr(image: Image.Image, language: str, gpu: bool) -> str:
 
 
 def _run_paddleocr(image: Image.Image, language: str, gpu: bool) -> str:
-    reader = _get_paddleocr_reader(_paddleocr_lang(language))
+    reader = _get_paddleocr_reader(_paddleocr_lang(language), gpu)
     result = reader.predict(np.array(image.convert("RGB")))
     lines = []
     for page in result or []:
@@ -111,7 +119,7 @@ def _run_paddleocr(image: Image.Image, language: str, gpu: bool) -> str:
 def _run_doctr(image: Image.Image, language: str, gpu: bool) -> str:
     # docTR 기본 사전학습 모델은 라틴 문자 위주라 한국어 인식률이 낮다.
     # 4개 엔진 비교 결과에서 이 특성 자체가 유의미한 데이터가 된다.
-    model = _get_doctr_model()
+    model = _get_doctr_model(gpu)
     result = model([np.array(image.convert("RGB"))])
     lines = []
     for page in result.pages:

@@ -34,6 +34,10 @@ GROUND_TRUTH_PATH = SAMPLES_DIR / "ground_truth.json"
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 
+# True면 GPU(CUDA)로 4개 엔진을 실행한다. Tesseract는 GPU를 지원하지 않는 엔진이라
+# 이 값과 무관하게 항상 CPU로 실행된다. GPU가 없는 환경에서는 False로 바꿔서 실행할 것.
+USE_GPU = True
+
 
 def _load_ground_truth() -> dict:
     if GROUND_TRUTH_PATH.exists():
@@ -66,6 +70,7 @@ def run_benchmark():
         return
 
     ground_truth = _load_ground_truth()
+    print(f"[i] 실행 모드: {'GPU' if USE_GPU else 'CPU'} (Tesseract는 항상 CPU)")
 
     per_engine_times = {name: [] for name in ENGINE_NAMES}
     per_engine_accuracy = {name: [] for name in ENGINE_NAMES}
@@ -74,7 +79,7 @@ def run_benchmark():
     for image_path in image_paths:
         print(f"\n=== {image_path.name} ===")
         image = Image.open(image_path).convert("RGB")
-        results = run_all_engines(image)
+        results = run_all_engines(image, gpu=USE_GPU)
         expected = ground_truth.get(image_path.name)
 
         for result in results:
@@ -87,6 +92,7 @@ def run_benchmark():
             row = {
                 "image": image_path.name,
                 "engine": name,
+                "gpu": USE_GPU and name != "tesseract",
                 "elapsed_ms": result["elapsed_ms"],
                 "text": result["text"],
             }
@@ -127,7 +133,7 @@ def _plot_speed_chart(per_engine_times: dict):
     fig, ax = plt.subplots(figsize=(7, 5))
     bars = ax.bar(names, avgs, color="#4C72B0")
     ax.set_ylabel("평균 처리 시간 (ms)")
-    ax.set_title("OCR 엔진별 처리 속도 비교")
+    ax.set_title(f"OCR 엔진별 처리 속도 비교 ({'GPU' if USE_GPU else 'CPU'})")
     for bar, avg in zip(bars, avgs):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
@@ -179,7 +185,11 @@ def _plot_ppt_summary(per_engine_times: dict, per_engine_accuracy: dict):
 
     fig = plt.figure(figsize=(13, 7.5))
     gs = fig.add_gridspec(2, 2, height_ratios=[3, 1.3], hspace=0.4, wspace=0.25)
-    fig.suptitle("LabelLens OCR 엔진 비교", fontsize=18, fontweight="bold")
+    fig.suptitle(
+        f"LabelLens OCR 엔진 비교 ({'GPU' if USE_GPU else 'CPU'})",
+        fontsize=18,
+        fontweight="bold",
+    )
 
     ax_speed = fig.add_subplot(gs[0, 0])
     bars = ax_speed.bar(names, avg_times, color="#4C72B0")
