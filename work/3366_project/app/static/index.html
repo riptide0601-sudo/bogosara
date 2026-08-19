@@ -217,11 +217,17 @@ function showIngredientDetail(ingredientId) {
       const purposes = (i.purposes || []).map(p => `<span class="purpose-tag">${escapeHtml(p.purpose_name)}</span>`).join('');
       const summary = i.llm_summary && i.llm_summary.summary_text
         ? `<p>${escapeHtml(i.llm_summary.summary_text)}</p>` : '';
+      const benefit = i.llm_summary && i.llm_summary.benefit_text
+        ? `<p><strong>좋은 점</strong><br>${escapeHtml(i.llm_summary.benefit_text)}</p>` : '';
+      const caution = i.llm_summary && i.llm_summary.caution_text
+        ? `<p><strong>주의할 점</strong><br>${escapeHtml(i.llm_summary.caution_text)}</p>` : '';
       detailEl.innerHTML = `
         <h2>${escapeHtml(i.name_kr || '')}</h2>
         <div class="brand">${escapeHtml(i.name_en || '')}</div>
         <div>${purposes || '<span class="empty">배합목적 정보 없음</span>'}</div>
         ${summary}
+        ${benefit}
+        ${caution}
       `;
     });
 }
