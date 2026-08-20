@@ -7,7 +7,7 @@ from predict_module import init, predict
 #
 # image_path에 실제 화장품 라벨 사진 경로를 넣어 테스트합니다.
 input_message = {
-    "image_path": "samples/label_sample.jpg",
+    "image_path": "samples/torriden.jpg",
     "use_batch_job": False,
 }
 ########
