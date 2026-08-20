@@ -8,9 +8,6 @@ import traceback
 from PIL import Image
 
 import ocr_engines
-from oneflowai import handler, minio_client, postgres, utils
-from oneflowai.fptr_util import send_notification
-from oneflowai.orchestrator import generate_job
 
 # LabelLens OCR - 성분 토큰 분리용 구분자(쉼표류 + 개행). 실제 라벨 샘플 검증하며 보완 예정.
 _INGREDIENT_SPLIT_PATTERN = re.compile(r"[,，;\n]+")
@@ -132,6 +129,8 @@ def run_job(env: str = "vfx") -> dict:
     '''if __name__=="__main__":'''
     하위에서 불러 사용하는 함수입니다.
     """
+    from oneflowai import handler, minio_client, postgres, utils
+
     try:
         batch_req_id = os.getenv("BATCH_REQ_ID")
         pod = os.getenv("POD_NAME")
