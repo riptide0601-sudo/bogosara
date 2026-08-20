@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import String, cast, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, selectinload
 
@@ -39,6 +39,38 @@ def _to_detail(ingredient: Ingredient) -> IngredientDetail:
     return detail
 
 
+def search_ingredient_ids(query: str, db: Session) -> list[int]:
+    """검색어와 매칭되는 ingredient_id 목록을 우선순위대로 반환합니다.
+
+    검색창·OCR 매칭 등 성분명 매칭이 필요한 모든 곳에서 공유하는 알고리즘입니다.
+    1) name_kr/name_en/synonyms substring 매칭 우선 — 이때 이름이 검색어와 정확히
+       일치하는 항목을 먼저 배치한다 (예: 검색어 "잔탄검"이 "잔탄검"과 "데하이드로잔탄검"에
+       둘 다 substring으로 걸릴 때, 알파벳순만으로는 후자가 앞에 와 버리는 문제 방지)
+    2) 매칭이 없으면 자모 기반 fuzzy 매칭으로 폴백 (오타·OCR 오독 대응,
+       예: "나이아신아미드" -> "나이아신아마이드")
+    """
+    exact_match = or_(
+        func.lower(Ingredient.name_kr) == query.lower(),
+        func.lower(Ingredient.name_en) == query.lower(),
+    )
+    stmt = (
+        select(Ingredient.ingredient_id)
+        .where(
+            or_(
+                Ingredient.name_kr.ilike(f"%{query}%"),
+                Ingredient.name_en.ilike(f"%{query}%"),
+                cast(Ingredient.synonyms, String).ilike(f'%"{query}"%'),
+            )
+        )
+        .order_by(exact_match.desc(), Ingredient.name_kr)
+    )
+    ids = list(db.scalars(stmt).all())
+    if ids:
+        return ids
+
+    return fuzzy_match.search(query)
+
+
 @router.get("", response_model=list[IngredientDetail])
 def list_ingredients(
     query: str | None = Query(default=None, description="name_kr/name_en/synonyms 검색어"),
@@ -48,29 +80,14 @@ def list_ingredients(
         ingredients = db.scalars(_detail_query().order_by(Ingredient.name_kr)).all()
         return [_to_detail(ingredient) for ingredient in ingredients]
 
-    stmt = _detail_query().where(
-        or_(
-            Ingredient.name_kr.ilike(f"%{query}%"),
-            Ingredient.name_en.ilike(f"%{query}%"),
-            cast(Ingredient.synonyms, String).ilike(f'%"{query}"%'),
-        )
-    )
-    ingredients = db.scalars(stmt.order_by(Ingredient.name_kr)).all()
-    if ingredients:
-        return [_to_detail(ingredient) for ingredient in ingredients]
-
-    # No exact/substring match — fall back to jamo-level fuzzy matching to tolerate
-    # typos and OCR-style misreads (e.g. "나이아신아미드" -> "나이아신아마이드").
-    fuzzy_ids = fuzzy_match.search(query)
-    if not fuzzy_ids:
+    ids = search_ingredient_ids(query, db)
+    if not ids:
         return []
     by_id = {
         ingredient.ingredient_id: ingredient
-        for ingredient in db.scalars(
-            _detail_query().where(Ingredient.ingredient_id.in_(fuzzy_ids))
-        ).all()
+        for ingredient in db.scalars(_detail_query().where(Ingredient.ingredient_id.in_(ids))).all()
     }
-    return [_to_detail(by_id[iid]) for iid in fuzzy_ids if iid in by_id]
+    return [_to_detail(by_id[iid]) for iid in ids if iid in by_id]
 
 
 @router.post("", response_model=IngredientRead, status_code=201)

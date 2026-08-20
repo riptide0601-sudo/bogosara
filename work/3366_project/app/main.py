@@ -6,13 +6,14 @@ from fastapi.staticfiles import StaticFiles
 from app import fuzzy_match
 from app.database import SessionLocal
 from app.llm_client import warm_up
-from app.routers import ingredients, products, purposes
+from app.routers import ingredients, ocr, products, purposes
 
 app = FastAPI(title="LabelLens API")
 
 app.include_router(products.router)
 app.include_router(ingredients.router)
 app.include_router(purposes.router)
+app.include_router(ocr.router)
 
 
 @app.on_event("startup")

@@ -99,10 +99,53 @@
     color: #9ca3af;
     font-style: italic;
   }
+  .upload-box {
+    max-width: 640px;
+    margin-bottom: 12px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .upload-box h2 {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 10px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .ocr-status {
+    font-size: 13px;
+    color: #374151;
+    margin-top: 10px;
+  }
+  .ocr-status.loading { color: #4f7cff; }
+  .ocr-status.error { color: #dc2626; }
+  .ocr-results-panel {
+    max-width: 640px;
+    margin-bottom: 24px;
+  }
+  .ocr-results-panel .item.ocr-unmatched {
+    opacity: .6;
+  }
+  .ocr-results-panel .item.ocr-unmatched .name {
+    font-weight: 400;
+  }
 </style>
 </head>
 <body>
   <h1>LabelLens 검색</h1>
+
+  <div class="upload-box">
+    <h2>전성분 사진으로 분석</h2>
+    <input type="file" id="ocr-input" accept="image/*">
+    <div id="ocr-status" class="ocr-status"></div>
+  </div>
+  <div class="panel ocr-results-panel" id="ocr-results-panel" style="display:none;">
+    <h2>인식된 성분</h2>
+    <div id="ocr-results" class="empty"></div>
+  </div>
+
   <div class="search-box">
     <input type="text" id="q" placeholder="제품명 또는 성분명 검색 (예: 히알루론산, 아누아)" autofocus>
   </div>
@@ -125,6 +168,76 @@ const qInput = document.getElementById('q');
 const productsEl = document.getElementById('products');
 const ingredientsEl = document.getElementById('ingredients');
 const detailEl = document.getElementById('detail');
+const ocrInput = document.getElementById('ocr-input');
+const ocrStatusEl = document.getElementById('ocr-status');
+const ocrResultsPanelEl = document.getElementById('ocr-results-panel');
+const ocrResultsEl = document.getElementById('ocr-results');
+
+ocrInput.addEventListener('change', () => {
+  const file = ocrInput.files[0];
+  if (file) runOcrAnalyze(file);
+});
+
+function runOcrAnalyze(file) {
+  detailEl.style.display = 'none';
+  ocrResultsPanelEl.style.display = 'block';
+  ocrResultsEl.className = 'empty';
+  ocrResultsEl.textContent = '';
+  ocrStatusEl.className = 'ocr-status loading';
+  ocrStatusEl.textContent = '사진을 분석하는 중입니다... (엔진에 따라 수십 초 걸릴 수 있어요)';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  fetch('ocr/analyze', { method: 'POST', body: formData })
+    .then(r => {
+      if (!r.ok) return r.json().then(e => { throw new Error(e.detail || ('분석 실패: ' + r.status)); });
+      return r.json();
+    })
+    .then(renderOcrResults)
+    .catch(err => {
+      ocrStatusEl.className = 'ocr-status error';
+      ocrStatusEl.textContent = err.message || '분석 중 오류가 발생했습니다';
+    });
+}
+
+function renderOcrResults(data) {
+  const matchedCount = data.results.filter(r => r.ingredient).length;
+  ocrStatusEl.className = 'ocr-status';
+  ocrStatusEl.textContent = `성분 ${data.results.length}개 인식 · ${matchedCount}개 DB 매칭 (엔진: ${data.engine})`;
+
+  if (data.results.length === 0) {
+    ocrResultsEl.className = 'empty';
+    ocrResultsEl.textContent = '인식된 성분이 없습니다';
+    return;
+  }
+
+  ocrResultsEl.className = '';
+  ocrResultsEl.innerHTML = '';
+  data.results.forEach(r => {
+    const div = document.createElement('div');
+    const ing = r.ingredient;
+    if (ing) {
+      div.className = 'item';
+      const purposeTags = (ing.purposes || [])
+        .map(p => `<span class="purpose-tag">${escapeHtml(p.purpose_name)}</span>`)
+        .join('');
+      div.innerHTML = `
+        <div class="name">${escapeHtml(ing.name_kr || ing.name_en || '')}</div>
+        <div class="sub">OCR 인식: ${escapeHtml(r.matched_text)}</div>
+        <div>${purposeTags}</div>
+      `;
+      div.addEventListener('click', () => showIngredientDetail(ing.ingredient_id));
+    } else {
+      div.className = 'item ocr-unmatched';
+      div.innerHTML = `
+        <div class="name">${escapeHtml(r.matched_text)}</div>
+        <div class="sub">DB에 등록되지 않은 성분입니다</div>
+      `;
+    }
+    ocrResultsEl.appendChild(div);
+  });
+}
 
 let debounceTimer = null;
 
