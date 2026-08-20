@@ -96,16 +96,19 @@ def predict(
             result = ocr_engines.run_engine(engine, image, language=language)
             if not result["ok"]:
                 raise RuntimeError(result["error"])
-            data = {
-                "engine": engine,
-                "elapsed_ms": result["elapsed_ms"],
-                "raw_text": result["text"],
-                "ingredients": _split_ingredients(result["text"]),
-            }
+            ingredients = _split_ingredients(result["text"])
+            data = {"ingredients": ingredients}
 
+        status, message_text = 200, f"UUID {uuid_id} OCR 완료"
+        # 상세 정보(엔진·처리시간·원문)는 응답 JSON에는 안 담고 서버 로그로만 남긴다.
+        print(
+            f"[LabelLens OCR] status={status} message={message_text} "
+            f"engine={engine} elapsed_ms={result.get('elapsed_ms') if engine != 'all' else '-'} "
+            f"raw_text={result.get('text') if engine != 'all' else '-'!r}"
+        )
         return {
-            "status": 200,
-            "message": f"UUID {uuid_id} OCR 완료",
+            "status": status,
+            "message": message_text,
             "data": data,
         }
     except Exception as e:
