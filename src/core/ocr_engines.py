@@ -4,6 +4,7 @@
 (run_engine / run_all_engines)로 감싸서 predict_module.py와 benchmark_ocr.py가
 엔진 종류에 상관없이 같은 방식으로 결과(text, elapsed_ms, ok)를 받게 한다.
 """
+import os
 import time
 import traceback
 
@@ -61,17 +62,32 @@ def _get_easyocr_reader(languages: tuple, gpu: bool):
     return _reader_cache[key]
 
 
+# LabelLens 화장품 라벨 코퍼스로 fine-tuning한 인식(rec) 모델.
+# 빌드 시 user-values.yaml의 copy_folder_list로 복제되는 경로라 파일이 없을 수도 있어
+# (예: 이 폴더가 아직 준비 안 된 개발환경) 존재할 때만 사용하고, 없으면 기본 사전학습 모델로 폴백한다.
+_FINETUNED_KOREAN_REC_DIR = os.path.join(
+    os.path.dirname(__file__), "models", "labellens_korean_rec"
+)
+_FINETUNED_KOREAN_REC_NAME = "korean_PP-OCRv5_mobile_rec"
+
+
 def _get_paddleocr_reader(lang: str, gpu: bool):
     from paddleocr import PaddleOCR
 
     key = ("paddleocr", lang, gpu)
     if key not in _reader_cache:
         kwargs = {
-            "lang": lang,
             "use_doc_orientation_classify": False,
             "use_doc_unwarping": False,
             "use_textline_orientation": False,
         }
+        if lang == "korean" and os.path.isdir(_FINETUNED_KOREAN_REC_DIR):
+            # fine-tuned 모델을 쓸 때는 model_dir이 lang을 무시하므로 lang 대신
+            # 모델명을 명시해야 한다 (그렇지 않으면 다른 기본 모델과 매칭 에러가 남).
+            kwargs["text_recognition_model_name"] = _FINETUNED_KOREAN_REC_NAME
+            kwargs["text_recognition_model_dir"] = _FINETUNED_KOREAN_REC_DIR
+        else:
+            kwargs["lang"] = lang
         if gpu:
             kwargs["device"] = "gpu:0"
         else:
