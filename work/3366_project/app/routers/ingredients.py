@@ -6,6 +6,7 @@ from sqlalchemy import String, cast, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, selectinload
 
+from app import fuzzy_match
 from app.database import get_db
 from app.llm_client import rewrite_description
 from app.models.ingredient import Ingredient
@@ -43,17 +44,33 @@ def list_ingredients(
     query: str | None = Query(default=None, description="name_kr/name_en/synonyms 검색어"),
     db: Session = Depends(get_db),
 ):
-    stmt = _detail_query()
-    if query:
-        stmt = stmt.where(
-            or_(
-                Ingredient.name_kr.ilike(f"%{query}%"),
-                Ingredient.name_en.ilike(f"%{query}%"),
-                cast(Ingredient.synonyms, String).ilike(f'%"{query}"%'),
-            )
+    if not query:
+        ingredients = db.scalars(_detail_query().order_by(Ingredient.name_kr)).all()
+        return [_to_detail(ingredient) for ingredient in ingredients]
+
+    stmt = _detail_query().where(
+        or_(
+            Ingredient.name_kr.ilike(f"%{query}%"),
+            Ingredient.name_en.ilike(f"%{query}%"),
+            cast(Ingredient.synonyms, String).ilike(f'%"{query}"%'),
         )
+    )
     ingredients = db.scalars(stmt.order_by(Ingredient.name_kr)).all()
-    return [_to_detail(ingredient) for ingredient in ingredients]
+    if ingredients:
+        return [_to_detail(ingredient) for ingredient in ingredients]
+
+    # No exact/substring match — fall back to jamo-level fuzzy matching to tolerate
+    # typos and OCR-style misreads (e.g. "나이아신아미드" -> "나이아신아마이드").
+    fuzzy_ids = fuzzy_match.search(query)
+    if not fuzzy_ids:
+        return []
+    by_id = {
+        ingredient.ingredient_id: ingredient
+        for ingredient in db.scalars(
+            _detail_query().where(Ingredient.ingredient_id.in_(fuzzy_ids))
+        ).all()
+    }
+    return [_to_detail(by_id[iid]) for iid in fuzzy_ids if iid in by_id]
 
 
 @router.post("", response_model=IngredientRead, status_code=201)

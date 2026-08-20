@@ -98,6 +98,7 @@ app/
   routers/     # products / ingredients / purposes 엔드포인트
   static/      # 검색 프론트엔드 (index.html, FastAPI가 정적 서빙)
   llm_client.py # Ollama(gemma) 호출
+  fuzzy_match.py # 자모 분리 + rapidfuzz 기반 오타/OCR 오인식 허용 검색
   database.py  # 엔진, 세션
   config.py    # 환경변수 설정
   main.py      # FastAPI 앱 엔트리포인트
@@ -115,7 +116,7 @@ docker-compose.yml
 
 - `POST /products`, `GET /products?query=`, `GET /products/{id}` (성분·목적·LLM요약까지 포함한 상세 조회)
 - `PUT /products/{id}/ingredients` — 상품에 성분 매칭 결과 연결 (중복은 `ON CONFLICT DO NOTHING`으로 무시)
-- `POST /ingredients`, `GET /ingredients?query=` (name_kr/name_en/synonyms 검색, 배합목적 포함), `GET /ingredients/{id}`
+- `POST /ingredients`, `GET /ingredients?query=` (name_kr/name_en/synonyms 검색, 배합목적 포함; 정확/부분일치가 없으면 자모 단위 유사도로 오타·OCR 오인식을 보정하는 fuzzy 검색으로 자동 폴백), `GET /ingredients/{id}`
 - `PUT /ingredients/{id}/purposes/{purpose_id}` — 성분에 배합목적 연결
 - `GET|PUT /ingredients/{id}/llm-summary` — 좋은 점/주의할 점 등 조회·수정
 - `POST /ingredients/{id}/generate-summary` — 배합목적 설명을 gemma로 쉬운 문장으로 재작성

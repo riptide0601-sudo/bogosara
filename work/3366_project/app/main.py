@@ -3,6 +3,8 @@ import logging
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app import fuzzy_match
+from app.database import SessionLocal
 from app.llm_client import warm_up
 from app.routers import ingredients, products, purposes
 
@@ -19,6 +21,15 @@ def _warm_up_llm():
         warm_up()
     except Exception:
         logging.getLogger(__name__).warning("Ollama warm-up failed; LLM features may be slow on first use")
+
+
+@app.on_event("startup")
+def _build_fuzzy_match_cache():
+    db = SessionLocal()
+    try:
+        fuzzy_match.build_cache(db)
+    finally:
+        db.close()
 
 
 @app.get("/health")
