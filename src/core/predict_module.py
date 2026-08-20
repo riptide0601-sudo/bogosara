@@ -9,8 +9,8 @@ from PIL import Image
 
 import ocr_engines
 
-# LabelLens OCR - 성분 토큰 분리용 구분자(쉼표류 + 개행). 실제 라벨 샘플 검증하며 보완 예정.
-_INGREDIENT_SPLIT_PATTERN = re.compile(r"[,，;\n]+")
+# LabelLens OCR - 성분 토큰 분리용 구분자(쉼표류만). 실제 라벨 샘플 검증하며 보완 예정.
+_INGREDIENT_SPLIT_PATTERN = re.compile(r"[,，;]+")
 
 # message에 engine을 지정하지 않았을 때 사용하는 기본 엔진.
 _DEFAULT_ENGINE = "paddleocr"
@@ -48,11 +48,14 @@ def _load_image(message: dict) -> Image.Image:
 
 
 def _split_ingredients(raw_text: str) -> list:
-    """OCR 원문 텍스트를 쉼표/개행 기준으로 분리해 성분 토큰 리스트로 반환합니다.
+    """OCR 원문 텍스트를 쉼표 기준으로 분리해 성분 토큰 리스트로 반환합니다.
 
+    라벨 인쇄상의 줄바꿈은 단어 중간에서 끊기는 경우가 많아(예: "…디\n카프레이트")
+    구분자로 쓰지 않고 그대로 이어붙인 뒤, 실제 구분자인 쉼표로만 분리한다.
     리스트의 순서가 곧 전성분표 배합 순서(label_rank)에 대응합니다.
     """
-    tokens = _INGREDIENT_SPLIT_PATTERN.split(raw_text)
+    joined = raw_text.replace("\n", "")
+    tokens = _INGREDIENT_SPLIT_PATTERN.split(joined)
     return [token.strip() for token in tokens if token.strip()]
 
 
