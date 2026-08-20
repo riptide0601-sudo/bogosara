@@ -131,6 +131,69 @@
   .ocr-results-panel .item.ocr-unmatched .name {
     font-weight: 400;
   }
+  .relations-section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f2f5;
+  }
+  .relations-section h3 {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0 0 8px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .relation-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .relation-item:hover { filter: brightness(0.97); }
+  .relation-item.relation-good {
+    background: #eefdf3;
+    border-color: #bbf0cf;
+  }
+  .relation-item.relation-caution {
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+  .relation-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .relation-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .relation-good .relation-badge { background: #16a34a; color: #fff; }
+  .relation-caution .relation-badge { background: #dc2626; color: #fff; }
+  .relation-name { font-weight: 600; font-size: 13px; }
+  .relation-message { font-size: 12px; color: #4b5563; line-height: 1.5; }
+  .similar-products-section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f2f5;
+    margin-bottom: 14px;
+  }
+  .similar-products-section h3 {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0 0 8px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .similar-product-item {
+    background: #f7f9ff;
+    border: 1px solid #e3e8fd;
+    border-radius: 8px;
+    margin-bottom: 6px;
+  }
 </style>
 </head>
 <body>
@@ -344,7 +407,27 @@ function renderProductDetail(p) {
     <h2>${escapeHtml(p.product_name)}</h2>
     <div class="brand">${escapeHtml(p.brand || '')}</div>
     ${summaryHtml}
+    ${renderSimilarProducts(p.similar_products)}
     ${rows || '<div class="empty">등록된 성분 없음</div>'}
+  `;
+  detailEl.querySelectorAll('.similar-product-item').forEach(el => {
+    el.addEventListener('click', () => showProductDetail(el.dataset.productId));
+  });
+}
+
+function renderSimilarProducts(similarProducts) {
+  if (!similarProducts || similarProducts.length === 0) return '';
+  const rows = similarProducts.map(sp => `
+    <div class="item similar-product-item" data-product-id="${escapeHtml(sp.product.product_id)}">
+      <div class="name">${escapeHtml(sp.product.product_name)}</div>
+      <div class="sub">${escapeHtml(sp.product.brand || '')} · 유사도 ${Math.round(sp.score * 100)}%</div>
+    </div>
+  `).join('');
+  return `
+    <div class="similar-products-section">
+      <h3>비슷한 제품</h3>
+      ${rows}
+    </div>
   `;
 }
 
@@ -380,18 +463,19 @@ function requestProductSummary(productId) {
 const summaryRequestsInFlight = new Set();
 
 function showIngredientDetail(ingredientId) {
-  fetch('ingredients/' + ingredientId)
-    .then(r => r.json())
-    .then(i => {
-      detailEl.style.display = 'block';
-      renderIngredientDetail(i);
-      if (!i.llm_summary || !i.llm_summary.summary_text) {
-        requestLlmSummary(ingredientId);
-      }
-    });
+  Promise.all([
+    fetch('ingredients/' + ingredientId).then(r => r.json()),
+    fetch('ingredients/' + ingredientId + '/relations').then(r => r.json()).catch(() => []),
+  ]).then(([i, relations]) => {
+    detailEl.style.display = 'block';
+    renderIngredientDetail(i, relations);
+    if (!i.llm_summary || !i.llm_summary.summary_text) {
+      requestLlmSummary(ingredientId);
+    }
+  });
 }
 
-function renderIngredientDetail(i) {
+function renderIngredientDetail(i, relations) {
   const purposes = (i.purposes || []).map(p => `<span class="purpose-tag">${escapeHtml(p.purpose_name)}</span>`).join('');
   const summaryHtml = i.llm_summary && i.llm_summary.summary_text
     ? `<p class="llm-summary">${escapeHtml(i.llm_summary.summary_text)}</p>`
@@ -408,6 +492,35 @@ function renderIngredientDetail(i) {
     ${summaryHtml}
     ${benefit}
     ${caution}
+    ${renderRelations(relations)}
+  `;
+  detailEl.querySelectorAll('.relation-item').forEach(el => {
+    el.addEventListener('click', () => showIngredientDetail(Number(el.dataset.ingredientId)));
+  });
+}
+
+function renderRelations(relations) {
+  if (!relations || relations.length === 0) return '';
+  const rows = relations.map(r => {
+    const isGood = r.relation_type === '시너지';
+    const cls = isGood ? 'relation-good' : 'relation-caution';
+    const label = isGood ? '함께 쓰면 좋아요' : '같이 쓸 때 주의하세요';
+    const name = r.related_ingredient.name_kr || r.related_ingredient.name_en || '';
+    return `
+      <div class="relation-item ${cls}" data-ingredient-id="${r.related_ingredient.ingredient_id}">
+        <div class="relation-header">
+          <span class="relation-badge">${escapeHtml(label)}</span>
+          <span class="relation-name">${escapeHtml(name)}</span>
+        </div>
+        <div class="relation-message">${escapeHtml(r.user_message || '')}</div>
+      </div>
+    `;
+  }).join('');
+  return `
+    <div class="relations-section">
+      <h3>성분 궁합</h3>
+      ${rows}
+    </div>
   `;
 }
 

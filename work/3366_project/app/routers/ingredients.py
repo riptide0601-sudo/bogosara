@@ -11,6 +11,7 @@ from app.database import get_db
 from app.llm_client import rewrite_description
 from app.models.ingredient import Ingredient
 from app.models.ingredient_purpose import IngredientPurpose
+from app.models.ingredient_relation import IngredientRelation
 from app.models.llm_summary import LLMSummary
 from app.models.purpose import Purpose
 from app.schemas.ingredient import (
@@ -19,6 +20,7 @@ from app.schemas.ingredient import (
     IngredientRead,
     IngredientUpdate,
 )
+from app.schemas.ingredient_relation import IngredientRelationRead
 from app.schemas.llm_summary import LLMSummaryRead, LLMSummaryUpsert
 
 router = APIRouter(prefix="/ingredients", tags=["ingredients"])
@@ -107,6 +109,40 @@ def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)):
     if ingredient is None:
         raise HTTPException(status_code=404, detail="Ingredient not found")
     return _to_detail(ingredient)
+
+
+@router.get("/{ingredient_id}/relations", response_model=list[IngredientRelationRead])
+def get_ingredient_relations(ingredient_id: int, db: Session = Depends(get_db)):
+    if db.get(Ingredient, ingredient_id) is None:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+
+    stmt = (
+        select(IngredientRelation)
+        .options(
+            selectinload(IngredientRelation.ingredient_a),
+            selectinload(IngredientRelation.ingredient_b),
+        )
+        .where(
+            or_(
+                IngredientRelation.ingredient_a_id == ingredient_id,
+                IngredientRelation.ingredient_b_id == ingredient_id,
+            )
+        )
+    )
+    relations = db.scalars(stmt).all()
+    return [
+        IngredientRelationRead(
+            relation_id=relation.relation_id,
+            relation_type=relation.relation_type,
+            user_message=relation.user_message,
+            related_ingredient=(
+                relation.ingredient_b
+                if relation.ingredient_a_id == ingredient_id
+                else relation.ingredient_a
+            ),
+        )
+        for relation in relations
+    ]
 
 
 @router.patch("/{ingredient_id}", response_model=IngredientRead)

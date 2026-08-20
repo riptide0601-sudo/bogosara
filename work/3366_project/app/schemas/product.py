@@ -36,5 +36,14 @@ class ProductIngredientDetail(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ProductSimilarityRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    product: ProductRead
+    score: float
+
+
 class ProductDetail(ProductRead):
     ingredients: list[ProductIngredientDetail] = []
+    key_ingredients: list[ProductIngredientDetail] = []
+    similar_products: list[ProductSimilarityRead] = []

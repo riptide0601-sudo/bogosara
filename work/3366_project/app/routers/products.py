@@ -19,7 +19,9 @@ from app.schemas.product import (
     ProductIngredientDetail,
     ProductIngredientLink,
     ProductRead,
+    ProductSimilarityRead,
 )
+from app.similarity import DEFAULT_TOP_K, find_similar_products
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -36,7 +38,26 @@ def _detail_query():
     )
 
 
-def _to_detail(product: Product) -> ProductDetail:
+def _build_similar_products(
+    product_id: str, db: Session, *, top_k: int, min_score: float, limit: int
+) -> list[ProductSimilarityRead]:
+    scored = find_similar_products(product_id, db, top_k=top_k, min_score=min_score, limit=limit)
+    if not scored:
+        return []
+    products_by_id = {
+        product.product_id: product
+        for product in db.scalars(
+            select(Product).where(Product.product_id.in_([pid for pid, _ in scored]))
+        ).all()
+    }
+    return [
+        ProductSimilarityRead(product=products_by_id[pid], score=score)
+        for pid, score in scored
+        if pid in products_by_id
+    ]
+
+
+def _to_detail(product: Product, db: Session) -> ProductDetail:
     detail = ProductDetail.model_validate(product)
     detail.ingredients = []
     for pi in sorted(
@@ -51,6 +72,14 @@ def _to_detail(product: Product) -> ProductDetail:
                 ingredient=ingredient_detail,
             )
         )
+    # 유사도 계산(app/similarity.py)과 같은 기준(label_rank 상위 DEFAULT_TOP_K개)으로
+    # "주요 성분"을 뽑는다 — ingredients가 이미 label_rank순으로 정렬돼 있어 그대로 슬라이스.
+    detail.key_ingredients = detail.ingredients[:DEFAULT_TOP_K]
+    # 추천도 같은 key_ingredients 기준(DEFAULT_TOP_K)으로 계산해 이 제품을 볼 때 바로 딸려온다.
+    # 사이트에 뜨는 건 확신도가 높은 것만 보여주기 위해 70% 이상만 노출한다.
+    detail.similar_products = _build_similar_products(
+        product.product_id, db, top_k=DEFAULT_TOP_K, min_score=0.7, limit=10
+    )
     return detail
 
 
@@ -84,7 +113,23 @@ def get_product(product_id: str, db: Session = Depends(get_db)):
     product = db.scalars(_detail_query().where(Product.product_id == product_id)).first()
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    return _to_detail(product)
+    return _to_detail(product, db)
+
+
+@router.get("/{product_id}/similar", response_model=list[ProductSimilarityRead])
+def get_similar_products(
+    product_id: str,
+    top_k: int = Query(
+        default=DEFAULT_TOP_K, ge=1, description="주요 성분으로 취급할 상위 성분 개수(label_rank 기준)"
+    ),
+    min_score: float = Query(default=0.5, ge=0.0, le=1.0),
+    limit: int = Query(default=10, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    if db.get(Product, product_id) is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return _build_similar_products(product_id, db, top_k=top_k, min_score=min_score, limit=limit)
 
 
 @router.put("/{product_id}/ingredients", status_code=204)

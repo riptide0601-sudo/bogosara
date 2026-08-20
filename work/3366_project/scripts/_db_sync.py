@@ -7,6 +7,7 @@ from app.database import Base
 from app.models import (  # noqa: F401  (import registers tables on Base.metadata)
     Ingredient,
     IngredientPurpose,
+    IngredientRelation,
     LLMSummary,
     Product,
     ProductIngredient,
@@ -21,6 +22,7 @@ TABLE_ORDER = [
     IngredientPurpose.__table__,
     ProductIngredient.__table__,
     LLMSummary.__table__,
+    IngredientRelation.__table__,
 ]
 
 
