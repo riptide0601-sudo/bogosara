@@ -17,7 +17,9 @@ WORKDIR /app
 RUN rm -rf /var/lib/apt/lists/* && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    vim curl wget sudo && \
+    vim curl wget sudo \
+    tesseract-ocr tesseract-ocr-kor tesseract-ocr-eng \
+    libgl1 libglib2.0-0 fonts-nanum && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

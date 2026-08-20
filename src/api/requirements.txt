@@ -6,3 +6,22 @@ psycopg2-binary>=2.9.10,<3.0.0
 # oneflowai>=1.1.24,<2.0.0
 
 # 유저가 사용할 라이브러리를 정의합니다.
+pytesseract>=0.3.10,<0.4.0
+Pillow>=10.0.0,<13.0.0
+
+# LabelLens OCR 4개 엔진 비교(트랙 A)
+easyocr>=1.7.0,<2.0.0
+paddleocr>=3.0.0,<4.0.0
+python-doctr>=1.0.0,<2.0.0
+matplotlib>=3.9.0,<4.0.0
+
+# paddlepaddle-gpu (CUDA 12.6 빌드) - PaddleOCR을 GPU로 돌리기 위한 버전.
+# GPU 없는 환경(로컬 CPU 등)에서는 이 두 줄을 지우고 `paddlepaddle>=3.0.0,<4.0.0`로 되돌릴 것.
+#
+# 주의: 설치 순서에 따라 paddlepaddle-gpu가 끌어오는 nvidia-nccl-cu12/nvidia-cudnn-cu12가
+# torch(easyocr/docTR용, cu13 빌드)의 nvidia-nccl-cu13/nvidia-cudnn-cu13 공유 라이브러리(.so)를
+# 덮어써서 torch가 깨질 수 있다. 그런 증상(torch import 시 undefined symbol / cuDNN version
+# mismatch 에러)이 나오면:
+#   pip install --force-reinstall --no-deps nvidia-nccl-cu13==2.29.7 nvidia-cudnn-cu13==9.20.0.48
+--extra-index-url https://www.paddlepaddle.org.cn/packages/stable/cu126/
+paddlepaddle-gpu==3.3.1

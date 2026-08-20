@@ -4,7 +4,12 @@ from predict_module import init, predict
 # 1. 본 파일은 입력 데이터에 따른 예상 실행 결과를 테스트해보기 위한 파일입니다.
 # 2. 기대하는 입력 구조에 맞게 데이터를 작성합니다.
 # 3. python test_inference.py 명령어로 파이썬 파일을 실행하여 추론 동작 결과를 확인할 수 있습니다.
-input_message = {"data": {"key": "field"}, "id": "user_id", "use_batch_job": False}
+#
+# image_path에 실제 화장품 라벨 사진 경로를 넣어 테스트합니다.
+input_message = {
+    "image_path": "samples/torriden.jpg",
+    "use_batch_job": False,
+}
 ########
 
 init()
