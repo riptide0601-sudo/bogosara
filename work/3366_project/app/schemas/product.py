@@ -9,6 +9,8 @@ class ProductBase(BaseModel):
     product_name: str
     brand: str | None = None
     summary: str | None = None
+    key_ingredients: str | None = None
+    key_purposes: str | None = None
 
 
 class ProductCreate(ProductBase):

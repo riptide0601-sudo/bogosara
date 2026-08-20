@@ -21,6 +21,8 @@ class Product(Base):
     brand: Mapped[str | None] = mapped_column(String, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    key_ingredients: Mapped[str | None] = mapped_column(Text, nullable=True)
+    key_purposes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     product_ingredients: Mapped[list["ProductIngredient"]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
