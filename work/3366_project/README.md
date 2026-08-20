@@ -54,6 +54,17 @@ python -m scripts.migrate_sqlite_to_postgres
 
 `data/labellens.db`(SQLite)의 전체 데이터를 PostgreSQL로 복사합니다. 실행할 때마다 기존 PostgreSQL 데이터를 지우고 SQLite 원본 기준으로 다시 채우므로(멱등), 원본이 최신 상태(source of truth)입니다.
 
+### PostgreSQL에서 바꾼 내용을 git에 반영하기
+
+git은 `data/labellens.db` 파일만 추적하고 PostgreSQL 자체(서버·볼륨)는 추적하지 않습니다. 앱 API나 DB 클라이언트로 PostgreSQL 데이터를 직접 수정했다면, 그 내용을 git에 남기기 위해 반대 방향 스크립트로 SQLite 파일에 다시 내보낸 뒤 커밋하세요.
+
+```bash
+python -m scripts.migrate_postgres_to_sqlite
+git add data/labellens.db
+git commit -m "..."
+git push
+```
+
 ### 백엔드 서버 실행
 
 ```bash
@@ -93,7 +104,9 @@ app/
 data/
   labellens.db # SQLite DB (마이그레이션 원본 데이터, 운영 DB는 PostgreSQL)
 scripts/
-  migrate_sqlite_to_postgres.py # SQLite → PostgreSQL 1회성 데이터 이관 스크립트
+  migrate_sqlite_to_postgres.py # SQLite → PostgreSQL 데이터 이관
+  migrate_postgres_to_sqlite.py # PostgreSQL → SQLite 데이터 내보내기 (git 반영용)
+  _db_sync.py                   # 위 두 스크립트가 공유하는 테이블 복사 로직
 Dockerfile
 docker-compose.yml
 ```
