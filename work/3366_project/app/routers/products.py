@@ -12,6 +12,7 @@ from app.models.ingredient import Ingredient
 from app.models.ingredient_purpose import IngredientPurpose
 from app.models.product import Product
 from app.models.product_ingredient import ProductIngredient
+from app.product_category import ALL_CATEGORIES, classify as classify_category
 from app.schemas.ingredient import IngredientDetail
 from app.schemas.product import (
     ProductCreate,
@@ -86,6 +87,10 @@ def _to_detail(product: Product, db: Session) -> ProductDetail:
 @router.get("", response_model=list[ProductRead])
 def list_products(
     query: str | None = Query(default=None, description="product_name/brand 검색어"),
+    category: str | None = Query(
+        default=None,
+        description="카테고리 필터: " + ", ".join(c.name for c in ALL_CATEGORIES),
+    ),
     db: Session = Depends(get_db),
 ):
     stmt = select(Product)
@@ -96,12 +101,15 @@ def list_products(
                 Product.brand.ilike(f"%{query}%"),
             )
         )
+    if category:
+        stmt = stmt.where(Product.category == category)
     return db.scalars(stmt.order_by(Product.product_name)).all()
 
 
 @router.post("", response_model=ProductRead, status_code=201)
 def create_product(payload: ProductCreate, db: Session = Depends(get_db)):
     product = Product(**payload.model_dump())
+    product.category = classify_category(product.product_name).name
     db.add(product)
     db.commit()
     db.refresh(product)

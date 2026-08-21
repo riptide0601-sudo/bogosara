@@ -21,7 +21,7 @@
     display: flex;
     gap: 8px;
     max-width: 640px;
-    margin-bottom: 24px;
+    margin-bottom: 12px;
   }
   input[type=text] {
     flex: 1;
@@ -31,6 +31,29 @@
     font-size: 15px;
   }
   input[type=text]:focus { outline: 2px solid #4f7cff; }
+  .category-filter {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    max-width: 640px;
+    margin-bottom: 24px;
+  }
+  .category-chip {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #d0d3d9;
+    background: #fff;
+    color: #4b5563;
+    cursor: pointer;
+  }
+  .category-chip:hover { background: #f0f2f5; }
+  .category-chip.active {
+    background: #4f7cff;
+    border-color: #4f7cff;
+    color: #fff;
+  }
   .columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -194,6 +217,44 @@
     border-radius: 8px;
     margin-bottom: 6px;
   }
+  .buy-link {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+  .oliveyoung-link {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #2f7d32;
+    text-decoration: none;
+  }
+  .buy-link .oliveyoung-link { margin-top: 0; }
+  .oliveyoung-link:hover { text-decoration: underline; }
+  .category-box {
+    margin-top: 12px;
+    padding: 12px;
+    background: #fffaf0;
+    border: 1px solid #fde8c7;
+    border-radius: 8px;
+  }
+  .category-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #b45309;
+    background: #fef3c7;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-bottom: 6px;
+  }
+  .category-box p {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.6;
+  }
 </style>
 </head>
 <body>
@@ -211,6 +272,13 @@
 
   <div class="search-box">
     <input type="text" id="q" placeholder="제품명 또는 성분명 검색 (예: 히알루론산, 아누아)" autofocus>
+  </div>
+  <div class="category-filter" id="category-filter">
+    <button class="category-chip active" data-category="">전체</button>
+    <button class="category-chip" data-category="스킨/토너">스킨/토너</button>
+    <button class="category-chip" data-category="세럼/에센스/앰플">세럼/에센스/앰플</button>
+    <button class="category-chip" data-category="크림">크림</button>
+    <button class="category-chip" data-category="기타">기타</button>
   </div>
 
   <div class="columns">
@@ -231,6 +299,17 @@ const qInput = document.getElementById('q');
 const productsEl = document.getElementById('products');
 const ingredientsEl = document.getElementById('ingredients');
 const detailEl = document.getElementById('detail');
+const categoryFilterEl = document.getElementById('category-filter');
+let selectedCategory = '';
+
+categoryFilterEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.category-chip');
+  if (!btn) return;
+  categoryFilterEl.querySelectorAll('.category-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedCategory = btn.dataset.category;
+  runSearch(qInput.value.trim());
+});
 const ocrInput = document.getElementById('ocr-input');
 const ocrStatusEl = document.getElementById('ocr-status');
 const ocrResultsPanelEl = document.getElementById('ocr-results-panel');
@@ -312,7 +391,7 @@ qInput.addEventListener('input', () => {
 function runSearch(query) {
   detailEl.style.display = 'none';
 
-  if (!query) {
+  if (!query && !selectedCategory) {
     productsEl.className = 'empty';
     productsEl.textContent = '검색어를 입력하세요';
     ingredientsEl.className = 'empty';
@@ -320,10 +399,20 @@ function runSearch(query) {
     return;
   }
 
-  fetch('products?query=' + encodeURIComponent(query))
+  const productParams = new URLSearchParams();
+  if (query) productParams.set('query', query);
+  if (selectedCategory) productParams.set('category', selectedCategory);
+
+  fetch('products?' + productParams.toString())
     .then(r => r.json())
     .then(renderProducts)
     .catch(() => { productsEl.className = 'empty'; productsEl.textContent = '검색 중 오류가 발생했습니다'; });
+
+  if (!query) {
+    ingredientsEl.className = 'empty';
+    ingredientsEl.textContent = '성분은 카테고리 필터 대상이 아니에요';
+    return;
+  }
 
   fetch('ingredients?query=' + encodeURIComponent(query))
     .then(r => r.json())
@@ -342,8 +431,13 @@ function renderProducts(list) {
   list.slice(0, 30).forEach(p => {
     const div = document.createElement('div');
     div.className = 'item';
-    div.innerHTML = `<div class="name">${escapeHtml(p.product_name)}</div><div class="sub">${escapeHtml(p.brand || '')}</div>`;
+    div.innerHTML = `
+      <div class="name">${escapeHtml(p.product_name)}</div>
+      <div class="sub">${escapeHtml(p.brand || '')}</div>
+      <a class="oliveyoung-link" href="${escapeHtml(p.oliveyoung_url)}" target="_blank" rel="noopener noreferrer">올리브영에서 보기 ↗</a>
+    `;
     div.addEventListener('click', () => showProductDetail(p.product_id));
+    div.querySelector('.oliveyoung-link').addEventListener('click', e => e.stopPropagation());
     productsEl.appendChild(div);
   });
 }
@@ -402,16 +496,22 @@ function renderProductDetail(p) {
   const summaryHtml = p.summary
     ? `<p class="llm-summary">${escapeHtml(p.summary)}</p>`
     : `<p class="llm-summary loading">전성분 기반 요약 생성 중...</p>`;
+  const categoryHtml = p.category_description
+    ? `<div class="category-box"><span class="category-tag">${escapeHtml(p.category)}</span><p>${escapeHtml(p.category_description)}</p></div>`
+    : '';
   detailEl.dataset.productId = p.product_id;
   detailEl.innerHTML = `
     <h2>${escapeHtml(p.product_name)}</h2>
     <div class="brand">${escapeHtml(p.brand || '')}</div>
+    <div class="buy-link">구매처: <a class="oliveyoung-link" href="${escapeHtml(p.oliveyoung_url)}" target="_blank" rel="noopener noreferrer">올리브영에서 보기 ↗</a></div>
+    ${categoryHtml}
     ${summaryHtml}
     ${renderSimilarProducts(p.similar_products)}
     ${rows || '<div class="empty">등록된 성분 없음</div>'}
   `;
   detailEl.querySelectorAll('.similar-product-item').forEach(el => {
     el.addEventListener('click', () => showProductDetail(el.dataset.productId));
+    el.querySelector('.oliveyoung-link').addEventListener('click', e => e.stopPropagation());
   });
 }
 
@@ -421,6 +521,7 @@ function renderSimilarProducts(similarProducts) {
     <div class="item similar-product-item" data-product-id="${escapeHtml(sp.product.product_id)}">
       <div class="name">${escapeHtml(sp.product.product_name)}</div>
       <div class="sub">${escapeHtml(sp.product.brand || '')} · 유사도 ${Math.round(sp.score * 100)}%</div>
+      <a class="oliveyoung-link" href="${escapeHtml(sp.product.oliveyoung_url)}" target="_blank" rel="noopener noreferrer">올리브영에서 보기 ↗</a>
     </div>
   `).join('');
   return `
