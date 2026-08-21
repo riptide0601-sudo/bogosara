@@ -4,8 +4,8 @@
 #   파드 런타임/홈 dotfile/IDE 캐시/자격증명이 repo 에 섞이지 않게 차단한다.
 # ============================================================================
 
-models
-model
+src/core/models/
+src/core/model/
 
 # --- SSH / sshd 런타임 (rootless sshd: host key·pid·log·sshd_config) ---
 .ssh
@@ -99,9 +99,9 @@ src/core/results/
 # --- 데이터 / 모델 산출물 ---
 data
 data/
-model/
-models/
-checkpoints/
+src/core/model/
+src/core/models/
+src/core/checkpoints/
 *.h5
 *.pt
 *.pkl
