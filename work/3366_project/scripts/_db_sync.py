@@ -8,8 +8,10 @@ from app.models import (  # noqa: F401  (import registers tables on Base.metadat
     Ingredient,
     IngredientPurpose,
     IngredientRelation,
+    IngredientSkinScore,
     LLMSummary,
     Product,
+    ProductConcern,
     ProductIngredient,
     Purpose,
 )
@@ -23,6 +25,8 @@ TABLE_ORDER = [
     ProductIngredient.__table__,
     LLMSummary.__table__,
     IngredientRelation.__table__,
+    ProductConcern.__table__,
+    IngredientSkinScore.__table__,
 ]
 
 

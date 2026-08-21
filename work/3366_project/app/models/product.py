@@ -26,3 +26,6 @@ class Product(Base):
     product_ingredients: Mapped[list["ProductIngredient"]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
     )
+    product_concerns: Mapped[list["ProductConcern"]] = relationship(
+        back_populates="product", cascade="all, delete-orphan"
+    )

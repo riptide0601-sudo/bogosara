@@ -12,6 +12,7 @@ from app.models.ingredient import Ingredient
 from app.models.ingredient_purpose import IngredientPurpose
 from app.models.product import Product
 from app.models.product_ingredient import ProductIngredient
+from app.models.ingredient_skin_score import SKIN_TYPES
 from app.product_category import ALL_CATEGORIES, classify as classify_category
 from app.schemas.ingredient import IngredientDetail
 from app.schemas.product import (
@@ -22,7 +23,9 @@ from app.schemas.product import (
     ProductRead,
     ProductSimilarityRead,
 )
+from app.schemas.skin_fit import SkinFitRead
 from app.similarity import DEFAULT_TOP_K, find_similar_products
+from app.skin_fit import compute_all_skin_fits, compute_skin_fit
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -77,9 +80,9 @@ def _to_detail(product: Product, db: Session) -> ProductDetail:
     # "주요 성분"을 뽑는다 — ingredients가 이미 label_rank순으로 정렬돼 있어 그대로 슬라이스.
     detail.key_ingredients = detail.ingredients[:DEFAULT_TOP_K]
     # 추천도 같은 key_ingredients 기준(DEFAULT_TOP_K)으로 계산해 이 제품을 볼 때 바로 딸려온다.
-    # 사이트에 뜨는 건 확신도가 높은 것만 보여주기 위해 70% 이상만 노출한다.
+    # 60~70% 구간이 텅 비어있어 70%는 너무 빡빡했음 — 50% 이상으로 완화해 더 많이 노출한다.
     detail.similar_products = _build_similar_products(
-        product.product_id, db, top_k=DEFAULT_TOP_K, min_score=0.7, limit=10
+        product.product_id, db, top_k=DEFAULT_TOP_K, min_score=0.5, limit=10
     )
     return detail
 
@@ -138,6 +141,31 @@ def get_similar_products(
         raise HTTPException(status_code=404, detail="Product not found")
 
     return _build_similar_products(product_id, db, top_k=top_k, min_score=min_score, limit=limit)
+
+
+@router.get("/{product_id}/skin-fit", response_model=list[SkinFitRead])
+def get_product_skin_fit(
+    product_id: str,
+    skin_type: str | None = Query(
+        default=None, description="지성/복합성/건성/민감성 중 하나. 생략하면 4개 전부 반환"
+    ),
+    db: Session = Depends(get_db),
+):
+    """피부 타입별 제품 적합도. app/skin_fit.py 참고 — 성분별 피부타입 점수(-3~+3)를
+    합산해 0~100점으로 정규화한 값이며, 시드 데이터는 설계 단계 예시 점수입니다."""
+    if db.get(Product, product_id) is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    if skin_type is not None:
+        if skin_type not in SKIN_TYPES:
+            raise HTTPException(
+                status_code=422, detail=f"skin_type은 {SKIN_TYPES} 중 하나여야 합니다"
+            )
+        results = [compute_skin_fit(product_id, skin_type, db)]
+    else:
+        results = compute_all_skin_fits(product_id, db)
+
+    return [SkinFitRead.model_validate(r, from_attributes=True) for r in results]
 
 
 @router.put("/{product_id}/ingredients", status_code=204)
