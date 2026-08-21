@@ -88,6 +88,9 @@ yarn-error.log*
 # --- mlflow / 실험 산출물 ---
 mlruns/
 
+# --- Ollama 모델 캐시/설정 (자체 SSH 키페어 포함, 절대 커밋 금지) ---
+.ollama/
+
 # --- LabelLens OCR 벤치마크 산출물 (재생성 가능) ---
 src/core/results/
 
@@ -120,3 +123,13 @@ nohup.out
 *.DS_Store
 Thumbs.db
 Desktop.ini
+
+# --- DB 클라이언트 / GPU 캐시 (로컬 런타임 상태, repo와 무관) ---
+.dbclient/
+.nv/
+
+# --- 파인튜닝 OCR 모델 사본 (copy_folder_list로 빌드 시 복제되는 산출물) ---
+labellens_korean_rec/
+
+# --- 임시로 뽑은 스크래치 산출물 ---
+labellens_sample_tables.xlsx
