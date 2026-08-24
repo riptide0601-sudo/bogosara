@@ -72,6 +72,14 @@ interface ApiProduct {
   // app/product_category.py가 category로부터 만드는 고정 문구(computed_field). 카테고리
   // 미분류(OTHER)면 빈 문자열.
   category_description: string;
+  // app/schemas/product.py의 computed_field — 올리브영에 등록된 상품별 직접 링크(goodsNo)는
+  // DB에 없어서, 제품명으로 올리브영 검색 결과 페이지를 가리키는 URL을 그때그때 만들어 준다.
+  oliveyoung_url: string;
+}
+
+interface ApiProductSimilarity {
+  product: ApiProduct;
+  score: number;
 }
 
 export interface ApiProductDetail extends ApiProduct {
@@ -79,6 +87,13 @@ export interface ApiProductDetail extends ApiProduct {
   // label_rank 상위 DEFAULT_TOP_K개(핵심 성분 카드용) — product.key_ingredients(문자열
   // 배열)와 이름이 겹쳐서 백엔드가 top_ingredients로 따로 둔다 (app/schemas/product.py 참고).
   top_ingredients: ApiProductIngredient[];
+  // app/similarity.py의 코사인 유사도 기준 유사 제품(최대 10개, score 내림차순). 백엔드가
+  // 이미 상세 조회에 같이 내려주므로 추천 제품에 별도 API 호출을 쓰지 않는다.
+  similar_products: ApiProductSimilarity[];
+}
+
+function toProduct(p: ApiProduct): Product {
+  return { id: p.product_id, name: p.product_name, brand: p.brand ?? '', summary: p.summary ?? '' };
 }
 
 async function apiFetch<T>(path: string): Promise<T> {
@@ -93,12 +108,7 @@ async function apiFetch<T>(path: string): Promise<T> {
 export async function searchProducts(query: string): Promise<Product[]> {
   const params = query ? `?query=${encodeURIComponent(query)}` : '';
   const products = await apiFetch<ApiProduct[]>(`/products${params}`);
-  return products.map((p) => ({
-    id: p.product_id,
-    name: p.product_name,
-    brand: p.brand ?? '',
-    summary: p.summary ?? '',
-  }));
+  return products.map(toProduct);
 }
 
 /** core_ingredient_selector가 뽑은 핵심 성분 이름 집합. 없으면 빈 집합(전부 'good' 취급). */
@@ -189,10 +199,13 @@ export function mapDetailToIngredientResult(detail: ApiProductDetail): Ingredien
       })),
       ingredient_explanation: detail.composition_text ?? '', // Qwen 교체 지점
       category_description: detail.category_description,
+      oliveyoung_url: detail.oliveyoung_url,
       // 매칭 없으면 백엔드가 "..."를 내려준다 — 그건 "값 없음"과 같은 뜻이라 빈 문자열로 취급.
       skin_score_summary: detail.skin_score_summary === '...' ? '' : detail.skin_score_summary,
       // 배합 한도/금지 성분 데이터는 아직 백엔드에 없다.
       cautions: [],
+      // similar_products는 이미 score 내림차순이므로 앞 3개가 곧 Top3.
+      recommended_products: detail.similar_products.slice(0, 3).map((s) => toProduct(s.product)),
     },
     ingredients: detail.ingredients.map((pi) => toIngredient(pi, starNames)),
   };

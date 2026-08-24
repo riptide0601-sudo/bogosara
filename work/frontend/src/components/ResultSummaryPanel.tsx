@@ -1,10 +1,21 @@
 import type { IngredientResultProduct } from '../data/ingredientResult';
 
+/** 한 줄 요약 문장이 보통 "{제품명}은/는 ..."으로 시작하는데, 제품명은 바로 위 헤더 줄에서
+ * 이미 보여주므로 이 문장에서는 그 앞머리만 잘라내고 설명부터 보여준다. */
+function stripProductNameLead(summary: string, productName: string): string {
+  if (!productName || !summary.startsWith(productName)) return summary;
+  return summary.slice(productName.length).replace(/^(은|는|이|가)?\s*/, '');
+}
+
 interface ResultSummaryPanelProps {
   product: IngredientResultProduct;
   /** 우측 상단 "카드를 눌러 전성분 N개 보기" 표기에 쓰는 전체 성분 개수 (카드 뒷면과 동일한 ingredients.length). */
   totalCount: number;
   isScan: boolean;
+  /** 카드가 뒷면으로 넘어가 있는지 — "카드를 눌러 전성분 N개 보기" 버튼의 aria-expanded에 쓴다. */
+  isFlipped: boolean;
+  /** "카드를 눌러 전성분 N개 보기" 클릭 시 카드 뒤집기 (ResultCard의 flipToBack). */
+  onFlip: () => void;
 }
 
 /**
@@ -35,13 +46,21 @@ interface ResultSummaryPanelProps {
  *   먼저, 이유가 그 아래에 오도록 위계를 둔다.
  *
  * "카드를 눌러 전성분 N개 보기" 힌트는 카드 맨 아래(예전엔 여기 구분선 + 여백까지 차지했다)
- * 대신 제품명과 같은 줄, 우측 상단에 붙인다 — 스크롤을 줄이려는 목적. 클릭 가능 영역은
- * 카드 앞면(.flip-card-front) 전체라 이 텍스트 자체는 그냥 안내 문구다.
+ * 대신 제품명과 같은 줄, 우측 상단에 붙인다 — 스크롤을 줄이려는 목적. 카드 앞면 전체가 아니라
+ * 이 버튼 자체가 클릭 영역이다(ResultCard의 flipToBack을 onFlip으로 받아 호출).
  */
-export default function ResultSummaryPanel({ product, totalCount, isScan }: ResultSummaryPanelProps) {
-  const { summary, key_ingredients, ingredient_explanation, category_description, skin_score_summary, cautions } =
-    product;
+export default function ResultSummaryPanel({ product, totalCount, isScan, isFlipped, onFlip }: ResultSummaryPanelProps) {
+  const {
+    summary,
+    key_ingredients,
+    ingredient_explanation,
+    category_description,
+    skin_score_summary,
+    cautions,
+    oliveyoung_url,
+  } = product;
   const displayName = isScan ? '스캔한 제품' : product.product_name;
+  const headline = stripProductNameLead(summary, product.product_name);
 
   const chipsSizeClass =
     key_ingredients.length === 1
@@ -56,14 +75,25 @@ export default function ResultSummaryPanel({ product, totalCount, isScan }: Resu
         <p className="result-product-name" id="result-summary-title">
           📄 {displayName}
         </p>
-        <p className="result-flip-hint">
+        <button type="button" className="result-flip-hint" aria-expanded={isFlipped} onClick={onFlip}>
           <span className="cursor">▶</span>카드를 눌러 전성분 {totalCount}개 보기
-        </p>
+        </button>
       </div>
 
       {/* 1. 한 문장 요약 — 이 카드에서 가장 먼저, 가장 크게 읽혀야 하는 자리.
           따옴표로 감싸서 "LLM이 이 제품을 한 문장으로 인용해준다"는 느낌을 준다. */}
-      <p className="result-headline">“{summary}”</p>
+      <p className="result-headline">“{headline}”</p>
+
+      {/* 올리브영 검색 결과 페이지 링크 — 상품별 직접 링크(goodsNo)는 DB에 없어서
+          백엔드가 제품명으로 만든 검색 페이지 URL이다(app/schemas/product.py computed_field). */}
+      <a
+        className="result-oliveyoung-link"
+        href={oliveyoung_url}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <span className="cursor">▶</span>올리브영에서 찾아보기 ↗
+      </a>
 
       {/* 2. 핵심 성분 */}
       {key_ingredients.length > 0 && (

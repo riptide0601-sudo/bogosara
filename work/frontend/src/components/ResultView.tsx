@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { loadIngredientResult, type IngredientResult, type IngredientResultRequest } from '../data/ingredientResult';
+import type { Product } from '../data/mockProducts';
 import PhotoPanel from './PhotoPanel';
 import ResultCard from './ResultCard';
 import HamburgerButton from './HamburgerButton';
@@ -12,6 +13,8 @@ interface ResultViewProps {
   onBack: () => void;
   /** 왼쪽 상단 ≡ 버튼 클릭 → 마이페이지로 이동 (App.tsx가 결과 화면을 닫고 마이페이지를 연다). */
   onOpenMyPage: () => void;
+  /** PhotoPanel의 추천 제품 클릭 → 그 제품으로 결과 화면을 다시 로드 (App.tsx의 handleSelectProduct). */
+  onSelectProduct: (product: Product) => void;
 }
 
 type LoadStatus = 'loading' | 'done' | 'error';
@@ -24,7 +27,7 @@ type LoadStatus = 'loading' | 'done' | 'error';
  * request만 받아 내부에서 로딩 → 성공/실패를 직접 관리한다. 진입 경로(source)에 따라
  * 로딩·에러 문구만 갈라지고, 성공 시 렌더링하는 데이터 형태(IngredientResult)는 동일하다.
  */
-export default function ResultView({ request, onBack, onOpenMyPage }: ResultViewProps) {
+export default function ResultView({ request, onBack, onOpenMyPage, onSelectProduct }: ResultViewProps) {
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [data, setData] = useState<IngredientResult | null>(null);
   // 로그인/회원가입이 아직 없어서(App.tsx·CLAUDE.md 참고) 저장 버튼을 누르면 실제로 저장하는
@@ -111,7 +114,12 @@ export default function ResultView({ request, onBack, onOpenMyPage }: ResultView
 
       {status === 'done' && data && (
         <div className="result-layout">
-          <PhotoPanel request={request} productName={data.product.product_name} />
+          <PhotoPanel
+            request={request}
+            productName={data.product.product_name}
+            recommendedProducts={data.product.recommended_products}
+            onSelectProduct={onSelectProduct}
+          />
           <ResultCard product={data.product} ingredients={data.ingredients} isScan={isScan} />
         </div>
       )}

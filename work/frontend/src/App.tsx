@@ -112,6 +112,7 @@ export default function App() {
             setResultRequest(null);
             setMypageOpen(true);
           }}
+          onSelectProduct={handleSelectProduct}
         />
       </>
     );
