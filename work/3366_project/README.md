@@ -1,6 +1,6 @@
 # LabelLens API
 
-`LabelLens_ERD_v7.md` 스키마를 그대로 구현한 FastAPI 백엔드입니다. PostgreSQL에 실제 제품·성분 데이터가 들어있고, `data/labellens.db`(SQLite)는 그 원본 데이터 백업/마이그레이션 소스로 남아 있습니다.
+화장품 라벨(전성분표)을 분석해 핵심 성분·효능·피부타입별 위험/궁합 성분·비슷한 제품을 보여주는 FastAPI 백엔드입니다. PostgreSQL에 실제 제품·성분 데이터가 들어있고, `data/labellens.db`(SQLite)는 그 원본 데이터 백업/마이그레이션 소스로 남아 있습니다.
 
 ## 로컬 실행 (개발용)
 
@@ -93,50 +93,86 @@ docker compose exec app python -m scripts.migrate_sqlite_to_postgres
 
 ```
 app/
-  models/      # SQLAlchemy 모델 (ERD 테이블과 1:1)
-  schemas/     # Pydantic 스키마
-  routers/     # products / ingredients / purposes 엔드포인트
-  static/      # 검색 프론트엔드 (index.html, FastAPI가 정적 서빙)
-  llm_client.py # Ollama(gemma) 호출
-  fuzzy_match.py # 자모 분리 + rapidfuzz 기반 오타/OCR 오인식 허용 검색
-  database.py  # 엔진, 세션
-  config.py    # 환경변수 설정
-  main.py      # FastAPI 앱 엔트리포인트
+  models/          # SQLAlchemy 모델: product, ingredient, purpose, ingredient_purpose,
+                    # product_ingredient, ingredient_skin_score, ingredient_relation,
+                    # llm_summary, product_concern
+  schemas/         # Pydantic 스키마
+  routers/         # products / ingredients / purposes / ocr 엔드포인트
+  static/          # 검색 프론트엔드 (index.html, FastAPI가 정적 서빙)
+  core_ingredient_selector.py # 핵심 성분/효능 추출
+  search_service.py           # 제품 검색 (이름/브랜드/카테고리 토큰 매칭)
+  similarity.py               # 제품 유사도
+  skin_fit.py                 # 피부 타입별 위험/궁합 성분 탐지
+  ingredient_matching.py      # 자유 텍스트 → 표준 성분 매칭 (공유 로직)
+  fuzzy_match.py               # 자모 분리 + rapidfuzz 기반 오타/OCR 오인식 허용 검색
+  product_category.py         # 제품명 → 스킨케어 루틴 단계 분류
+  llm_client.py                # Ollama(gemma) 호출
+  database.py      # 엔진, 세션
+  config.py        # 환경변수 설정
+  main.py          # FastAPI 앱 엔트리포인트
 data/
-  labellens.db # SQLite DB (마이그레이션 원본 데이터, 운영 DB는 PostgreSQL)
+  labellens.db     # SQLite DB (마이그레이션 원본 데이터, 운영 DB는 PostgreSQL)
+  ingredient_purpose_all_processed.csv # 배합목적 사전(KCIA) 원본
+  궁합성분.xlsx      # 피부타입별 궁합성분(추천 성분) 원본 — import_compatible_ingredients.py가 읽음
+  성분_관계성.xlsx    # 성분 간 시너지/악화 관계 원본 — load_ingredient_relations.py가 읽음
 scripts/
-  migrate_sqlite_to_postgres.py # SQLite → PostgreSQL 데이터 이관
-  migrate_postgres_to_sqlite.py # PostgreSQL → SQLite 데이터 내보내기 (git 반영용)
-  _db_sync.py                   # 위 두 스크립트가 공유하는 테이블 복사 로직
+  migrate_sqlite_to_postgres.py    # SQLite → PostgreSQL 데이터 이관
+  migrate_postgres_to_sqlite.py    # PostgreSQL → SQLite 데이터 내보내기 (git 반영용)
+  _db_sync.py                      # 위 두 스크립트가 공유하는 테이블 복사 로직
+  backfill_key_ingredients.py      # core_ingredient_selector 결과를 product.key_ingredients/key_purposes에 백필
+  backfill_product_category.py     # product.category 백필
+  seed_ingredient_skin_scores.py   # ingredient_skin_score 위험 성분 시드
+  import_compatible_ingredients.py # 궁합성분(추천 성분) 데이터를 ingredient_skin_score에 적재
+  migrate_ingredient_skin_score_polarity.py # ingredient_skin_score is_risk 컬럼 추가 마이그레이션
+  load_ingredient_relations.py     # ingredient_relation(성분 시너지/악화) 시드
+  import_product_list.py, import_serum_concern_list.py, _product_import_helpers.py # 제품/고민 태그 일괄 임포트
 Dockerfile
 docker-compose.yml
 ```
 
 ## 알고리즘 개요
 
-실제 계산 로직이 있는 "알고리즘"은 5개다. (`ingredient_relation`의 성분 궁합, `product_concern`의 수분/진정/미백/모공 태그는 curated된 값을 그대로 보여주는 데이터라 계산 로직이 없어 여기서는 제외.)
+실제 계산 로직이 있는 "알고리즘"은 7개다. (`ingredient_relation`의 성분 궁합, `product_concern`의 수분/진정/미백/모공 태그는 curated된 값을 그대로 보여주는 데이터라 계산 로직이 없어 여기서는 제외.)
 
 | 알고리즘 | 무엇을 하는가 | 구현 |
 |---|---|---|
+| 검색 | 검색어를 토큰화해 제품명/브랜드/카테고리 전부에서 AND 매칭, 랭킹 점수로 정렬 | `app/search_service.py` — 아래 "검색" 참고 |
 | 성분 매칭 | 검색어/OCR 토큰 하나를 표준 성분(ingredient)과 매칭 | `app/ingredient_matching.py`, `app/fuzzy_match.py` — 아래 "성분 매칭" 참고 |
-| 제품 유사도 | 두 제품이 성분 구성상 얼마나 비슷한지 0~100%로 계산 | `app/similarity.py` — 아래 "제품 유사도" 참고 |
-| 피부 타입별 적합도 | 제품이 지성/복합성/건성/민감성에 얼마나 맞는지 0~100점 | `app/skin_fit.py` — 아래 "피부 타입별 적합도" 참고 |
+| 핵심 성분/효능 추출 | 전성분표에서 정제수·용제·계면활성제 등 순수 기술적 성분을 걸러내고, 화학적으로 비슷한 성분끼리 묶어서 "핵심 성분 최대 5개 + 효능"을 뽑음 | `app/core_ingredient_selector.py` — 아래 "핵심 성분/효능 추출" 참고 |
+| 제품 유사도 | 두 제품이 성분 구성 + 배합목적 분포상 얼마나 비슷한지 0~100%로 계산 | `app/similarity.py` — 아래 "제품 유사도" 참고 |
+| 피부 타입별 위험/궁합 성분 탐지 | 제품 성분 중 피부타입별로 위험하다고/좋다고 근거가 있는 성분이 있는지 확인해 문장으로 요약 | `app/skin_fit.py` — 아래 "피부 타입별 위험/궁합 성분 탐지" 참고 |
 | 제품 카테고리 분류 | 제품명 키워드로 스킨케어 루틴 단계(스킨/토너 → 세럼·에센스·앰플 → 크림) 분류 | `app/product_category.py` — 아래 "제품 카테고리 분류" 참고 |
 | LLM 요약 생성 | 배합목적·전성분 설명을 gemma로 쉬운 문장으로 재작성해 DB에 저장 | `app/llm_client.py` |
 
-`oliveyoung_url`(제품명으로 올리브영 검색 링크 생성)은 계산이랄 게 없는 단순 문자열 조합이라 위 5개와 같은 급으로 치지 않는다 (`app/schemas/product.py`의 `computed_field`).
+`oliveyoung_url`(제품명으로 올리브영 검색 링크 생성)은 계산이랄 게 없는 단순 문자열 조합이라 위 7개와 같은 급으로 치지 않는다 (`app/schemas/product.py`의 `computed_field`).
 
 ## 주요 엔드포인트
 
-- `POST /products`, `GET /products?query=`, `GET /products/{id}` (성분·목적·LLM요약·`key_ingredients`·`similar_products`까지 포함한 상세 조회)
-- `GET /products/{id}/similar?top_k=&min_score=&limit=` — 성분 유사 제품 추천 (아래 "제품 유사도" 참고)
-- `GET /products/{id}/skin-fit?skin_type=` — 피부 타입별 적합도 (아래 "피부 타입별 적합도" 참고)
-- `PUT /products/{id}/ingredients` — 상품에 성분 매칭 결과 연결 (중복은 `ON CONFLICT DO NOTHING`으로 무시)
-- `POST /ingredients`, `GET /ingredients?query=` (name_kr/name_en/synonyms 검색, 배합목적 포함; 정확/부분일치가 없으면 자모 단위 유사도로 오타·OCR 오인식을 보정하는 fuzzy 검색으로 자동 폴백), `GET /ingredients/{id}`
-- `PUT /ingredients/{id}/purposes/{purpose_id}` — 성분에 배합목적 연결
+- `POST /products`, `GET /products?query=&category=` — 목록/검색. 검색어가 있으면 이름/브랜드/카테고리 토큰 매칭으로 찾는다(아래 "검색" 참고). 응답마다 `key_ingredients`/`key_purposes`/`skin_score_summary`가 같이 내려간다.
+- `GET /products/{id}` — 성분·배합목적·LLM 요약·`top_ingredients`·`similar_products`·`skin_score_summary`까지 포함한 상세 조회
+- `GET /products/{id}/similar?min_score=&limit=` — 성분 유사 제품 추천 (아래 "제품 유사도" 참고)
+- `GET /products/{id}/skin-fit?skin_type=` — 피부 타입별 위험/궁합 성분 탐지 (아래 "피부 타입별 위험/궁합 성분 탐지" 참고)
+- `PUT /products/{id}/ingredients`, `DELETE /products/{id}/ingredients/{ingredient_id}` — 성분 매칭 결과 연결/해제 (중복 연결은 `ON CONFLICT DO NOTHING`으로 무시)
+- `POST /products/{id}/generate-summary` — 전성분 목록을 gemma로 한두 문장 요약해 저장 (이미 있으면 캐시된 값을 그대로 반환)
+- `POST /ocr/analyze` — 라벨 사진 업로드 → OCR로 텍스트 추출 → 표준 성분 매칭까지 한 번에 (아래 "성분 매칭" 참고)
+- `POST /ingredients`, `GET /ingredients?query=` (name_kr/name_en/synonyms 검색, 배합목적 포함; 정확/부분일치가 없으면 자모 단위 유사도로 오타·OCR 오인식을 보정하는 fuzzy 검색으로 자동 폴백), `GET /ingredients/{id}`, `PATCH /ingredients/{id}`
+- `GET /ingredients/{id}/relations` — 이 성분과 시너지/악화 관계로 등록된 다른 성분 목록
+- `PUT /ingredients/{id}/purposes/{purpose_id}`, `DELETE /ingredients/{id}/purposes/{purpose_id}` — 성분에 배합목적 연결/해제
 - `GET|PUT /ingredients/{id}/llm-summary` — 좋은 점/주의할 점 등 조회·수정
 - `POST /ingredients/{id}/generate-summary` — 배합목적 설명을 gemma로 쉬운 문장으로 재작성
-- `POST /purposes`, `GET /purposes`
+- `POST /purposes`, `GET /purposes`, `GET /purposes/{id}`
+
+## 검색
+
+`GET /products?query=`가 쓰는 제품 검색 알고리즘. 성분명·배합목적은 검색 대상이 아니다 — "성분을 검색해도 그 성분이 든 제품이 뜨는 건 원치 않는다"는 요구에 맞춰 제품 자체의 표면 정보(이름/브랜드/카테고리)로만 좁혔다.
+
+1. 검색어를 공백 기준으로 토큰화한다.
+2. 각 토큰이 이름/브랜드/카테고리 중 하나 이상에 부분 문자열로 있어야 결과에 포함시킨다(토큰 간 AND, 필드 간 OR). 예: "아누아 세럼" → "아누아"는 브랜드에서, "세럼"은 이름 또는 카테고리에서 각각 찾아서 둘 다 있으면 매칭. 순서나 붙어있는지는 안 따진다.
+3. 랭킹 점수 = 검색어 전체와 이름이 완전히 일치하면 보너스 + 토큰별로 이름(40)/브랜드(35)/카테고리(20) 부분일치 가중치를 합산한 값. 점수 내림차순으로 정렬해 상위 결과를 반환한다.
+
+`?category=` 필터를 같이 주면 검색 결과에서 한 번 더 걸러낸다.
+
+- 구현: `app/search_service.py`.
 
 ## 성분 매칭
 
@@ -148,30 +184,48 @@ docker-compose.yml
 
 구현: `app/ingredient_matching.py`(공유 로직), `app/fuzzy_match.py`(2단계), `app/routers/ingredients.py`의 `search_ingredient_ids`(1~2단계).
 
+## 핵심 성분/효능 추출
+
+전성분표에 적힌 성분 전부가 "이 제품이 피부에 하는 일"을 말해주진 않는다 — 용제·점증제·계면활성제 같은 순수 제형 재료도 섞여 있다. `core_ingredient_selector`는 배합목적(KCIA) 사전을 기준으로 이런 성분을 걸러내고, 실제 피부 효능이 있는 성분만 남겨서 "핵심 성분"을 뽑는다.
+
+1. **필터링** — 정제수는 하드코딩으로 제외, 나머지는 배합목적이 전부 `EXCLUDE_CATEGORIES`(용제·점증제·계면활성제·방부제·착향제 등 피부 효능이 없는 순수 기술적 역할)에 속하면 제외.
+2. **화학적 유사군 그룹핑** — 글리세린·부틸렌글라이콜 같은 폴리올류, 하이알루로네이트 유도체군, 세라마이드군 등은 배합목적까지 같아야 대표 성분 1개로 묶는다(`CHEMICAL_GROUPS`).
+3. **정렬·상위 선정** — 남은 성분을 `label_rank`(배합순서) 기준으로 정렬해 상위 5개를 채택.
+4. **효능 라벨링** — 채택된 성분마다 배합목적을 사람이 읽기 쉬운 단어로 정리(`normalize_purpose_wording`: "피부보습제" → "보습" 등)해 중복 제거된 효능 리스트를 만든다.
+
+DB 버전(`load_purpose_db_from_db`)은 별도 엑셀 없이 `ingredient`/`ingredient_purpose`/`purpose` 테이블에서 바로 배합목적 사전을 만든다. `analyze_product_from_orm()`이 이미 매칭이 끝난 `product_ingredient`(label_rank) 순서를 그대로 써서 OCR 텍스트를 다시 파싱하지 않는다.
+
+- 결과는 `product.key_ingredients`/`product.key_purposes`(JSON 배열 문자열)에 저장되고, `GET /products` · `GET /products/{id}` 응답에는 파싱된 `list[str]`로 내려간다.
+- 요청 경로에서 직접 계산하지 않는다 — `scripts/backfill_key_ingredients.py`가 전체 제품을 돌며 미리 계산해 DB에 써 두고, API는 그 결과만 읽는다. 새 제품을 추가하거나 성분 매칭이 바뀌면 다시 실행해야 최신화된다.
+- 구현: `app/core_ingredient_selector.py`, `scripts/backfill_key_ingredients.py`.
+
 ## 제품 유사도
 
-화장품 전성분표는 배합량이 많은 성분부터 순서대로 적히므로(`product_ingredient.label_rank`), 이 순서를 "얼마나 핵심적인 성분인가"의 대용치로 쓴다.
+세 가지 신호를 가중 합산해 종합 점수를 낸다.
 
-- `label_rank` 기준 상위 `DEFAULT_TOP_K`개(기본 5개)를 **주요 성분**, 그 뒤 나머지를 **나머지 성분**으로 나눈다.
-- 두 제품을 비교할 때 주요 성분 집합끼리, 나머지 성분 집합끼리 각각 자카드 유사도(교집합 개수 ÷ 합집합 개수)를 구한다.
-- 종합 점수 = 주요 성분 유사도 × 0.7 + 나머지 성분 유사도 × 0.3 — 핵심 활성 성분이 같을수록 점수에 크게 반영되고, 베이스/보조 성분이 비슷한 정도는 30%만 반영된다.
-- `GET /products/{id}` 상세 응답에는 이 기준으로 계산한 `key_ingredients`(주요 성분)와, 50% 이상인 것만 자동으로 채운 `similar_products`가 같이 내려간다. 기준을 직접 조절하려면 `GET /products/{id}/similar?top_k=&min_score=&limit=`을 쓴다.
-- 구현: `app/similarity.py`. `key_ingredients` 계산(`app/routers/products.py`)도 같은 `DEFAULT_TOP_K` 상수를 공유해서, "주요 성분"의 정의가 두 곳에서 어긋나지 않는다.
+1. **주요 성분 자카드 유사도 (50%)** — `product.key_ingredients`(아래 "핵심 성분/효능 추출" 참고 — `core_ingredient_selector`가 정제수·용제·계면활성제 등을 걸러내고 뽑은 성분 최대 5개) 집합끼리 교집합 ÷ 합집합.
+2. **나머지 성분 자카드 유사도 (20%)** — 주요 성분을 제외한 나머지 전성분 집합끼리 같은 방식.
+3. **배합목적 TF-IDF 벡터 코사인 유사도 (30%)** — 제품마다 배합목적(purpose) 분포를 TF-IDF 벡터로 만들어 코사인 유사도를 구한다. 성분 이름이 하나도 안 겹쳐도 "하는 일"이 비슷한 제품(예: 서로 다른 비타민C 유도체를 쓰지만 둘 다 미백/항산화 위주인 제품)까지 잡아낸다.
+   - TF = 그 제품 안에서 해당 배합목적을 가진 성분 개수
+   - IDF = `log((전체 제품 수 + 1) / (그 목적이 등장하는 제품 수 + 1)) + 1` — "피부컨디셔닝제(기타)"처럼 거의 모든 제품에 등장하는 흔한 목적은 낮게, "미백"·"자외선차단"처럼 일부 제품에만 등장하는 목적은 높게 가중한다.
 
-## 피부 타입별 적합도
+종합 점수 = `KEY_INGREDIENT_WEIGHT(0.5)` × 주요 성분 유사도 + `REST_INGREDIENT_WEIGHT(0.2)` × 나머지 성분 유사도 + `PURPOSE_VECTOR_WEIGHT(0.3)` × 배합목적 코사인 유사도. 세 상수 다 `app/similarity.py` 상단에 있어 바로 조절 가능하다.
 
-큰 흐름: 피부 타입 → 피부 고민 → 필요한 성분 기능 → 실제 제품 성분 → 적합도 점수 → 추천.
+- `GET /products/{id}` 상세 응답에는 50% 이상인 것만 자동으로 채운 `similar_products`가 같이 내려간다. 기준을 직접 조절하려면 `GET /products/{id}/similar?min_score=&limit=`을 쓴다.
+- 구현: `app/similarity.py`.
+- ⚠️ "주요 성분"이라는 이름이 두 군데서 다른 뜻으로 쓰인다 — 유사도가 쓰는 `product.key_ingredients`(core_ingredient_selector 결과, 배합목적 기반 필터링+그룹핑)와, 제품 상세의 `top_ingredients`(`label_rank` 상위 `DEFAULT_TOP_K`개를 그대로 슬라이스한 것)는 서로 다른 로직으로 뽑힌 다른 리스트다.
 
-- `ingredient_skin_score` 테이블에 성분마다 지성/복합성/건성/민감성 4개 피부 타입 각각에 대한 점수(-3~+3), 기능(Humectant/Occlusive/Emollient 등), 근거 수준(`evidence_level`), 출처(`source`), 주의사항(`caution`)을 저장한다.
-- 제품 적합도 = 그 제품 전성분 중 점수 데이터가 있는 성분들의 점수를 모두 더한 뒤, 매칭된 성분 개수 기준 이론적 최대/최솟값(±3×매칭개수) 구간에서 0~100점으로 정규화한 값 (50점 = 중립). 예: 나이아신아마이드(+3)·하이알루로닉애씨드(+1)만 매칭된 제품의 지성 적합도 = 83.3점.
-- `GET /products/{id}/skin-fit`은 4개 타입 전부, `?skin_type=건성`처럼 지정하면 하나만 반환하며, 어떤 성분이 점수에 기여했는지 `breakdown`으로 같이 내려준다.
-- 구현: `app/skin_fit.py` (계산 로직), `app/models/ingredient_skin_score.py` (스키마), `scripts/seed_ingredient_skin_scores.py` (시드 데이터).
-- ⚠️ **시드 데이터는 설계 단계 예시 점수다.** 57개 성분에 대해 채워져 있고, `evidence_level`/`source`로 근거 수준을 성분마다 구분해뒀다:
-  - `D` + AAD — aad.org의 "피부타입별 보습제 고르는 법" 페이지에서 실제로 이름을 명시한 8종(하이알루로닉애씨드·소듐하이알루로네이트·글리세린·미네랄오일·페트롤라텀·다이메티콘·락틱애씨드·호호바씨오일·시어버터)
-  - `D` + DermNet — dermnetnz.org의 humectant/occlusive/emollient 성분 분류를 따른 항목
-  - `D` + 대한화장품협회 — 향료·에탄올
-  - `E` + 화장품 성분과학 컨센서스 — 나머지(펩타이드, 병풀 유도체, 비타민C 유도체, 점증제 등). 개별 문헌으로 검증한 게 아니라 일반적으로 합의된 성분 기능을 바탕으로 만든 예시 점수라, 실제 서비스에 쓰려면 문헌(PubMed 등) 재검토가 필요하다.
-  - 나머지 22,000여 개 성분은 매칭되는 점수가 없어 적합도 계산에서 그냥 빠진다.
+## 피부 타입별 위험/궁합 성분 탐지
+
+[2026-08-21 개편] 원래는 성분마다 -3(피하는 게 좋음)~+3(적극 권장) 점수를 매겨 제품 전체 적합도를 0~100점으로 합산하는 방식이었다. 점수 자체가 근거 없는 가짜 정밀도(-2점과 -3점의 차이가 실제로 뭘 의미하는지는 근거가 없음)라 폐기했고, 지금은 "위험 성분인지 / 이 피부타입에 좋다고 근거가 있는 성분인지"만 본다. 점수 합산·정규화는 하지 않는다.
+
+- `ingredient_skin_score` 테이블에 성분 × 피부타입(지성/복합성/건성/민감성, 또는 피부타입과 무관한 "전체" — 향료 알레르겐처럼 개인 감작 여부로 생기는 위험용) 조합마다 `is_risk`(위험이면 True, 궁합 좋은 성분이면 False), 기능(`function`), 근거(`source`), 설명(`caution`)을 저장한다.
+  - [2026-08-24] `score`/`evidence_level` 컬럼은 삭제했다. `score`는 처음부터 "위험 여부"만 판단하는 데 쓰였던 죽은 컬럼이었고, `evidence_level`은 문서화용일 뿐 실제 조회 로직에서 필터로 쓰인 적이 없었다.
+  - 처음엔 "위험 성분"만 기록했지만, 궁합성분(추천 성분) 데이터를 같은 테이블에 넣으면서 `is_risk`로 위험/궁합을 구분하게 됐다.
+- `GET /products/{id}/skin-fit`은 제품 성분 중 `is_risk=True`로 등록된 것과 겹치는 게 있으면 그 목록(`risk_ingredients`: 위험 유형/설명/출처, `has_risk`)을 그대로 보여준다. `skin_type`을 지정하면 하나만, 생략하면 4개 타입 전부 반환한다.
+- 검색 결과·제품 상세 응답에는 이 테이블 전체(위험 + 궁합)를 한 문장으로 요약한 `skin_score_summary`가 같이 내려간다 — 예: `"지성에 좋은 성분 2개, 건성에 유의해야할 성분 1개 있습니다."`. 매칭이 하나도 없으면 `"..."`. 위험 성분만 보는 `/skin-fit`과 달리, 이 요약은 위험/궁합 양쪽을 `is_risk` 기준으로 한 쿼리에서 같이 집계한다.
+- 구현: `app/skin_fit.py`(위험 탐지 + 요약 문장), `app/models/ingredient_skin_score.py`(스키마), `scripts/seed_ingredient_skin_scores.py`(위험 성분 시드), `scripts/import_compatible_ingredients.py`(궁합성분 시드), `scripts/migrate_ingredient_skin_score_polarity.py`(`is_risk` 컬럼 추가 + `score`/`evidence_level` 제거 마이그레이션).
+- ⚠️ **극히 일부 성분만 다룬다.** 전체 22,000여 개 성분 중 30개(위험 21건, 궁합 21건, 겹치는 성분 있음)만 등록돼 있다. 위험 성분은 실제 논문/공식기관 자료(향료 알레르겐 EU SCCS 목록, 에탄올·캠퍼 관련 임상연구 등)로 뒷받침되는 것만 남겼고, 궁합성분은 건성/지성·여드름성/피부노화 관련 근거 논문 기반이다. "매칭되는 성분이 없다"는 결과가 "검증된 안전"을 의미하지 않는다 — 현재까지 확인된 것만 반영된 것이고, 계속 늘려가야 하는 작업이다.
 
 ## 제품 카테고리 분류
 

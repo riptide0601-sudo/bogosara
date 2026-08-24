@@ -2,3 +2,8 @@
 __pycache__/
 *.pyc
 .env
+
+# 프론트엔드(bogosara_project)는 자체 git 저장소(origin: my-name-is.git)로 따로 관리한다.
+# 자체 커밋이 없는 상태에서 여기서 git add를 하면 "does not have a commit checked out"
+# 에러가 나므로(서브모듈처럼 취급되려다 참조할 커밋이 없어서), 아예 추적 대상에서 뺀다.
+bogosara_project/

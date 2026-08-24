@@ -1,17 +1,25 @@
-"""제품 간 유사도: 주요 성분과 나머지 성분을 나눠서 각각 자카드 유사도를 구한 뒤 7:3으로 합산합니다.
+"""제품 간 유사도: 세 가지 신호를 가중 합산합니다.
+
+  1) 주요 성분(key_ingredients) 자카드 유사도 — 50%
+  2) 나머지 성분 자카드 유사도 — 20%
+  3) 배합목적 TF-IDF 벡터 코사인 유사도 — 30%
 
 [2026-08-24 개편] "주요 성분"은 더 이상 label_rank(전성분표 배합 순서) 상위 N개가 아니라
 product.key_ingredients(app/core_ingredient_selector.py가 정제수·용제·계면활성제 등을
 걸러내고 화학적으로 비슷한 성분끼리 묶어서 뽑은 결과, scripts/backfill_key_ingredients.py로
-채움)다. 배합 순서만으로는 정제수 다음 성분이 우연히 주요 성분 취급되는 등 노이즈가 있었는데,
-core_ingredient_selector의 필터링을 재사용해 더 의미 있는 "핵심 성분"으로 유사도를 낸다.
-key_ingredients가 아직 비어있는 제품(백필 전)은 전체 성분이 전부 "나머지 성분"으로만 잡힌다.
+채움)다. key_ingredients가 아직 비어있는 제품(백필 전)은 전체 성분이 전부 "나머지 성분"으로만 잡힌다.
 
-주요 성분이 겹치는 제품일수록 핵심 활성 성분이 비슷하다고 보고 더 큰 가중치를 주고,
-나머지(베이스·보조) 성분이 겹치는 정도는 30%만 반영합니다.
+[2026-08-24 추가] 성분 ID가 하나도 안 겹쳐도 "하는 일"이 비슷한 제품이 있다 — 예를 들어
+비타민C 유도체가 서로 다른 두 제품은 성분표에 겹치는 이름이 없어도 둘 다 "미백/항산화"
+성분 위주다. 이걸 잡기 위해 제품마다 배합목적(purpose) 분포를 TF-IDF 벡터로 만들고
+코사인 유사도를 추가했다. TF-IDF를 쓰는 이유: "피부컨디셔닝제(기타)"처럼 8천 건 넘게
+등장하는 흔한 목적은 변별력이 없어 낮게, "미백"·"자외선차단"처럼 일부 제품에만 등장하는
+목적은 그 제품의 정체성을 잘 드러내므로 높게 가중하기 위함(app/routers 쪽의
+LOW_INFO_PURPOSES 취급과 같은 문제의식).
 """
 
 import json
+import math
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -19,22 +27,27 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.ingredient import Ingredient
+from app.models.ingredient_purpose import IngredientPurpose
 from app.models.product import Product
 from app.models.product_ingredient import ProductIngredient
 
-KEY_INGREDIENT_WEIGHT = 0.7
-REST_INGREDIENT_WEIGHT = 0.3
+KEY_INGREDIENT_WEIGHT = 0.5
+REST_INGREDIENT_WEIGHT = 0.2
+PURPOSE_VECTOR_WEIGHT = 0.3
 
 # product.key_ingredients가 core_ingredient_selector 기준 최대 5개라, 제품 상세의
 # top_ingredients(label_rank 기준 상위 N개, app/routers/products.py 참고) 표시 개수도
 # 같은 값을 맞춰 쓴다 — 유사도의 "주요 성분" 정의와는 이제 별개다.
 DEFAULT_TOP_K = 5
 
+PurposeVector = dict[int, float]
+
 
 @dataclass(frozen=True)
 class ProductIngredientSets:
     key_ids: frozenset[int]
     rest_ids: frozenset[int]
+    purpose_vector: PurposeVector
 
 
 def _jaccard(a: frozenset[int], b: frozenset[int]) -> float:
@@ -43,10 +56,68 @@ def _jaccard(a: frozenset[int], b: frozenset[int]) -> float:
     return len(a & b) / len(a | b)
 
 
+def cosine_similarity(a: PurposeVector, b: PurposeVector) -> float:
+    """희소 벡터(딕셔너리) 코사인 유사도. 공통 키가 없으면 0."""
+    if not a or not b:
+        return 0.0
+    shared_keys = a.keys() & b.keys()
+    if not shared_keys:
+        return 0.0
+    dot = sum(a[k] * b[k] for k in shared_keys)
+    norm_a = math.sqrt(sum(v * v for v in a.values()))
+    norm_b = math.sqrt(sum(v * v for v in b.values()))
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
 def similarity_score(a: ProductIngredientSets, b: ProductIngredientSets) -> float:
     key_similarity = _jaccard(a.key_ids, b.key_ids)
     rest_similarity = _jaccard(a.rest_ids, b.rest_ids)
-    return KEY_INGREDIENT_WEIGHT * key_similarity + REST_INGREDIENT_WEIGHT * rest_similarity
+    purpose_similarity = cosine_similarity(a.purpose_vector, b.purpose_vector)
+    return (
+        KEY_INGREDIENT_WEIGHT * key_similarity
+        + REST_INGREDIENT_WEIGHT * rest_similarity
+        + PURPOSE_VECTOR_WEIGHT * purpose_similarity
+    )
+
+
+def _purpose_term_frequencies(db: Session) -> dict[str, dict[int, int]]:
+    """제품별 {purpose_id: 그 배합목적을 가진 성분 개수}. TF-IDF의 TF(term frequency)."""
+    rows = db.execute(
+        select(ProductIngredient.product_id, IngredientPurpose.purpose_id).join(
+            IngredientPurpose, IngredientPurpose.ingredient_id == ProductIngredient.ingredient_id
+        )
+    ).all()
+
+    tf: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+    for product_id, purpose_id in rows:
+        tf[product_id][purpose_id] += 1
+    return tf
+
+
+def _idf_weights(tf: dict[str, dict[int, int]]) -> dict[int, float]:
+    """배합목적별 역문서빈도(IDF). 거의 모든 제품에 등장하는 흔한 목적은 낮게,
+    일부 제품에만 등장하는 특징적인 목적은 높게 가중해서 변별력을 준다."""
+    n_products = len(tf)
+    doc_freq: dict[int, int] = defaultdict(int)
+    for purposes in tf.values():
+        for purpose_id in purposes:
+            doc_freq[purpose_id] += 1
+    # +1 스무딩: 극단적으로 흔하거나 희귀한 목적이 idf를 0이나 무한대로 보내지 않게 한다.
+    return {
+        purpose_id: math.log((n_products + 1) / (df + 1)) + 1
+        for purpose_id, df in doc_freq.items()
+    }
+
+
+def _all_purpose_vectors(db: Session) -> dict[str, PurposeVector]:
+    tf = _purpose_term_frequencies(db)
+    idf = _idf_weights(tf)
+    return {
+        product_id: {purpose_id: count * idf[purpose_id] for purpose_id, count in purposes.items()}
+        for product_id, purposes in tf.items()
+    }
 
 
 def _all_ingredient_sets(db: Session) -> dict[str, ProductIngredientSets]:
@@ -66,6 +137,7 @@ def _all_ingredient_sets(db: Session) -> dict[str, ProductIngredientSets]:
     key_ingredients_json = dict(
         db.execute(select(Product.product_id, Product.key_ingredients)).all()
     )
+    purpose_vectors = _all_purpose_vectors(db)
 
     result = {}
     for product_id, ids in all_ids.items():
@@ -78,6 +150,7 @@ def _all_ingredient_sets(db: Session) -> dict[str, ProductIngredientSets]:
         result[product_id] = ProductIngredientSets(
             key_ids=key_ids,
             rest_ids=frozenset(ids - key_ids),
+            purpose_vector=purpose_vectors.get(product_id, {}),
         )
     return result
 
