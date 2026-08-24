@@ -1,0 +1,98 @@
+/* LLM 모델 비교 화면 전용 — ResultView.css의 카드(.flip-card 등)는 그대로 재사용하고,
+   여기서는 좌우 2단 배치와 상단 바만 추가한다. */
+
+.compare-view {
+  max-width: 1400px;
+}
+
+.compare-header {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.compare-title {
+  margin: 0;
+  font-family: var(--font-kr);
+  font-size: clamp(1rem, 2.4vw, 1.3rem);
+  color: var(--ink);
+}
+
+.compare-product-toggle {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.compare-toggle-btn {
+  appearance: none;
+  cursor: pointer;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 3px 3px 0 0 var(--ink);
+  padding: 0.5rem 0.9rem;
+  font-family: var(--font-kr);
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.compare-toggle-btn.is-active {
+  background: var(--accent);
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.compare-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.compare-side-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  background: var(--ink);
+  border-radius: var(--radius-sm);
+}
+
+.compare-model-name {
+  font-family: var(--font-en);
+  font-size: 0.75rem;
+  color: var(--panel);
+}
+
+.compare-elapsed {
+  font-family: var(--font-noto);
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+.compare-status {
+  font-family: var(--font-noto);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  padding: 2rem;
+  text-align: center;
+}
+
+.compare-status--error {
+  color: #c0392b;
+}
+
+@media (max-width: 860px) {
+  .compare-grid {
+    grid-template-columns: 1fr;
+  }
+}

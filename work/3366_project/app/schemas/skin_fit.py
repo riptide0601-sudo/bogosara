@@ -1,18 +1,16 @@
 from pydantic import BaseModel
 
 
-class SkinFitBreakdownItem(BaseModel):
+class RiskIngredientRead(BaseModel):
     ingredient_id: int
     name_kr: str | None = None
-    score: int
-    function: str | None = None
-    caution: str | None = None
+    risk_type: str | None = None
+    reason: str | None = None
+    source: str | None = None
 
 
-class SkinFitRead(BaseModel):
+class SkinRiskRead(BaseModel):
     skin_type: str
-    fit_score: float
-    raw_score: int
-    matched_count: int
+    has_risk: bool
+    risk_ingredients: list[RiskIngredientRead] = []
     total_ingredient_count: int
-    breakdown: list[SkinFitBreakdownItem] = []

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보고사라 — 스캔 결과</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Gaegu:wght@400;700&family=Gothic+A1:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<!-- 롤링 배너 (장식용 — 데이터와 무관한 고정 문구) -->
+<div class="topbar">
+  <div class="marquee" aria-hidden="true">
+    <span>★ 스캔 완료 ★</span><span>어려운 성분명을 쉬운 말로</span><span>·</span><span class="hot">등급으로 한눈에</span><span>·</span><span>궁합·주의사항까지 체크</span><span>·</span>
+    <span>★ 스캔 완료 ★</span><span>어려운 성분명을 쉬운 말로</span><span>·</span><span class="hot">등급으로 한눈에</span><span>·</span><span>궁합·주의사항까지 체크</span><span>·</span>
+  </div>
+</div>
+
+<!-- 헤더 -->
+<header>
+  <a class="brand" href="#">
+    <svg width="42" height="42" viewBox="0 0 100 100" aria-label="보고사라 로고">
+      <ellipse cx="50" cy="50" rx="45" ry="47" fill="#8DC63F" stroke="#2E3A1C" stroke-width="3.5"/>
+      <ellipse cx="50" cy="53" rx="19" ry="30" fill="#FFFFFF" stroke="#2E3A1C" stroke-width="3"/>
+      <ellipse cx="44" cy="35" rx="8" ry="11" fill="#F26D6D" transform="rotate(-16 44 35)"/>
+    </svg>
+    <span class="brand-txt">보고사라<small>스캔 결과 리포트</small></span>
+  </a>
+  <button type="button" class="nav-chip" id="back-btn">← 다시 스캔</button>
+</header>
+
+<div class="wrap">
+  <div class="layout">
+
+    <!-- =====================================================
+         왼쪽: 스캔 원본 카드 (sticky) — product.raw_ingredients
+         ===================================================== -->
+    <aside class="raw-panel">
+      <span class="eyebrow">🫒 스캔 원본</span>
+      <div class="raw-panel-card sticker">
+        <div class="scan-label">📄 인식된 전성분 원문</div>
+        <p class="raw-text" id="raw-text-left">불러오는 중...</p>
+      </div>
+    </aside>
+
+    <!-- =====================================================
+         오른쪽: 요약 + 전성분 리스트 + 하단 액션
+         ===================================================== -->
+    <div class="result-col">
+
+      <!-- (1) 제품 요약 블록 -->
+      <section class="result-hero" style="padding-top:0">
+        <div class="result-box">
+          <span class="done-badge">스캔 완료 ✓</span>
+          <h1>성분 다 읽었어요!</h1>
+          <div class="prod-name" id="prod-name">불러오는 중...</div>
+          <div class="oneline" id="oneline"></div>
+          <div class="stat-row">
+            <div class="stat coral"><b id="stat-star">-</b><span>슈퍼스타</span></div>
+            <div class="stat"><b id="stat-good">-</b><span>구디(굿)</span></div>
+            <div class="stat"><b id="stat-total">-</b><span>전체 성분</span></div>
+          </div>
+          <!-- key_purposes / product_character / similar_or_conflict / restricted_notes 가 여기 채워짐 -->
+          <div class="summary-notes" id="summary-notes"></div>
+        </div>
+      </section>
+
+      <!-- (2) 전성분 하나씩 -->
+      <section style="padding-top:10px">
+        <span class="eyebrow">🫒 전성분 훑어보기</span>
+        <h2>성분 하나씩, 쉽게</h2>
+        <p class="sec-sub">어려운 용어는 쉬운 말로 풀었어요. 등급으로 한눈에 확인!</p>
+        <div class="legend">
+          <span class="lg"><span class="dot d-star"></span>슈퍼스타</span>
+          <span class="lg"><span class="dot d-good"></span>구디</span>
+          <span class="lg"><span class="dot d-base"></span>기본</span>
+        </div>
+
+        <!-- 슈퍼스타 · 구디 — 항상 펼침 -->
+        <div class="ing-list" id="ing-list-primary"></div>
+
+        <!-- 기본 성분 — 처음엔 접힘, 더보기로 펼침 -->
+        <div class="ing-list-base" id="ing-list-base"></div>
+        <button type="button" class="more-toggle" id="more-toggle" aria-expanded="false" aria-controls="ing-list-base">
+          <span class="label">기본 성분 더보기</span><span class="arrow">▾</span>
+        </button>
+      </section>
+
+      <!-- (3) 원문 그대로 보기 + 재스캔 -->
+      <section style="padding-top:6px">
+        <details>
+          <summary>📜 전성분 원문 그대로 보기</summary>
+          <div class="raw sticker" id="raw-text-bottom">불러오는 중...</div>
+        </details>
+
+        <div class="rescan">
+          <button type="button" class="btn-main" id="rescan-btn">📷 다른 제품 스캔하기</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- 푸터 -->
+<footer>
+  <div class="wrap">
+    <svg width="38" height="38" viewBox="0 0 100 100">
+      <ellipse cx="50" cy="50" rx="45" ry="47" fill="#8DC63F" stroke="#2E3A1C" stroke-width="4"/>
+      <ellipse cx="50" cy="53" rx="19" ry="30" fill="#fff" stroke="#2E3A1C" stroke-width="3.5"/>
+      <ellipse cx="44" cy="35" rx="8" ry="11" fill="#F26D6D" transform="rotate(-16 44 35)"/>
+    </svg>
+    <div class="disclaimer">⚠ 성분 정보·등급은 참고용! 의학적 진단·치료 효과는 아니에요. 피부 고민은 전문가와 상담하세요.</div>
+    <div class="copy">보고사라 — 화장품 성분 설명 시스템 · 데모 페이지</div>
+  </div>
+</footer>
+
+<!-- file:// 로 직접 열어도 동작하도록 mock/result.json과 동일한 내용을 JS 전역변수로도 심어둠
+     (render.js의 loadData()가 fetch 실패 시 이 값으로 폴백함 — 자세한 이유는 render.js 상단 주석 참고) -->
+<script src="./mock/result.inline.js"></script>
+<script src="./render.js"></script>
+</body>
+</html>

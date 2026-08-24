@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app import fuzzy_match
@@ -9,6 +10,14 @@ from app.llm_client import warm_up
 from app.routers import ingredients, ocr, products, purposes
 
 app = FastAPI(title="LabelLens API")
+
+# 로컬 개발용 — 프론트(Vite dev server)가 다른 포트에서 API를 호출할 수 있게 허용.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(products.router)
 app.include_router(ingredients.router)

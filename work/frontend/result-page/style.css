@@ -1,0 +1,210 @@
+/* =========================================================
+   보고사라 — 스캔 결과 페이지
+   색감/폰트/스티커 카드 스타일은 ppibik-result.html을 그대로 계승.
+   레이아웃만 좌(원문 스캔 카드, sticky) / 우(요약+성분리스트) 2단으로 재구성.
+   ========================================================= */
+:root{
+  --green:#8DC63F;--green-dk:#6BA82E;--green-deep:#4E8A1F;
+  --coral:#F26D6D;--coral-dk:#E8544F;
+  --cream:#FBF7EC;--butter:#FCE38A;--ink:#2E3A1C;--white:#FFFFFF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Gothic A1',sans-serif;color:var(--ink);font-size:16px;
+  background-color:var(--cream);
+  background-image:radial-gradient(rgba(141,198,63,.18) 1.4px, transparent 1.5px);
+  background-size:13px 13px;line-height:1.65;overflow-x:hidden;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+/* 스티커 카드 (원본 그대로) */
+.sticker{position:relative;background:var(--white);border:2.5px solid var(--ink);
+  border-radius:16px;box-shadow:5px 6px 0 var(--ink)}
+.sticker::after{content:"";position:absolute;right:-2px;bottom:-2px;width:24px;height:24px;
+  background:linear-gradient(135deg,transparent 46%,rgba(0,0,0,.12) 47%,rgba(255,255,255,.7) 55%,transparent 56%);
+  border-bottom-right-radius:16px}
+
+/* 롤링 배너 */
+.topbar{background:var(--green);color:var(--white);font-family:'Jua';
+  border-bottom:3px solid var(--ink);overflow:hidden;white-space:nowrap}
+.marquee{display:inline-block;padding:9px 0;animation:scroll 22s linear infinite}
+.marquee span{margin:0 14px;font-size:14px}
+.marquee .hot{color:var(--coral);-webkit-text-stroke:.4px var(--ink)}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* 헤더 */
+header{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;max-width:1120px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand-txt{font-family:'Black Han Sans';font-size:22px;color:var(--green-deep);
+  transform:rotate(-3deg);line-height:1}
+.brand-txt small{display:block;font-family:'Gaegu';font-weight:700;font-size:11px;
+  color:var(--ink);transform:rotate(3deg);margin-top:3px}
+.nav-chip{font-family:'Jua';font-size:13px;text-decoration:none;color:var(--ink);
+  background:var(--white);border:2px solid var(--ink);border-radius:20px;padding:6px 14px;
+  box-shadow:2px 2px 0 var(--ink);transition:transform .12s,background .12s;cursor:pointer}
+.nav-chip:hover{transform:translate(-1px,-2px) rotate(-2deg);background:var(--butter)}
+
+/* =========================================================
+   좌우 2단 레이아웃
+   ========================================================= */
+.layout{
+  display:grid;
+  grid-template-columns: 300px minmax(0,1fr);
+  gap:26px;
+  align-items:start;
+  padding:26px 0 0;
+}
+
+/* ---- 왼쪽: 원문 스캔 카드 (sticky) ---- */
+.raw-panel{
+  position:sticky;
+  top:16px;
+  align-self:start;
+  max-height:calc(100vh - 32px);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.raw-panel .eyebrow{margin-bottom:10px}
+.raw-panel-card{
+  padding:18px 16px;
+  overflow-y:auto;
+  flex:1;
+  min-height:0;
+}
+.raw-panel-card .scan-label{
+  font-family:'Jua';font-size:13px;color:var(--green-deep);margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;
+}
+.raw-panel-card .raw-text{
+  font-family:'Gothic A1';font-size:13px;line-height:1.85;color:#4c543c;word-break:keep-all;
+}
+
+/* ---- 오른쪽: 요약 + 성분 리스트 ---- */
+.result-col{min-width:0}
+
+/* 결과 요약 박스 (원본 그대로) */
+.result-box{background:var(--green-deep);border:3px solid var(--ink);border-radius:26px;
+  box-shadow:0 9px 0 var(--coral);padding:30px 26px 26px;text-align:center;color:var(--cream)}
+.done-badge{display:inline-block;font-family:'Jua';font-size:14px;background:var(--butter);
+  color:var(--ink);border:2.5px solid var(--ink);border-radius:30px;padding:6px 18px;
+  box-shadow:3px 3px 0 var(--ink);transform:rotate(-2deg);margin-bottom:16px}
+.result-box h1{font-family:'Black Han Sans';font-size:clamp(26px,4vw,38px);line-height:1.12;
+  color:var(--white);text-shadow:3px 3px 0 var(--coral-dk)}
+.prod-name{font-family:'Jua';font-size:16px;color:var(--butter);margin-top:10px}
+.oneline{font-family:'Gaegu';font-weight:700;font-size:16px;margin-top:14px;color:var(--cream)}
+.stat-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+.stat{background:var(--white);border:2.5px solid var(--ink);border-radius:14px;
+  padding:8px 16px;box-shadow:3px 3px 0 var(--ink);min-width:76px}
+.stat b{display:block;font-family:'Black Han Sans';font-size:22px;line-height:1;color:var(--green-deep)}
+.stat.coral b{color:var(--coral-dk)}
+.stat span{font-family:'Gaegu';font-weight:700;font-size:12px;color:var(--ink)}
+
+/* 요약 텍스트 블록 (key_purposes / product_character / similar_or_conflict) */
+.summary-notes{margin-top:20px;display:flex;flex-direction:column;gap:10px;text-align:left}
+.summary-note{
+  background:rgba(255,255,255,.1);border:1.5px dashed rgba(251,247,236,.5);
+  border-radius:12px;padding:10px 14px;font-family:'Gothic A1';font-size:13.5px;color:var(--cream);
+}
+.summary-note b{font-family:'Jua';font-weight:400;color:var(--butter);margin-right:4px}
+
+/* restricted_notes — 값 있을 때만 렌더링, 코랄로 강조 */
+.summary-note.restricted{
+  background:var(--coral);border:2px solid var(--ink);color:var(--white);
+  box-shadow:3px 3px 0 var(--ink);
+}
+.summary-note.restricted b{color:var(--white)}
+
+/* 섹션 공통 */
+section{padding:30px 0}
+.eyebrow{display:inline-flex;align-items:center;gap:6px;font-family:'Gaegu';font-weight:700;font-size:14px;
+  color:var(--white);background:var(--green-dk);border:2.5px solid var(--ink);padding:3px 14px;
+  border-radius:20px;transform:rotate(-2deg);box-shadow:2px 2px 0 var(--ink);margin-bottom:10px}
+h2{font-family:'Black Han Sans';font-size:clamp(21px,3vw,28px);line-height:1.12}
+.sec-sub{font-family:'Gothic A1';font-weight:500;color:#5a624a;margin-top:5px;font-size:13.5px}
+
+/* 등급 안내 */
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 4px}
+.lg{display:inline-flex;align-items:center;gap:6px;font-family:'Gaegu';font-weight:700;font-size:12.5px;
+  background:var(--white);border:2px solid var(--ink);border-radius:16px;padding:4px 10px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink);display:inline-block}
+.d-star{background:var(--coral)}.d-good{background:var(--green)}.d-base{background:#dcdcc8}
+
+/* =========================================================
+   전성분 리스트 — 참고 HTML보다 행 높이를 압축
+   ========================================================= */
+.ing-list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.ing-row{display:flex;align-items:center;gap:11px;padding:9px 12px;text-align:left}
+.r-badge{flex:none;width:38px;height:38px;border-radius:11px;border:2px solid var(--ink);
+  display:grid;place-items:center;text-align:center;line-height:1.02;box-shadow:2px 2px 0 var(--ink);
+  font-family:'Gaegu';font-weight:700;font-size:9.5px}
+.b-star{background:var(--coral);color:var(--white)}
+.b-good{background:var(--green);color:var(--white)}
+.b-base{background:#eef0e0;color:#6a6f52}
+.r-main{flex:1;min-width:0}
+.r-name{font-family:'Jua';font-size:14.5px;line-height:1.25}
+.r-en{font-family:'Gaegu';font-size:11px;color:#93997f}
+.r-func{font-size:12.5px;color:#3f4730;margin-top:1px}
+.r-pills{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.pill{font-family:'Gaegu';font-weight:700;font-size:11px;background:var(--cream);
+  border:1.5px solid var(--ink);border-radius:11px;padding:1px 8px;white-space:nowrap}
+.pill.safe{background:#e7f2d4}
+.pill.warn{background:var(--coral);color:var(--white);border-color:var(--ink)}
+
+/* 기본(base) 성분 더보기 토글 */
+.ing-list-base{display:flex;flex-direction:column;gap:8px;overflow:hidden;
+  max-height:0;transition:max-height .25s ease}
+.ing-list-base.expanded{max-height:4000px}
+.more-toggle{
+  appearance:none;cursor:pointer;margin-top:12px;width:100%;
+  font-family:'Jua';font-size:13.5px;color:var(--green-deep);background:var(--white);
+  border:2px solid var(--ink);border-radius:14px;padding:9px 14px;
+  box-shadow:3px 3px 0 var(--ink);transition:transform .12s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.more-toggle:hover{transform:translate(-1px,-2px)}
+.more-toggle .arrow{display:inline-block;transition:transform .2s}
+.more-toggle.expanded .arrow{transform:rotate(180deg)}
+
+/* =========================================================
+   맨 아래: 원문 다시보기(details) + 재스캔 버튼
+   ========================================================= */
+details{margin-top:22px}
+summary{cursor:pointer;font-family:'Jua';font-size:14px;list-style:none;
+  background:var(--butter);border:2.5px solid var(--ink);border-radius:16px;padding:11px 16px;
+  box-shadow:4px 4px 0 var(--ink);display:inline-block;transition:transform .12s}
+summary:hover{transform:translate(-1px,-2px)}
+summary::-webkit-details-marker{display:none}
+.raw{margin-top:14px;padding:18px;font-size:13px;line-height:1.85;color:#4c543c;
+  word-break:keep-all}
+
+.rescan{text-align:center;margin-top:18px}
+.btn-main{appearance:none;font-family:'Black Han Sans';font-size:17px;color:var(--white);background:var(--green-dk);
+  border:3px solid var(--ink);border-radius:16px;padding:13px 24px;cursor:pointer;
+  box-shadow:5px 6px 0 var(--ink);transition:transform .12s,box-shadow .12s;text-decoration:none;display:inline-block}
+.btn-main:hover{transform:translate(-2px,-3px);box-shadow:7px 9px 0 var(--ink)}
+
+/* 푸터 */
+footer{padding:30px 0 50px;text-align:center}
+.disclaimer{display:inline-block;font-family:'Gaegu';font-weight:700;font-size:13px;
+  background:#eef0e0;border:2px dashed var(--ink);border-radius:14px;padding:8px 16px;
+  margin-top:6px;color:#5a624a;transform:rotate(-1deg)}
+footer .copy{font-size:12px;color:#93997f;margin-top:14px;font-family:'Jua'}
+
+/* =========================================================
+   반응형 — 모바일은 좌(원문)→우(요약/리스트) 순서로 위→아래 스택
+   ========================================================= */
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr}
+  .raw-panel{position:static;max-height:none}
+  .raw-panel-card{max-height:220px}
+}
+@media(max-width:560px){
+  .ing-row{gap:9px;padding:8px 10px}
+  .r-badge{width:34px;height:34px}
+  header{padding:14px}
+}
+@media(prefers-reduced-motion:reduce){.marquee{animation:none}*{transition:none!important}}
+:focus-visible{outline:3px solid var(--coral);outline-offset:3px;border-radius:6px}

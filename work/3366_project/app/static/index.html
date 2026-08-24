@@ -255,6 +255,41 @@
     color: #4b5563;
     line-height: 1.6;
   }
+  .key-info-box {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f7f9ff;
+    border: 1px solid #e3e8fd;
+    border-radius: 8px;
+  }
+  .key-info-box h3 {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 0 0 8px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .key-ingredients-list {
+    font-size: 13px;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  .skin-score-summary {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #4b5563;
+    background: #f0f2f5;
+    border-radius: 6px;
+    padding: 8px 10px;
+    line-height: 1.5;
+  }
+  .item .skin-score-summary {
+    margin-top: 4px;
+    padding: 0;
+    background: none;
+    font-size: 11px;
+    color: #6b7280;
+  }
 </style>
 </head>
 <body>
@@ -431,9 +466,13 @@ function renderProducts(list) {
   list.slice(0, 30).forEach(p => {
     const div = document.createElement('div');
     div.className = 'item';
+    const cardSkinScoreHtml = p.skin_score_summary && p.skin_score_summary !== '...'
+      ? `<div class="skin-score-summary">${escapeHtml(p.skin_score_summary)}</div>`
+      : '';
     div.innerHTML = `
       <div class="name">${escapeHtml(p.product_name)}</div>
       <div class="sub">${escapeHtml(p.brand || '')}</div>
+      ${cardSkinScoreHtml}
       <a class="oliveyoung-link" href="${escapeHtml(p.oliveyoung_url)}" target="_blank" rel="noopener noreferrer">올리브영에서 보기 ↗</a>
     `;
     div.addEventListener('click', () => showProductDetail(p.product_id));
@@ -499,12 +538,31 @@ function renderProductDetail(p) {
   const categoryHtml = p.category_description
     ? `<div class="category-box"><span class="category-tag">${escapeHtml(p.category)}</span><p>${escapeHtml(p.category_description)}</p></div>`
     : '';
+  const hasKeyIngredients = p.key_ingredients && p.key_ingredients.length > 0;
+  const hasKeyPurposes = p.key_purposes && p.key_purposes.length > 0;
+  const keyPurposeTags = hasKeyPurposes
+    ? p.key_purposes.map(pp => `<span class="purpose-tag">${escapeHtml(pp)}</span>`).join('')
+    : '';
+  const keyInfoHtml = (hasKeyIngredients || hasKeyPurposes)
+    ? `
+      <div class="key-info-box">
+        <h3>핵심 성분/효능</h3>
+        ${hasKeyIngredients ? `<div class="key-ingredients-list">${escapeHtml(p.key_ingredients.join(', '))}</div>` : ''}
+        ${keyPurposeTags}
+      </div>
+    `
+    : '';
+  const skinScoreHtml = p.skin_score_summary && p.skin_score_summary !== '...'
+    ? `<div class="skin-score-summary">${escapeHtml(p.skin_score_summary)}</div>`
+    : '';
   detailEl.dataset.productId = p.product_id;
   detailEl.innerHTML = `
     <h2>${escapeHtml(p.product_name)}</h2>
     <div class="brand">${escapeHtml(p.brand || '')}</div>
     <div class="buy-link">구매처: <a class="oliveyoung-link" href="${escapeHtml(p.oliveyoung_url)}" target="_blank" rel="noopener noreferrer">올리브영에서 보기 ↗</a></div>
     ${categoryHtml}
+    ${keyInfoHtml}
+    ${skinScoreHtml}
     ${summaryHtml}
     ${renderSimilarProducts(p.similar_products)}
     ${rows || '<div class="empty">등록된 성분 없음</div>'}

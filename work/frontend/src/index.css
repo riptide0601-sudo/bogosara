@@ -1,0 +1,69 @@
+/* =========================================================
+   전역 리셋 + 디자인 토큰
+   ========================================================= */
+:root {
+  --bg: #f6f8f2; /* 배경: 크림/오프화이트 */
+  --ink: #1f2517; /* 잉크/테두리: 짙은 먹색 */
+  --panel: #ffffff; /* 패널: 흰색 */
+  --accent: #8dc63f; /* 포인트: 연두 (강조 요소에만 사용) */
+  --accent-dark: #6ba32e; /* 포인트 눌림/진한 톤 */
+  --accent-soft: rgba(141, 198, 63, 0.16); /* 포인트 은은한 배경 톤 */
+  --ink-soft: rgba(31, 37, 23, 0.55);
+  --sub: #dce4c9; /* 보조 톤 — 제품 썸네일 플레이스홀더 등에 쓰는 세이지 톤 1개 */
+
+  --border-w: 4px;
+  --shadow-off: 6px;
+  --radius: 10px; /* 아이콘/제품 카드/사진 등 둥글게 처리하는 요소용 */
+  --radius-sm: 6px; /* 카드 내부의 작은 박스(통계/뱃지/노트/행 등)용 축소 라운드 */
+
+  --font-kr: 'Galmuri11', 'NeoDunggeunmo', 'D2Coding', 'Consolas', monospace;
+  --font-en: 'Press Start 2P', 'Galmuri11', monospace;
+  --font-noto: 'Noto Sans KR', 'Noto Sans', sans-serif; /* 픽셀 느낌 대신 가독성 위주 (결과 카드 뒷면 등) */
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  /* 은은한 CRT 스캔라인 — body 자체의 배경으로 깔아서, 상자(카드·아이콘 프레임 등)의
+     불투명한 배경이 그 위를 그대로 덮어 가려준다. 예전엔 이 무늬를 mix-blend-mode: multiply를
+     쓴 전체화면 오버레이(.crt-overlay, z-index:40)로 모든 콘텐츠 위에 겹쳐 그렸었는데,
+     그러면 불투명한 상자 위에도 곱연산으로 선이 찍혀버려서 상자가 비쳐 보이는 문제가 있었다. */
+  background-color: var(--bg);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(31, 37, 23, 0.035) 0px,
+    rgba(31, 37, 23, 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  color: var(--ink);
+  font-family: var(--font-kr);
+  -webkit-font-smoothing: none;
+  text-rendering: optimizeSpeed;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh;
+  /* 새 스태킹 컨텍스트를 열어준다 — 그래야 안쪽의 배경 장식(z-index:-1)이
+     body 자체의 불투명 배경보다는 위, 나머지 실제 콘텐츠보다는 아래에 정확히 깔린다. */
+  position: relative;
+  z-index: 0;
+}
+
+button {
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+svg {
+  display: block;
+}

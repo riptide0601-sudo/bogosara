@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>보고사라 | 화장품 성분 설명 시스템</title>
+    <meta
+      name="description"
+      content="보고사라 — 화장품 성분을 검색하거나 제품 뒷면을 스캔해서 쉽게 설명받는 서비스"
+    />
+
+    <!-- 픽셀 폰트 (한글: Galmuri / NeoDunggeunmo, 영문 보조: Press Start 2P) -->
+    <!-- 로드 실패 시 App.css의 --font-kr / --font-en 폴백(monospace)으로 자동 대체된다 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri/dist/galmuri.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/neodgm/neodgm-webfont@latest/neodgm/style.css" />
+    <!-- 결과 페이지 카드 뒷면 등 일반 텍스트용 (픽셀 느낌 대신 가독성 위주) -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

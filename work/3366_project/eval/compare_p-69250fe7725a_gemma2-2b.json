@@ -1,0 +1,1188 @@
+{
+  "product_id": "p-69250fe7725a",
+  "model": "gemma2:2b",
+  "generated_at": "2026-08-24T02:46:40.523872+00:00",
+  "total_elapsed_seconds": 405.1,
+  "product_summary": {
+    "input": {
+      "product_name": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL",
+      "brand": "아누아",
+      "category": null,
+      "key_ingredients": [
+        {
+          "name": "나이아신아마이드",
+          "purpose": "피부컨디셔닝제(기타)"
+        },
+        {
+          "name": "하이드롤라이즈드콜라겐",
+          "purpose": "피부컨디셔닝제(기타)"
+        },
+        {
+          "name": "소듐하이알루로네이트",
+          "purpose": "피부컨디셔닝제(기타)"
+        },
+        {
+          "name": "아데노신",
+          "purpose": "피부컨디셔닝제(기타)"
+        },
+        {
+          "name": "소듐디엔에이",
+          "purpose": "피부컨디셔닝제(기타)"
+        }
+      ],
+      "product_concern": [
+        "수분"
+      ],
+      "key_ingredient_relations": []
+    },
+    "raw_response": "```json\n{\n  \"one_liner\": \"아누아 피디알엔 히알루론산 캡슐은 피부 수분 보충을 위한 핵심 성분을 함유한 제품입니다.\",\n  \"composition_text\": \"아누아 피디알엔 히알루론산 캡슐은 나이아신아마이드, 하이드롤라이즈드콜라겐, 소듐하이알루로네이트, 아데노신, 소듐디엔에이 등의 성분을 함유하여 피부 수분을 보충하고 피부 조절에 도움을 주는 제품입니다. 특히, 피부 수분 보충 효과를 강화하기 위해 히알루론산이 포함되어 있습니다.\"\n}\n```",
+    "parsed": {
+      "one_liner": "아누아 피디알엔 히알루론산 캡슐은 피부 수분 보충을 위한 핵심 성분을 함유한 제품입니다.",
+      "composition_text": "아누아 피디알엔 히알루론산 캡슐은 나이아신아마이드, 하이드롤라이즈드콜라겐, 소듐하이알루로네이트, 아데노신, 소듐디엔에이 등의 성분을 함유하여 피부 수분을 보충하고 피부 조절에 도움을 주는 제품입니다. 특히, 피부 수분 보충 효과를 강화하기 위해 히알루론산이 포함되어 있습니다."
+    },
+    "elapsed_seconds": 43.3,
+    "parse_ok": true
+  },
+  "ingredient_summaries": {
+    "나이아신아마이드": {
+      "input": {
+        "product": {
+          "product_name": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL",
+          "brand": "아누아",
+          "category": null,
+          "key_ingredients": [
+            "나이아신아마이드",
+            "소듐디엔에이",
+            "소듐하이알루로네이트",
+            "아데노신",
+            "하이드롤라이즈드콜라겐"
+          ],
+          "key_purposes": [
+            "컨디셔닝",
+            "탄력",
+            "보습",
+            "주름개선"
+          ],
+          "product_concern": [
+            "수분"
+          ]
+        },
+        "ingredient": {
+          "name_kr": "나이아신아마이드",
+          "name_en": "Niacinamide",
+          "safety_level": null,
+          "is_key": true,
+          "purposes": [
+            {
+              "name": "피부컨디셔닝제(기타)",
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "name": "헤어컨디셔닝제",
+              "description": "모발에 특별한 효과를 부여하는 성분으로 모발의 외형과 느낌 개선, 유연성 증대, 스타일 증진, 윤택 및 광택 부여, 모발의 질감 개선 등을 목적으로 함."
+            }
+          ],
+          "relations": [
+            {
+              "relation_type": "시너지",
+              "related_ingredient": "트라넥사믹애씨드",
+              "note": "두 성분이 함께 작용해서 미백 효과를 더 끌어올려주는 조합이에요. 실제 임상시험에서도 색소침착 개선 효과가 확인됐어요"
+            },
+            {
+              "relation_type": "시너지",
+              "related_ingredient": "아세틸글루코사민",
+              "note": "서로 다른 방식으로 미백에 작용해서, 함께 쓰면 효과가 더 좋아질 수 있다고 임상적으로 확인된 조합이에요"
+            }
+          ],
+          "skin_scores": [
+            {
+              "skin_type": "건성",
+              "score": 1,
+              "function": "피지조절/진정",
+              "caution": null
+            },
+            {
+              "skin_type": "민감성",
+              "score": 1,
+              "function": "피지조절/진정",
+              "caution": "고농도(10%+)에서 일부 민감 피부에 자극 가능"
+            },
+            {
+              "skin_type": "복합성",
+              "score": 2,
+              "function": "피지조절/진정",
+              "caution": null
+            },
+            {
+              "skin_type": "지성",
+              "score": 3,
+              "function": "피지조절/진정",
+              "caution": null
+            }
+          ]
+        }
+      },
+      "raw_response": "```json\n{\n  \"summary_text\": \"이 화장품은 나이아신아마이드와 소듐하이알루로네이트를 주요 성분으로 사용하여 피부 탄력과 보습을 개선하는 데 효과를 제공합니다.\",\n  \"benefit_text\": \"이 제품은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 촉촉하게 유지하는 데 도움을 줍니다.\",\n  \"usage_reason_text\": \"이 성분은 피부 컨디셔닝제로 사용될 수 있습니다. 특히, 탄력과 보습을 개선하여 피부의 윤기와 촉촉함을 증진시키는 효과가 있습니다.\",\n  \"combo_recommendation\": \"나이아신아마이드와 함께 사용하면 더욱 효과를 볼 수 있습니다. 트라넥사믹애씨드와 함께 사용하면 미백 효과를 더욱 끌어낼 수 있습니다.\",\n  \"caution_text\": \"고농도(10%+)에서 일부 민감 피부에 자극 가능\"\n}\n``` \n",
+      "parsed": {
+        "summary_text": "이 화장품은 나이아신아마이드와 소듐하이알루로네이트를 주요 성분으로 사용하여 피부 탄력과 보습을 개선하는 데 효과를 제공합니다.",
+        "benefit_text": "이 제품은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 촉촉하게 유지하는 데 도움을 줍니다.",
+        "usage_reason_text": "이 성분은 피부 컨디셔닝제로 사용될 수 있습니다. 특히, 탄력과 보습을 개선하여 피부의 윤기와 촉촉함을 증진시키는 효과가 있습니다.",
+        "combo_recommendation": "나이아신아마이드와 함께 사용하면 더욱 효과를 볼 수 있습니다. 트라넥사믹애씨드와 함께 사용하면 미백 효과를 더욱 끌어낼 수 있습니다.",
+        "caution_text": "고농도(10%+)에서 일부 민감 피부에 자극 가능"
+      },
+      "elapsed_seconds": 85.7,
+      "parse_ok": true
+    },
+    "하이드롤라이즈드콜라겐": {
+      "input": {
+        "product": {
+          "product_name": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL",
+          "brand": "아누아",
+          "category": null,
+          "key_ingredients": [
+            "나이아신아마이드",
+            "소듐디엔에이",
+            "소듐하이알루로네이트",
+            "아데노신",
+            "하이드롤라이즈드콜라겐"
+          ],
+          "key_purposes": [
+            "컨디셔닝",
+            "탄력",
+            "보습",
+            "주름개선"
+          ],
+          "product_concern": [
+            "수분"
+          ]
+        },
+        "ingredient": {
+          "name_kr": "하이드롤라이즈드콜라겐",
+          "name_en": "Hydrolyzed Collagen",
+          "safety_level": null,
+          "is_key": true,
+          "purposes": [
+            {
+              "name": "피부컨디셔닝제(기타)",
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "name": "헤어컨디셔닝제",
+              "description": "모발에 특별한 효과를 부여하는 성분으로 모발의 외형과 느낌 개선, 유연성 증대, 스타일 증진, 윤택 및 광택 부여, 모발의 질감 개선 등을 목적으로 함."
+            },
+            {
+              "name": "네일컨디셔닝제",
+              "description": "(KCIA 배합목적 원본 분류, 정의문 없음)"
+            },
+            {
+              "name": "피부컨디셔닝제",
+              "description": null
+            }
+          ],
+          "relations": [],
+          "skin_scores": []
+        }
+      },
+      "raw_response": "```json\n{\n  \"summary_text\": \"이 성분은 피부 탄력과 보습을 증진시키는 데 도움을 주는 Hydrolyzed Collagen입니다. 컨디셔닝 효과를 위해 사용할 수 있습니다.\",\n  \"benefit_text\": \"건조하고 손상된 피부에 효과적인 Hydrolyzed Collagen은 탄력과 보습을 증진시켜 피부의 균형을 유지합니다.\",\n  \"usage_reason_text\": \"아누아 피디알엔 히알루론산 캡슐은 탄력과 보습을 증진시키는 데 도움을 주는 Hydrolyzed Collagen을 포함하고 있습니다.\",\n  \"combo_recommendation\": \"Hydrolyzed Collagen은 피부에 탄력과 보습을 증진시키는 데 도움이 되는 성분입니다. 이 성분은 피부에 탄력과 보습을 증진시키는 데 도움을 줄 수 있는 혼합제품과 잘 어울립니다.\",\n  \"caution_text\": \"\"\n}\n``` \n",
+      "parsed": {
+        "summary_text": "이 성분은 피부 탄력과 보습을 증진시키는 데 도움을 주는 Hydrolyzed Collagen입니다. 컨디셔닝 효과를 위해 사용할 수 있습니다.",
+        "benefit_text": "건조하고 손상된 피부에 효과적인 Hydrolyzed Collagen은 탄력과 보습을 증진시켜 피부의 균형을 유지합니다.",
+        "usage_reason_text": "아누아 피디알엔 히알루론산 캡슐은 탄력과 보습을 증진시키는 데 도움을 주는 Hydrolyzed Collagen을 포함하고 있습니다.",
+        "combo_recommendation": "Hydrolyzed Collagen은 피부에 탄력과 보습을 증진시키는 데 도움이 되는 성분입니다. 이 성분은 피부에 탄력과 보습을 증진시키는 데 도움을 줄 수 있는 혼합제품과 잘 어울립니다.",
+        "caution_text": ""
+      },
+      "elapsed_seconds": 80.2,
+      "parse_ok": true
+    },
+    "소듐하이알루로네이트": {
+      "input": {
+        "product": {
+          "product_name": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL",
+          "brand": "아누아",
+          "category": null,
+          "key_ingredients": [
+            "나이아신아마이드",
+            "소듐디엔에이",
+            "소듐하이알루로네이트",
+            "아데노신",
+            "하이드롤라이즈드콜라겐"
+          ],
+          "key_purposes": [
+            "컨디셔닝",
+            "탄력",
+            "보습",
+            "주름개선"
+          ],
+          "product_concern": [
+            "수분"
+          ]
+        },
+        "ingredient": {
+          "name_kr": "소듐하이알루로네이트",
+          "name_en": "Sodium Hyaluronate",
+          "safety_level": null,
+          "is_key": true,
+          "purposes": [
+            {
+              "name": "피부컨디셔닝제(기타)",
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "name": "피부컨디셔닝제",
+              "description": null
+            }
+          ],
+          "relations": [],
+          "skin_scores": [
+            {
+              "skin_type": "건성",
+              "score": 3,
+              "function": "Humectant",
+              "caution": null
+            },
+            {
+              "skin_type": "민감성",
+              "score": 1,
+              "function": "Humectant",
+              "caution": null
+            },
+            {
+              "skin_type": "복합성",
+              "score": 1,
+              "function": "Humectant",
+              "caution": null
+            },
+            {
+              "skin_type": "지성",
+              "score": 1,
+              "function": "Humectant",
+              "caution": "하이알루로닉애씨드의 염 형태, 분자가 작아 흡수가 더 빠름"
+            }
+          ]
+        }
+      },
+      "raw_response": "```json\n{\n  \"summary_text\": \"이 성분은 피부 탄력과 보습을 개선하는 데 도움을 주는 핵심 성분입니다.  \",\n  \"benefit_text\": \"이 성분은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 개선합니다.\",\n  \"usage_reason_text\": \"이 성분은 피부 컨디셔닝제로 사용됩니다.\",\n  \"combo_recommendation\": \"\",\n  \"caution_text\": \"\"\n}\n``` \n",
+      "parsed": {
+        "summary_text": "이 성분은 피부 탄력과 보습을 개선하는 데 도움을 주는 핵심 성분입니다.  ",
+        "benefit_text": "이 성분은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 개선합니다.",
+        "usage_reason_text": "이 성분은 피부 컨디셔닝제로 사용됩니다.",
+        "combo_recommendation": "",
+        "caution_text": ""
+      },
+      "elapsed_seconds": 61.2,
+      "parse_ok": true
+    },
+    "아데노신": {
+      "input": {
+        "product": {
+          "product_name": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL",
+          "brand": "아누아",
+          "category": null,
+          "key_ingredients": [
+            "나이아신아마이드",
+            "소듐디엔에이",
+            "소듐하이알루로네이트",
+            "아데노신",
+            "하이드롤라이즈드콜라겐"
+          ],
+          "key_purposes": [
+            "컨디셔닝",
+            "탄력",
+            "보습",
+            "주름개선"
+          ],
+          "product_concern": [
+            "수분"
+          ]
+        },
+        "ingredient": {
+          "name_kr": "아데노신",
+          "name_en": "Adenosine",
+          "safety_level": null,
+          "is_key": true,
+          "purposes": [
+            {
+              "name": "피부컨디셔닝제(기타)",
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "name": "주름개선(기능성화장품)",
+              "description": "(KCIA 배합목적 원본 분류, 정의문 없음)"
+            },
+            {
+              "name": "피부컨디셔닝제",
+              "description": null
+            }
+          ],
+          "relations": [],
+          "skin_scores": [
+            {
+              "skin_type": "건성",
+              "score": 2,
+              "function": "주름개선(기능성)",
+              "caution": null
+            },
+            {
+              "skin_type": "민감성",
+              "score": 2,
+              "function": "주름개선(기능성)",
+              "caution": "국내 기능성화장품 고시 성분, 레티놀 대비 자극이 적은 편"
+            },
+            {
+              "skin_type": "복합성",
+              "score": 2,
+              "function": "주름개선(기능성)",
+              "caution": null
+            },
+            {
+              "skin_type": "지성",
+              "score": 1,
+              "function": "주름개선(기능성)",
+              "caution": null
+            }
+          ]
+        }
+      },
+      "raw_response": "```json\n{\n  \"summary_text\": \"이 화장품은 아데노신을 포함하여 피부 탄력과 보습을 개선하는 성분으로, 건조하고 손상된 피부를 개선시키는 데 효과적입니다.\",\n  \"benefit_text\": \"이 화장품은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 개선시키는 데 효과적입니다.\",\n  \"usage_reason_text\": \"아데노신은 피부 컨디셔닝제로서 주름 개선 효과를 제공합니다.\",\n  \"combo_recommendation\": \"아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL과 함께 사용하면 더욱 효과적인 피부 관리를 할 수 있습니다.\",\n  \"caution_text\": \"아누아 피디알엔 히알루론산 캡슐 100 세럼은 안전성이 높지만, 사용 후 피부에 이상 반응이 나타날 수 있으니 주의해야 합니다.\"\n}\n``` \n",
+      "parsed": {
+        "summary_text": "이 화장품은 아데노신을 포함하여 피부 탄력과 보습을 개선하는 성분으로, 건조하고 손상된 피부를 개선시키는 데 효과적입니다.",
+        "benefit_text": "이 화장품은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 개선시키는 데 효과적입니다.",
+        "usage_reason_text": "아데노신은 피부 컨디셔닝제로서 주름 개선 효과를 제공합니다.",
+        "combo_recommendation": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL과 함께 사용하면 더욱 효과적인 피부 관리를 할 수 있습니다.",
+        "caution_text": "아누아 피디알엔 히알루론산 캡슐 100 세럼은 안전성이 높지만, 사용 후 피부에 이상 반응이 나타날 수 있으니 주의해야 합니다."
+      },
+      "elapsed_seconds": 72.9,
+      "parse_ok": true
+    },
+    "소듐디엔에이": {
+      "input": {
+        "product": {
+          "product_name": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL",
+          "brand": "아누아",
+          "category": null,
+          "key_ingredients": [
+            "나이아신아마이드",
+            "소듐디엔에이",
+            "소듐하이알루로네이트",
+            "아데노신",
+            "하이드롤라이즈드콜라겐"
+          ],
+          "key_purposes": [
+            "컨디셔닝",
+            "탄력",
+            "보습",
+            "주름개선"
+          ],
+          "product_concern": [
+            "수분"
+          ]
+        },
+        "ingredient": {
+          "name_kr": "소듐디엔에이",
+          "name_en": "Sodium DNA",
+          "safety_level": null,
+          "is_key": true,
+          "purposes": [
+            {
+              "name": "피부컨디셔닝제(기타)",
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "name": "피부컨디셔닝제",
+              "description": null
+            }
+          ],
+          "relations": [],
+          "skin_scores": []
+        }
+      },
+      "raw_response": "```json\n{\n  \"summary_text\": \"이 성분은 피부 탄력과 보습을 증진시키고 컨디셔닝 효과를 높이는 데 도움을 주는 성분입니다.\",\n  \"benefit_text\": \"이 성분은 피부의 탄력을 증진시키고 건조한 피부를 보습하여 맑고 윤기 있는 피부를 만드는 데 도움을 줍니다.\",\n  \"usage_reason_text\": \"이 성분은 피부 탄력과 보습을 증진시키는 데 사용됩니다.\",\n  \"combo_recommendation\": \"이 성분은 피부 탄력과 보습을 증진시키는 데 효과가 있는 성분입니다. 다른 성분과 함께 사용하면 더욱 효과를 볼 수 있습니다.\",\n  \"caution_text\": \"\"\n}\n``` \n",
+      "parsed": {
+        "summary_text": "이 성분은 피부 탄력과 보습을 증진시키고 컨디셔닝 효과를 높이는 데 도움을 주는 성분입니다.",
+        "benefit_text": "이 성분은 피부의 탄력을 증진시키고 건조한 피부를 보습하여 맑고 윤기 있는 피부를 만드는 데 도움을 줍니다.",
+        "usage_reason_text": "이 성분은 피부 탄력과 보습을 증진시키는 데 사용됩니다.",
+        "combo_recommendation": "이 성분은 피부 탄력과 보습을 증진시키는 데 효과가 있는 성분입니다. 다른 성분과 함께 사용하면 더욱 효과를 볼 수 있습니다.",
+        "caution_text": ""
+      },
+      "elapsed_seconds": 61.8,
+      "parse_ok": true
+    }
+  },
+  "detail": {
+    "product_name": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL",
+    "brand": "아누아",
+    "summary": "아누아 피디알엔 히알루론산 캡슐은 피부 수분 보충을 위한 핵심 성분을 함유한 제품입니다.",
+    "composition_text": "아누아 피디알엔 히알루론산 캡슐은 나이아신아마이드, 하이드롤라이즈드콜라겐, 소듐하이알루로네이트, 아데노신, 소듐디엔에이 등의 성분을 함유하여 피부 수분을 보충하고 피부 조절에 도움을 주는 제품입니다. 특히, 피부 수분 보충 효과를 강화하기 위해 히알루론산이 포함되어 있습니다.",
+    "product_id": "p-69250fe7725a",
+    "category": null,
+    "summary_generated_at": null,
+    "key_ingredients_raw": "나이아신아마이드, 하이드롤라이즈드콜라겐, 소듐하이알루로네이트, 아데노신, 소듐디엔에이",
+    "key_purposes_raw": "컨디셔닝, 탄력, 보습, 주름개선",
+    "ingredients": [
+      {
+        "label_rank": 1,
+        "matched_text": "하이드롤라이즈드하이알루로닉애씨드(29,049ppm)",
+        "ingredient": {
+          "name_kr": "하이드롤라이즈드하이알루로닉애씨드",
+          "name_en": "Hydrolyzed Hyaluronic Acid",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 산, 효소 또는 다른 방법으로 하이알루론산을 가수분해한 것이다.",
+          "ingredient_id": 5611,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(보습제)",
+              "purpose_id": 108,
+              "description": "공기 중의 수분을 끌어들여 피부 최상층의 수분 함량을 증가시키는 성분."
+            },
+            {
+              "purpose_name": "헤어컨디셔닝제",
+              "purpose_id": 114,
+              "description": "모발에 특별한 효과를 부여하는 성분으로 모발의 외형과 느낌 개선, 유연성 증대, 스타일 증진, 윤택 및 광택 부여, 모발의 질감 개선 등을 목적으로 함."
+            }
+          ],
+          "llm_summary": {
+            "summary_text": null,
+            "benefit_text": "하이알루로닉애씨드를 가수분해해 분자를 작게 만든 형태로, 피부 흡수력이 더 높은 보습 성분입니다.",
+            "caution_text": "특별한 주의사항이 없는 성분입니다.",
+            "usage_reason_text": null,
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 5611,
+            "summary_generated_at": "2026-08-19T09:25:12.959829"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 2,
+        "matched_text": "나이아신아마이드",
+        "ingredient": {
+          "name_kr": "나이아신아마이드",
+          "name_en": "Niacinamide",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 다음의 구조를 갖는 헤테로고리 방향족 아마이드이다.",
+          "ingredient_id": 1938,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "purpose_name": "헤어컨디셔닝제",
+              "purpose_id": 114,
+              "description": "모발에 특별한 효과를 부여하는 성분으로 모발의 외형과 느낌 개선, 유연성 증대, 스타일 증진, 윤택 및 광택 부여, 모발의 질감 개선 등을 목적으로 함."
+            }
+          ],
+          "llm_summary": {
+            "summary_text": "이 화장품은 나이아신아마이드와 소듐하이알루로네이트를 주요 성분으로 사용하여 피부 탄력과 보습을 개선하는 데 효과를 제공합니다.",
+            "benefit_text": "이 제품은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 촉촉하게 유지하는 데 도움을 줍니다.",
+            "caution_text": "고농도(10%+)에서 일부 민감 피부에 자극 가능",
+            "usage_reason_text": "이 성분은 피부 컨디셔닝제로 사용될 수 있습니다. 특히, 탄력과 보습을 개선하여 피부의 윤기와 촉촉함을 증진시키는 효과가 있습니다.",
+            "caution_group_text": "",
+            "combo_recommendation": "나이아신아마이드와 함께 사용하면 더욱 효과를 볼 수 있습니다. 트라넥사믹애씨드와 함께 사용하면 미백 효과를 더욱 끌어낼 수 있습니다.",
+            "ingredient_id": 1938,
+            "summary_generated_at": "2026-08-20T16:35:53.385938"
+          }
+        },
+        "relations": [
+          {
+            "relation_id": 1,
+            "relation_type": "시너지",
+            "user_message": "두 성분이 함께 작용해서 미백 효과를 더 끌어올려주는 조합이에요. 실제 임상시험에서도 색소침착 개선 효과가 확인됐어요",
+            "related_ingredient": {
+              "name_kr": "트라넥사믹애씨드",
+              "name_en": "Tranexamic Acid",
+              "synonyms": [],
+              "safety_level": null,
+              "summary": "이 원료는 다음의 구조를 갖는 유기산이다.",
+              "ingredient_id": 6259,
+              "summary_generated_at": null
+            }
+          },
+          {
+            "relation_id": 2,
+            "relation_type": "시너지",
+            "user_message": "서로 다른 방식으로 미백에 작용해서, 함께 쓰면 효과가 더 좋아질 수 있다고 임상적으로 확인된 조합이에요",
+            "related_ingredient": {
+              "name_kr": "아세틸글루코사민",
+              "name_en": "Acetyl Glucosamine",
+              "synonyms": [],
+              "safety_level": null,
+              "summary": "이 원료는 다음의 구조를 갖는 유기화합물이다.",
+              "ingredient_id": 1687,
+              "summary_generated_at": null
+            }
+          }
+        ]
+      },
+      {
+        "label_rank": 3,
+        "matched_text": "하이드롤라이즈드콜라겐",
+        "ingredient": {
+          "name_kr": "하이드롤라이즈드콜라겐",
+          "name_en": "Hydrolyzed Collagen",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 산, 효소 혹은 다른 방법으로 동물 및 어류 콜라겐을 가수분해한 것이다.",
+          "ingredient_id": 4759,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "purpose_name": "헤어컨디셔닝제",
+              "purpose_id": 114,
+              "description": "모발에 특별한 효과를 부여하는 성분으로 모발의 외형과 느낌 개선, 유연성 증대, 스타일 증진, 윤택 및 광택 부여, 모발의 질감 개선 등을 목적으로 함."
+            },
+            {
+              "purpose_name": "네일컨디셔닝제",
+              "purpose_id": 124,
+              "description": "(KCIA 배합목적 원본 분류, 정의문 없음)"
+            },
+            {
+              "purpose_name": "피부컨디셔닝제",
+              "purpose_id": 134,
+              "description": null
+            }
+          ],
+          "llm_summary": {
+            "summary_text": "이 성분은 피부 탄력과 보습을 증진시키는 데 도움을 주는 Hydrolyzed Collagen입니다. 컨디셔닝 효과를 위해 사용할 수 있습니다.",
+            "benefit_text": "건조하고 손상된 피부에 효과적인 Hydrolyzed Collagen은 탄력과 보습을 증진시켜 피부의 균형을 유지합니다.",
+            "caution_text": "특별한 주의사항이 없는 성분입니다.",
+            "usage_reason_text": "아누아 피디알엔 히알루론산 캡슐은 탄력과 보습을 증진시키는 데 도움을 주는 Hydrolyzed Collagen을 포함하고 있습니다.",
+            "caution_group_text": null,
+            "combo_recommendation": "Hydrolyzed Collagen은 피부에 탄력과 보습을 증진시키는 데 도움이 되는 성분입니다. 이 성분은 피부에 탄력과 보습을 증진시키는 데 도움을 줄 수 있는 혼합제품과 잘 어울립니다.",
+            "ingredient_id": 4759,
+            "summary_generated_at": "2026-08-19T09:29:18.736360"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 4,
+        "matched_text": "소듐하이알루로 네이트(800ppm)",
+        "ingredient": {
+          "name_kr": "소듐하이알루로네이트",
+          "name_en": "Sodium Hyaluronate",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 하이알루로닉애씨드의 소듐염이다.",
+          "ingredient_id": 1264,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "purpose_name": "피부컨디셔닝제",
+              "purpose_id": 134,
+              "description": null
+            }
+          ],
+          "llm_summary": {
+            "summary_text": "이 성분은 피부 탄력과 보습을 개선하는 데 도움을 주는 핵심 성분입니다.  ",
+            "benefit_text": "이 성분은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 개선합니다.",
+            "caution_text": "매우 건조한 환경에서는 저분자량 하이알루론산이 오히려 피부 수분을 빼앗을 수 있다는 논란이 있으나 안전성 자체는 문제없습니다.",
+            "usage_reason_text": "이 성분은 피부 컨디셔닝제로 사용됩니다.",
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 1264,
+            "summary_generated_at": "2026-08-19T09:25:12.959829"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 5,
+        "matched_text": "아데노신",
+        "ingredient": {
+          "name_kr": "아데노신",
+          "name_en": "Adenosine",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 다음의 구조를 갖는 헤테로사이클릭 유기화합물이다.",
+          "ingredient_id": 1612,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "purpose_name": "주름개선(기능성화장품)",
+              "purpose_id": 131,
+              "description": "(KCIA 배합목적 원본 분류, 정의문 없음)"
+            },
+            {
+              "purpose_name": "피부컨디셔닝제",
+              "purpose_id": 134,
+              "description": null
+            }
+          ],
+          "llm_summary": {
+            "summary_text": "이 화장품은 아데노신을 포함하여 피부 탄력과 보습을 개선하는 성분으로, 건조하고 손상된 피부를 개선시키는 데 효과적입니다.",
+            "benefit_text": "이 화장품은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 개선시키는 데 효과적입니다.",
+            "caution_text": "아누아 피디알엔 히알루론산 캡슐 100 세럼은 안전성이 높지만, 사용 후 피부에 이상 반응이 나타날 수 있으니 주의해야 합니다.",
+            "usage_reason_text": "아데노신은 피부 컨디셔닝제로서 주름 개선 효과를 제공합니다.",
+            "caution_group_text": null,
+            "combo_recommendation": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL과 함께 사용하면 더욱 효과적인 피부 관리를 할 수 있습니다.",
+            "ingredient_id": 1612,
+            "summary_generated_at": "2026-08-19T09:25:12.959829"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 6,
+        "matched_text": "소듐디엔에이(100ppm)",
+        "ingredient": {
+          "name_kr": "소듐디엔에이",
+          "name_en": "Sodium DNA",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 DNA의 소듐염이다.",
+          "ingredient_id": 1047,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "purpose_name": "피부컨디셔닝제",
+              "purpose_id": 134,
+              "description": null
+            }
+          ],
+          "llm_summary": {
+            "summary_text": "이 성분은 피부 탄력과 보습을 증진시키고 컨디셔닝 효과를 높이는 데 도움을 주는 성분입니다.",
+            "benefit_text": "이 성분은 피부의 탄력을 증진시키고 건조한 피부를 보습하여 맑고 윤기 있는 피부를 만드는 데 도움을 줍니다.",
+            "caution_text": "특별한 주의사항이 없는 성분입니다.",
+            "usage_reason_text": "이 성분은 피부 탄력과 보습을 증진시키는 데 사용됩니다.",
+            "caution_group_text": null,
+            "combo_recommendation": "이 성분은 피부 탄력과 보습을 증진시키는 데 효과가 있는 성분입니다. 다른 성분과 함께 사용하면 더욱 효과를 볼 수 있습니다.",
+            "ingredient_id": 1047,
+            "summary_generated_at": "2026-08-19T09:28:19.419441"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 7,
+        "matched_text": "하이알 루로닉애씨드(30ppm)",
+        "ingredient": {
+          "name_kr": "하이알루로닉애씨드",
+          "name_en": "Hyaluronic Acid",
+          "synonyms": [
+            "히알루론산"
+          ],
+          "safety_level": null,
+          "summary": "이 원료는 N-아세틸-D-글루코사민과 글루쿠로닉애씨드의 결합으로 얻은 천연의 뮤코폴리사카라이드이다.",
+          "ingredient_id": 4785,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "점도증가제(수성)",
+              "purpose_id": 86,
+              "description": "화장품의 수성 부분의 점성을 증가시키는 성분."
+            },
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            }
+          ],
+          "llm_summary": {
+            "summary_text": "이 성분은 화장품의 점도를 증가시켜 벗겨짐을 줄이고 탄력을 회복시켜 피부의 외관을 개선하는 역할을 합니다.",
+            "benefit_text": "자기 무게의 수백 배 수분을 붙잡을 수 있는 강력한 보습 성분으로, 화장품의 대표적인 수분 성분입니다.",
+            "caution_text": "매우 건조한 환경에서 저분자량 형태는 역보습 우려가 논란이 되기도 하나, 성분 자체의 안전성은 문제없습니다.",
+            "usage_reason_text": null,
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 4785,
+            "summary_generated_at": "2026-08-19T06:39:29.584953"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 8,
+        "matched_text": "하이드롤라이즈드소듐하이알루로네이 트(30ppm)",
+        "ingredient": {
+          "name_kr": "하이드롤라이즈드소듐하이알루로네이트",
+          "name_en": "Hydrolyzed Sodium Hyaluronate",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 소듐하이알루로네이트를 산, 효소 혹은 다른 가수분해 방법으로 처리하여 얻은 것이다.",
+          "ingredient_id": 7454,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            }
+          ],
+          "llm_summary": {
+            "summary_text": null,
+            "benefit_text": "하이알루론산을 가수분해한 나트륨염 형태로, 분자가 작아 흡수가 빠른 보습 성분입니다.",
+            "caution_text": "특별한 주의사항이 없는 성분입니다.",
+            "usage_reason_text": null,
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 7454,
+            "summary_generated_at": "2026-08-19T09:28:19.419441"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 9,
+        "matched_text": "하이드록시프로필트라이모늄하이알루로네이트 (30ppm)",
+        "ingredient": {
+          "name_kr": "하이드록시프로필트라이모늄하이알루로네이트",
+          "name_en": "Hydroxypropyltrimonium Hyaluronate",
+          "synonyms": [
+            "하이드록시프로필트리모늄하이알루로네이트"
+          ],
+          "safety_level": null,
+          "summary": "이 원료는 다음의 구조를 갖는 4급 암모늄 염이다. R은 히아루로닉애씨드이다.",
+          "ingredient_id": 4670,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "보습제",
+              "purpose_id": 41,
+              "description": "화장품을 사용하는 동안의 수분 손실을 늦추기 위해 사용하는 성분."
+            },
+            {
+              "purpose_name": "피막형성제",
+              "purpose_id": 105,
+              "description": "피부, 모발 또는 손톱 위에 피막을 만드는 성분."
+            }
+          ],
+          "llm_summary": {
+            "summary_text": null,
+            "benefit_text": "하이알루론산 유도체로 피부와 모발 표면에 부착력이 좋아 보습막을 오래 유지합니다.",
+            "caution_text": "특별한 주의사항이 없는 성분입니다.",
+            "usage_reason_text": null,
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 4670,
+            "summary_generated_at": "2026-08-19T09:28:19.419441"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 10,
+        "matched_text": "포타슘하이알루로네이트(30ppm)",
+        "ingredient": {
+          "name_kr": "포타슘하이알루로네이트",
+          "name_en": "Potassium Hyaluronate",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 하이알루로닉애씨드의 포타슘염이다.",
+          "ingredient_id": 3679,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            }
+          ],
+          "llm_summary": {
+            "summary_text": null,
+            "benefit_text": "하이알루론산의 칼륨염 형태로 강력한 보습·수분 채움 효과를 줍니다.",
+            "caution_text": "특별한 주의사항이 없는 성분입니다.",
+            "usage_reason_text": null,
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 3679,
+            "summary_generated_at": "2026-08-19T09:29:18.736360"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 11,
+        "matched_text": "소듐하이알루 로네이트크로스폴리머(30ppm)",
+        "ingredient": {
+          "name_kr": "소듐하이알루로네이트크로스폴리머",
+          "name_en": "Sodium Hyaluronate Crosspolymer",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 비닐설폰으로 가교된 하이알루로닉애씨드 중합체의 소듐염이다.",
+          "ingredient_id": 1267,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "purpose_name": "피부컨디셔닝제(보습제)",
+              "purpose_id": 108,
+              "description": "공기 중의 수분을 끌어들여 피부 최상층의 수분 함량을 증가시키는 성분."
+            },
+            {
+              "purpose_name": "피부컨디셔닝제",
+              "purpose_id": 134,
+              "description": null
+            },
+            {
+              "purpose_name": "피부보습제",
+              "purpose_id": 155,
+              "description": null
+            }
+          ],
+          "llm_summary": {
+            "summary_text": null,
+            "benefit_text": "하이알루론산을 그물망 구조로 가교해 피부 표면에 오래 머무르며 보습막을 형성합니다.",
+            "caution_text": "특별한 주의사항이 없는 성분입니다.",
+            "usage_reason_text": null,
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 1267,
+            "summary_generated_at": "2026-08-19T09:28:19.419441"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 12,
+        "matched_text": "소듐아세틸레이티드하이알 루로네이트(1ppm)",
+        "ingredient": {
+          "name_kr": "소듐아세틸레이티드하이알루로네이트",
+          "name_en": "Sodium Acetylated Hyaluronate",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 소듐하이알루로네이트의 아세틸에스터이다.",
+          "ingredient_id": 1149,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "보습제",
+              "purpose_id": 41,
+              "description": "화장품을 사용하는 동안의 수분 손실을 늦추기 위해 사용하는 성분."
+            }
+          ],
+          "llm_summary": {
+            "summary_text": null,
+            "benefit_text": "하이알루론산을 아세틸화해 안정성을 높인 형태로, 피부 표면에 얇은 보습막을 형성합니다.",
+            "caution_text": "특별한 주의사항이 없는 성분입니다.",
+            "usage_reason_text": null,
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 1149,
+            "summary_generated_at": "2026-08-19T09:28:19.419441"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 13,
+        "matched_text": "시트릭애씨드",
+        "ingredient": {
+          "name_kr": "시트릭애씨드",
+          "name_en": "Citric Acid",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 다음의 구조를 갖는 유기산이다.",
+          "ingredient_id": 1530,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "pH 조정제",
+              "purpose_id": 2,
+              "description": "화장품의 pH를 조절하기 위해 사용되는 성분."
+            },
+            {
+              "purpose_name": "금속이온봉쇄제",
+              "purpose_id": 21,
+              "description": "금속이온을 불활성화하여 화장품에 침전하지 않도록 하는 성분."
+            },
+            {
+              "purpose_name": "착향제",
+              "purpose_id": 96,
+              "description": "제품에 향을 부여하는 성분."
+            }
+          ],
+          "llm_summary": {
+            "summary_text": null,
+            "benefit_text": "제형의 pH를 조절하면서 약한 각질 정돈(AHA) 효과도 있습니다.",
+            "caution_text": "고농도에서는 자극을 줄 수 있으나, 일반적으로 소량의 pH 조절 용도로 쓰여 안전합니다.",
+            "usage_reason_text": null,
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 1530,
+            "summary_generated_at": "2026-08-19T09:25:12.959829"
+          }
+        },
+        "relations": []
+      }
+    ],
+    "key_ingredients": [
+      {
+        "label_rank": 1,
+        "matched_text": "하이드롤라이즈드하이알루로닉애씨드(29,049ppm)",
+        "ingredient": {
+          "name_kr": "하이드롤라이즈드하이알루로닉애씨드",
+          "name_en": "Hydrolyzed Hyaluronic Acid",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 산, 효소 또는 다른 방법으로 하이알루론산을 가수분해한 것이다.",
+          "ingredient_id": 5611,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(보습제)",
+              "purpose_id": 108,
+              "description": "공기 중의 수분을 끌어들여 피부 최상층의 수분 함량을 증가시키는 성분."
+            },
+            {
+              "purpose_name": "헤어컨디셔닝제",
+              "purpose_id": 114,
+              "description": "모발에 특별한 효과를 부여하는 성분으로 모발의 외형과 느낌 개선, 유연성 증대, 스타일 증진, 윤택 및 광택 부여, 모발의 질감 개선 등을 목적으로 함."
+            }
+          ],
+          "llm_summary": {
+            "summary_text": null,
+            "benefit_text": "하이알루로닉애씨드를 가수분해해 분자를 작게 만든 형태로, 피부 흡수력이 더 높은 보습 성분입니다.",
+            "caution_text": "특별한 주의사항이 없는 성분입니다.",
+            "usage_reason_text": null,
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 5611,
+            "summary_generated_at": "2026-08-19T09:25:12.959829"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 2,
+        "matched_text": "나이아신아마이드",
+        "ingredient": {
+          "name_kr": "나이아신아마이드",
+          "name_en": "Niacinamide",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 다음의 구조를 갖는 헤테로고리 방향족 아마이드이다.",
+          "ingredient_id": 1938,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "purpose_name": "헤어컨디셔닝제",
+              "purpose_id": 114,
+              "description": "모발에 특별한 효과를 부여하는 성분으로 모발의 외형과 느낌 개선, 유연성 증대, 스타일 증진, 윤택 및 광택 부여, 모발의 질감 개선 등을 목적으로 함."
+            }
+          ],
+          "llm_summary": {
+            "summary_text": "이 화장품은 나이아신아마이드와 소듐하이알루로네이트를 주요 성분으로 사용하여 피부 탄력과 보습을 개선하는 데 효과를 제공합니다.",
+            "benefit_text": "이 제품은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 촉촉하게 유지하는 데 도움을 줍니다.",
+            "caution_text": "고농도(10%+)에서 일부 민감 피부에 자극 가능",
+            "usage_reason_text": "이 성분은 피부 컨디셔닝제로 사용될 수 있습니다. 특히, 탄력과 보습을 개선하여 피부의 윤기와 촉촉함을 증진시키는 효과가 있습니다.",
+            "caution_group_text": "",
+            "combo_recommendation": "나이아신아마이드와 함께 사용하면 더욱 효과를 볼 수 있습니다. 트라넥사믹애씨드와 함께 사용하면 미백 효과를 더욱 끌어낼 수 있습니다.",
+            "ingredient_id": 1938,
+            "summary_generated_at": "2026-08-20T16:35:53.385938"
+          }
+        },
+        "relations": [
+          {
+            "relation_id": 1,
+            "relation_type": "시너지",
+            "user_message": "두 성분이 함께 작용해서 미백 효과를 더 끌어올려주는 조합이에요. 실제 임상시험에서도 색소침착 개선 효과가 확인됐어요",
+            "related_ingredient": {
+              "name_kr": "트라넥사믹애씨드",
+              "name_en": "Tranexamic Acid",
+              "synonyms": [],
+              "safety_level": null,
+              "summary": "이 원료는 다음의 구조를 갖는 유기산이다.",
+              "ingredient_id": 6259,
+              "summary_generated_at": null
+            }
+          },
+          {
+            "relation_id": 2,
+            "relation_type": "시너지",
+            "user_message": "서로 다른 방식으로 미백에 작용해서, 함께 쓰면 효과가 더 좋아질 수 있다고 임상적으로 확인된 조합이에요",
+            "related_ingredient": {
+              "name_kr": "아세틸글루코사민",
+              "name_en": "Acetyl Glucosamine",
+              "synonyms": [],
+              "safety_level": null,
+              "summary": "이 원료는 다음의 구조를 갖는 유기화합물이다.",
+              "ingredient_id": 1687,
+              "summary_generated_at": null
+            }
+          }
+        ]
+      },
+      {
+        "label_rank": 3,
+        "matched_text": "하이드롤라이즈드콜라겐",
+        "ingredient": {
+          "name_kr": "하이드롤라이즈드콜라겐",
+          "name_en": "Hydrolyzed Collagen",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 산, 효소 혹은 다른 방법으로 동물 및 어류 콜라겐을 가수분해한 것이다.",
+          "ingredient_id": 4759,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "purpose_name": "헤어컨디셔닝제",
+              "purpose_id": 114,
+              "description": "모발에 특별한 효과를 부여하는 성분으로 모발의 외형과 느낌 개선, 유연성 증대, 스타일 증진, 윤택 및 광택 부여, 모발의 질감 개선 등을 목적으로 함."
+            },
+            {
+              "purpose_name": "네일컨디셔닝제",
+              "purpose_id": 124,
+              "description": "(KCIA 배합목적 원본 분류, 정의문 없음)"
+            },
+            {
+              "purpose_name": "피부컨디셔닝제",
+              "purpose_id": 134,
+              "description": null
+            }
+          ],
+          "llm_summary": {
+            "summary_text": "이 성분은 피부 탄력과 보습을 증진시키는 데 도움을 주는 Hydrolyzed Collagen입니다. 컨디셔닝 효과를 위해 사용할 수 있습니다.",
+            "benefit_text": "건조하고 손상된 피부에 효과적인 Hydrolyzed Collagen은 탄력과 보습을 증진시켜 피부의 균형을 유지합니다.",
+            "caution_text": "특별한 주의사항이 없는 성분입니다.",
+            "usage_reason_text": "아누아 피디알엔 히알루론산 캡슐은 탄력과 보습을 증진시키는 데 도움을 주는 Hydrolyzed Collagen을 포함하고 있습니다.",
+            "caution_group_text": null,
+            "combo_recommendation": "Hydrolyzed Collagen은 피부에 탄력과 보습을 증진시키는 데 도움이 되는 성분입니다. 이 성분은 피부에 탄력과 보습을 증진시키는 데 도움을 줄 수 있는 혼합제품과 잘 어울립니다.",
+            "ingredient_id": 4759,
+            "summary_generated_at": "2026-08-19T09:29:18.736360"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 4,
+        "matched_text": "소듐하이알루로 네이트(800ppm)",
+        "ingredient": {
+          "name_kr": "소듐하이알루로네이트",
+          "name_en": "Sodium Hyaluronate",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 하이알루로닉애씨드의 소듐염이다.",
+          "ingredient_id": 1264,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "purpose_name": "피부컨디셔닝제",
+              "purpose_id": 134,
+              "description": null
+            }
+          ],
+          "llm_summary": {
+            "summary_text": "이 성분은 피부 탄력과 보습을 개선하는 데 도움을 주는 핵심 성분입니다.  ",
+            "benefit_text": "이 성분은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 개선합니다.",
+            "caution_text": "매우 건조한 환경에서는 저분자량 하이알루론산이 오히려 피부 수분을 빼앗을 수 있다는 논란이 있으나 안전성 자체는 문제없습니다.",
+            "usage_reason_text": "이 성분은 피부 컨디셔닝제로 사용됩니다.",
+            "caution_group_text": null,
+            "combo_recommendation": null,
+            "ingredient_id": 1264,
+            "summary_generated_at": "2026-08-19T09:25:12.959829"
+          }
+        },
+        "relations": []
+      },
+      {
+        "label_rank": 5,
+        "matched_text": "아데노신",
+        "ingredient": {
+          "name_kr": "아데노신",
+          "name_en": "Adenosine",
+          "synonyms": [],
+          "safety_level": null,
+          "summary": "이 원료는 다음의 구조를 갖는 헤테로사이클릭 유기화합물이다.",
+          "ingredient_id": 1612,
+          "summary_generated_at": null,
+          "purposes": [
+            {
+              "purpose_name": "피부컨디셔닝제(기타)",
+              "purpose_id": 107,
+              "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+            },
+            {
+              "purpose_name": "주름개선(기능성화장품)",
+              "purpose_id": 131,
+              "description": "(KCIA 배합목적 원본 분류, 정의문 없음)"
+            },
+            {
+              "purpose_name": "피부컨디셔닝제",
+              "purpose_id": 134,
+              "description": null
+            }
+          ],
+          "llm_summary": {
+            "summary_text": "이 화장품은 아데노신을 포함하여 피부 탄력과 보습을 개선하는 성분으로, 건조하고 손상된 피부를 개선시키는 데 효과적입니다.",
+            "benefit_text": "이 화장품은 피부 탄력과 보습을 개선하여 건조하고 손상된 피부를 개선시키는 데 효과적입니다.",
+            "caution_text": "아누아 피디알엔 히알루론산 캡슐 100 세럼은 안전성이 높지만, 사용 후 피부에 이상 반응이 나타날 수 있으니 주의해야 합니다.",
+            "usage_reason_text": "아데노신은 피부 컨디셔닝제로서 주름 개선 효과를 제공합니다.",
+            "caution_group_text": null,
+            "combo_recommendation": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL과 함께 사용하면 더욱 효과적인 피부 관리를 할 수 있습니다.",
+            "ingredient_id": 1612,
+            "summary_generated_at": "2026-08-19T09:25:12.959829"
+          }
+        },
+        "relations": []
+      }
+    ],
+    "similar_products": [
+      {
+        "product": {
+          "product_name": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL (세럼+크림 구성)",
+          "brand": null,
+          "summary": null,
+          "composition_text": null,
+          "product_id": "p-2f8d7c8d324a",
+          "category": "세럼/에센스/앰플",
+          "summary_generated_at": null,
+          "key_ingredients_raw": null,
+          "key_purposes_raw": null,
+          "oliveyoung_url": "https://www.oliveyoung.co.kr/store/search/getSearchMain.do?query=%EC%95%84%EB%88%84%EC%95%84%20%ED%94%BC%EB%94%94%EC%95%8C%EC%97%94%20%ED%9E%88%EC%95%8C%EB%A3%A8%EB%A1%A0%EC%82%B0%20%EC%BA%A1%EC%8A%90%20100%20%EC%84%B8%EB%9F%BC%2030mL%20%28%EC%84%B8%EB%9F%BC%2B%ED%81%AC%EB%A6%BC%20%EA%B5%AC%EC%84%B1%29",
+          "category_order": 2,
+          "category_description": "해당 제품은 영양분을 공급하므로 가벼운 스킨(토너) 후에 사용하시면 됩니다."
+        },
+        "score": 0.94
+      }
+    ],
+    "oliveyoung_url": "https://www.oliveyoung.co.kr/store/search/getSearchMain.do?query=%EC%95%84%EB%88%84%EC%95%84%20%ED%94%BC%EB%94%94%EC%95%8C%EC%97%94%20%ED%9E%88%EC%95%8C%EB%A3%A8%EB%A1%A0%EC%82%B0%20%EC%BA%A1%EC%8A%90%20100%20%EC%84%B8%EB%9F%BC%2030mL",
+    "category_order": 99,
+    "category_description": ""
+  }
+}

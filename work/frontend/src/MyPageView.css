@@ -1,0 +1,435 @@
+/* =========================================================
+   마이페이지(MyPageView) 전용 CSS.
+   토큰(--ink, --accent, --border-w, --shadow-off 등)은 index.css 전역 변수를 그대로 쓴다
+   (design-handoff/DESIGN.md 9번 "새 페이지 시작하기" 규칙 참고). 상단 뒤로가기 바는
+   ResultView.css의 .result-topbar / .result-back-btn을 그대로 재사용한다.
+   ========================================================= */
+
+.mypage-view {
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 5vw, 2.5rem) 1.25rem clamp(3.5rem, 9vw, 5.5rem);
+}
+
+.mypage-title {
+  margin: 0 0 clamp(1.6rem, 5vw, 2.4rem);
+  font-size: clamp(1.3rem, 4.5vw, 1.7rem);
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.mypage-title .cursor {
+  color: var(--accent-dark);
+}
+
+.mypage-section {
+  margin-bottom: clamp(2.2rem, 6vw, 3rem);
+}
+.mypage-section:last-child {
+  margin-bottom: 0;
+}
+
+.mypage-section-title {
+  margin: 0 0 0.9rem;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mypage-section-count {
+  font-family: var(--font-en);
+  font-size: 0.6rem;
+  color: var(--ink-soft);
+}
+
+.mypage-section-desc {
+  margin: -0.3rem 0 0.9rem;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+/* =========================================================
+   회원정보
+   ========================================================= */
+.mypage-account-card {
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  padding: 1.2rem 1.3rem 1.4rem;
+}
+
+.mypage-account-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  padding: 0.5rem 0;
+  border-bottom: 2px dashed var(--ink-soft);
+  font-size: 0.82rem;
+}
+.mypage-account-row:first-child {
+  padding-top: 0;
+}
+.mypage-account-row:last-of-type {
+  border-bottom: none;
+}
+.mypage-account-label {
+  flex-shrink: 0;
+  width: 4.5rem;
+  color: var(--ink-soft);
+}
+.mypage-account-value {
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.mypage-demo-note {
+  margin: 0.9rem 0 0;
+  font-size: 0.65rem;
+  color: var(--ink-soft);
+}
+
+/* 보조(비활성 가능) 버튼 — btn-primary와 달리 배경 없이 테두리만 있는 조용한 톤 */
+.mypage-ghost-btn {
+  appearance: none;
+  cursor: pointer;
+  margin-top: 0.9rem;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 3px 3px 0 0 var(--ink);
+  padding: 0.5rem 0.9rem;
+  font-family: var(--font-kr);
+  font-size: 0.75rem;
+  color: var(--ink);
+  transition: background 0.12s;
+}
+.mypage-ghost-btn:hover,
+.mypage-ghost-btn:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.mypage-ghost-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+.mypage-ghost-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+.mypage-ghost-btn--danger:not(:disabled) {
+  color: #a53a3a;
+}
+
+/* =========================================================
+   저장한 결과
+   ========================================================= */
+.mypage-saved-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: clamp(1rem, 3vw, 1.4rem);
+}
+
+.mypage-saved-card {
+  position: relative;
+}
+
+.mypage-saved-card-remove {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  appearance: none;
+  cursor: pointer;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 0 var(--ink);
+  font-family: var(--font-en);
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--ink);
+  transition: background 0.12s, color 0.12s;
+}
+.mypage-saved-card-remove:hover,
+.mypage-saved-card-remove:focus-visible {
+  background: var(--accent);
+  outline: none;
+}
+.mypage-saved-card-remove:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+
+.mypage-saved-card-main {
+  appearance: none;
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  padding: 0.9rem 1rem 1rem;
+  text-align: left;
+  color: var(--ink);
+  font-family: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.mypage-saved-card-main:hover,
+.mypage-saved-card-main:focus-visible {
+  border-color: var(--accent-dark);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--accent-dark);
+  animation: bounce 0.5s ease-in-out infinite;
+  outline: none;
+}
+.mypage-saved-card-main:active {
+  transform: translate(var(--shadow-off), var(--shadow-off));
+  box-shadow: 0 0 0 0 var(--ink);
+  animation: none;
+}
+
+.mypage-saved-badge {
+  width: auto;
+  padding: 0.2rem 0.55rem;
+}
+.mypage-saved-brand {
+  margin-top: 0.15rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+.mypage-saved-name {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.mypage-saved-meta {
+  font-size: 0.62rem;
+  color: var(--ink-soft);
+}
+
+/* =========================================================
+   나의 피부 프로필 · 주의 성분
+   ========================================================= */
+.mypage-profile-card {
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  padding: 1.2rem 1.3rem 1.4rem;
+}
+
+.mypage-profile-label {
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+.mypage-profile-label--spaced {
+  margin-top: 1.2rem;
+}
+
+.mypage-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mypage-chip {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.7rem;
+  font-family: var(--font-kr);
+  font-size: 0.72rem;
+  color: var(--ink);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.mypage-chip:hover,
+.mypage-chip:focus-visible {
+  border-color: var(--accent-dark);
+  outline: none;
+}
+.mypage-chip.is-active {
+  background: var(--accent);
+  border-color: var(--ink);
+}
+.mypage-chip--tag {
+  background: var(--accent-soft);
+  cursor: default;
+}
+.mypage-chip-remove {
+  appearance: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-en);
+  font-size: 0.6rem;
+  color: var(--ink-soft);
+  line-height: 1;
+}
+.mypage-chip-remove:hover,
+.mypage-chip-remove:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.mypage-ingredient-add {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+.mypage-ingredient-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.65rem;
+  font-family: var(--font-kr);
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+.mypage-ingredient-input:focus {
+  outline: none;
+  border-color: var(--accent-dark);
+  background: #fff;
+}
+.mypage-ingredient-input::placeholder {
+  color: var(--ink-soft);
+}
+.mypage-ingredient-add .mypage-ghost-btn {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   설정
+   ========================================================= */
+.mypage-settings-card {
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  padding: 0.4rem 1.3rem 1.2rem;
+}
+
+.mypage-toggle-row {
+  appearance: none;
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  background: none;
+  border: none;
+  padding: 1rem 0;
+  text-align: left;
+  font-family: inherit;
+  color: var(--ink);
+}
+.mypage-toggle-row:focus-visible {
+  outline: 2px dashed var(--accent-dark);
+  outline-offset: 4px;
+}
+.mypage-toggle-box {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: background 0.12s, color 0.12s;
+}
+.mypage-toggle-box.is-on {
+  background: var(--accent);
+  color: var(--ink);
+}
+.mypage-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.mypage-toggle-title {
+  font-size: 0.82rem;
+}
+.mypage-toggle-sub {
+  font-size: 0.65rem;
+  color: var(--ink-soft);
+}
+
+.mypage-settings-divider {
+  border: none;
+  border-top: 2px dashed var(--ink-soft);
+  margin: 0.2rem 0;
+}
+
+.mypage-settings-link {
+  appearance: none;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0.7rem 0;
+  text-align: left;
+  font-family: var(--font-kr);
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+.mypage-settings-link:hover:not(:disabled),
+.mypage-settings-link:focus-visible:not(:disabled) {
+  color: var(--accent-dark);
+  outline: none;
+}
+.mypage-settings-link:disabled {
+  cursor: not-allowed;
+  color: var(--ink-soft);
+}
+.mypage-settings-link--danger:not(:disabled) {
+  color: #a53a3a;
+}
+
+.mypage-settings-version {
+  padding: 0.5rem 0 0.2rem;
+  font-family: var(--font-en);
+  font-size: 0.58rem;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 420px) {
+  .mypage-account-label {
+    width: 3.6rem;
+  }
+  .mypage-saved-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mypage-saved-card-main:hover,
+  .mypage-saved-card-main:focus-visible {
+    animation: none !important;
+  }
+}

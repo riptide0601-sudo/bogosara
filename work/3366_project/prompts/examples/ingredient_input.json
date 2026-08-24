@@ -1,0 +1,65 @@
+{
+  "product": {
+    "product_name": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL",
+    "brand": "아누아",
+    "category": "세럼/에센스/앰플",
+    "key_ingredients": [
+      "나이아신아마이드",
+      "소듐하이알루로네이트",
+      "아데노신",
+      "하이드롤라이즈드콜라겐",
+      "하이드롤라이즈드하이알루로닉애씨드"
+    ],
+    "key_purposes": [
+      "보습",
+      "컨디셔닝",
+      "탄력",
+      "주름개선"
+    ],
+    "product_concern": [
+      "수분"
+    ]
+  },
+  "ingredient": {
+    "name_kr": "나이아신아마이드",
+    "name_en": "Niacinamide",
+    "safety_level": null,
+    "is_key": true,
+    "purposes": [
+      {
+        "name": "피부컨디셔닝제(기타)",
+        "description": "벗겨짐을 줄이고 탄력을 회복시켜 건조하고 손상된 피부의 외관을 개선시키는 성분."
+      },
+      {
+        "name": "헤어컨디셔닝제",
+        "description": "모발에 특별한 효과를 부여하는 성분으로 모발의 외형과 느낌 개선, 유연성 증대, 스타일 증진, 윤택 및 광택 부여, 모발의 질감 개선 등을 목적으로 함."
+      }
+    ],
+    "relations": [
+      {
+        "relation_type": "시너지",
+        "related_ingredient": "트라넥사믹애씨드",
+        "note": "두 성분이 함께 작용해서 미백 효과를 더 끌어올려주는 조합이에요. 실제 임상시험에서도 색소침착 개선 효과가 확인됐어요"
+      },
+      {
+        "relation_type": "시너지",
+        "related_ingredient": "아세틸글루코사민",
+        "note": "서로 다른 방식으로 미백에 작용해서, 함께 쓰면 효과가 더 좋아질 수 있다고 임상적으로 확인된 조합이에요"
+      }
+    ],
+    "skin_scores": [
+      {
+        "skin_type": "건성",
+        "is_risk": false,
+        "function": null,
+        "caution": "배양 각질형성세포 및 인체 피부 실험 — 니코틴아마이드가 세라마이드 생합성을 용량 의존적으로 4.1~5.5배 증가(SPT 효소 mRNA 발현 촉진 기전), 유리지방산 2.3배·콜레스테롤 1.5배 증가. 건성 피부 국소도포 시 TEWL 감소 확인(원문 확인됨)"
+      },
+      {
+        "skin_type": "지성",
+        "is_risk": false,
+        "function": null,
+        "caution": "100명 이중맹검 위약대조 시험, 2% 도포 4주 후 피지 분비율(SER) 유의하게 감소"
+      }
+    ]
+  }
+}

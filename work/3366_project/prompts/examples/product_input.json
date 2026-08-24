@@ -1,0 +1,32 @@
+{
+  "product_name": "아누아 피디알엔 히알루론산 캡슐 100 세럼 30mL",
+  "brand": "아누아",
+  "category": "세럼/에센스/앰플",
+  "category_description": "해당 제품은 영양분을 공급하므로 가벼운 스킨(토너) 후에 사용하시면 됩니다.",
+  "key_ingredients": [
+    {
+      "name": "하이드롤라이즈드하이알루로닉애씨드",
+      "purpose": "피부컨디셔닝제(보습제)"
+    },
+    {
+      "name": "나이아신아마이드",
+      "purpose": "피부컨디셔닝제(기타)"
+    },
+    {
+      "name": "하이드롤라이즈드콜라겐",
+      "purpose": "피부컨디셔닝제(기타)"
+    },
+    {
+      "name": "소듐하이알루로네이트",
+      "purpose": "피부컨디셔닝제(기타)"
+    },
+    {
+      "name": "아데노신",
+      "purpose": "피부컨디셔닝제(기타)"
+    }
+  ],
+  "product_concern": [
+    "수분"
+  ],
+  "key_ingredient_relations": []
+}

@@ -1,0 +1,839 @@
+/* =========================================================
+   결과 화면 (ResultView) 전용 CSS.
+   토큰(--ink, --accent, --border-w, --shadow-off 등)은 index.css 전역 변수를 그대로 쓴다
+   (design-handoff/DESIGN.md 9번 "새 페이지 시작하기" 규칙 참고).
+   ========================================================= */
+
+.result-view {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 4vw, 1.5rem) 1.25rem clamp(3rem, 8vw, 5rem);
+}
+
+/* ---- 상단 바: 뒤로가기 + 저장 버튼 ---- */
+/* result-layout과 같은 칼럼 트랙(왼쪽 280px 칼럼)을 그대로 써서, 저장 버튼이 사진 상자의
+   오른쪽 선에 정확히 맞춰지도록 한다. 뒤로가기·저장 버튼 둘 다 칼럼 1 안에서
+   justify-self로 양 끝에 붙인다. */
+.result-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  gap: clamp(1.25rem, 3vw, 2rem);
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+/* 왼쪽 상단 고정 햄버거 버튼(.hamburger-btn, App.css)과 같은 자리에 겹치지 않도록
+   뒤로가기 버튼을 그 아래로 내린다 — 햄버거는 항상 top/left clamp(0.9rem~1.25rem)·42px 고정
+   크기라, 컨테이너 기본 padding-top만으로는 부족해 이 여백을 더한다. */
+.result-topbar--below-hamburger {
+  margin-top: 2.75rem;
+}
+
+.result-back-btn {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  appearance: none;
+  cursor: pointer;
+  /* 오른쪽 저장 버튼(38px 정사각형)과 높이를 정확히 맞춘다 — align-items:center만으로는
+     버튼 내부 padding/line-height 차이로 1px 안팎 어긋날 수 있어 높이를 직접 고정했다.
+     margin-top으로 살짝 더 위로 올렸다. */
+  height: 38px;
+  margin-top: -2px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 3px 3px 0 0 var(--ink);
+  padding: 0 0.9rem;
+  font-family: var(--font-kr);
+  font-size: 0.8rem;
+  color: var(--ink);
+  transition: background 0.12s;
+}
+.result-back-btn:hover,
+.result-back-btn:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.result-back-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+
+/* 정사각형 저장 버튼 — 사진 상자 오른쪽 선에 맞춰 칼럼 1의 오른쪽 끝에 붙는다. */
+.result-save-btn {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
+  margin-top: 1px;
+  appearance: none;
+  cursor: pointer;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 3px 3px 0 0 var(--ink);
+  color: var(--ink);
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.result-save-btn:hover,
+.result-save-btn:focus-visible {
+  background: var(--accent-soft);
+  border-color: var(--accent-dark);
+  box-shadow: 3px 3px 0 0 var(--accent-dark);
+  outline: none;
+}
+.result-save-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+
+/* 저장 버튼을 눌렀을 때 뜨는 "로그인이 필요해요" 팝업(Overlay 재사용) 안의 안내 문구. */
+.overlay-message {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.result-back-btn .cursor {
+  color: var(--accent-dark);
+}
+
+/* ---- 로딩 상태 ---- */
+.result-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.result-loading-text {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  animation: blink 1s steps(1) infinite;
+}
+.result-skeleton-block {
+  height: clamp(120px, 22vw, 180px);
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  animation: skeleton-pulse 1s ease-in-out infinite;
+}
+
+/* ---- 에러 상태 ---- */
+.result-error-box {
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  padding: 1.8rem 1.4rem;
+  text-align: center;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.result-error-title {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+}
+.result-error-body {
+  margin: 0 0 1.2rem;
+  font-size: 0.7rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+/* =========================================================
+   본문 레이아웃: 왼쪽(검색 제품/촬영 사진) · 오른쪽(뒤집히는 카드)
+   ========================================================= */
+.result-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  gap: clamp(1.25rem, 3vw, 2rem);
+  align-items: start;
+}
+
+/* ---- 왼쪽: 제품 사진 / 촬영한 사진 ---- */
+.photo-panel {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.photo-panel-img,
+.photo-panel-placeholder {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  object-fit: cover;
+}
+
+.photo-panel-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--sub);
+}
+.photo-panel-mono {
+  font-size: clamp(2.4rem, 8vw, 3.4rem);
+  color: var(--ink);
+  opacity: 0.55;
+}
+
+/* ---- 사진 밑 추천 제품 칸 — 뒤집기 없이 항상 보이는 정적인 목록 ---- */
+.photo-reco-section {
+  margin-top: 0.2rem;
+}
+.photo-reco-title {
+  margin: 0 0 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+.photo-reco-title .cursor {
+  color: var(--accent-dark);
+}
+
+.photo-reco-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+/* 브랜드·이름을 한 줄로 붙여서 항목 높이를 압축한다 — 그래야 세 번째 항목의 아래쪽이
+   오른쪽 성분 카드(.flip-card-inner)의 아래쪽과 맞춰진다. 길면 말줄임표로 자른다. */
+.photo-reco-item {
+  display: flex;
+  align-items: baseline;
+  padding: 0.53rem 0.65rem;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 2px 2px 0 0 var(--ink);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.photo-reco-brand {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+.photo-reco-sep {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+}
+.photo-reco-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================================================
+   오른쪽: 뒤집히는 카드 (앞면 요약 → 클릭 → 뒷면 전성분 나열/설명)
+   ========================================================= */
+.flip-card {
+  perspective: 1800px;
+}
+
+.flip-card-inner {
+  position: relative;
+  /* 위쪽(사진과 같은 시작선)은 그대로 두고 아래로만 더 키운다 — 그래도 전체 페이지가
+     스크롤되지 않도록 뷰포트 높이 기준(vh)으로 상한을 둔다. 상단 바 여백을 줄이면서 생긴
+     여유만큼 73vh로 한 번 더 살짝 늘렸다 — 위쪽(사진과의 시작선)은 그대로, 아래쪽만 더 늘어난다. */
+  height: clamp(430px, 73vh, 800px);
+  transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.flip-card.is-flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  backface-visibility: hidden;
+  overflow-y: auto;
+  padding: 1.4rem 1.3rem;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.flip-card-front {
+  cursor: pointer;
+}
+.flip-card-front:hover,
+.flip-card-front:focus-visible {
+  border-color: var(--accent-dark);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--accent-dark);
+  outline: none;
+}
+
+.flip-card-back {
+  transform: rotateY(180deg);
+  /* 카드 뒷면은 "전성분 · 배합목적" 제목(.ing-list-title)만 픽셀 폰트로 남기고
+     나머지 전부 가독성 위주 폰트로 상속시킨다 (아래 각 요소에 개별로 지정하지 않음). */
+  font-family: var(--font-noto);
+}
+
+.flip-back-btn {
+  appearance: none;
+  cursor: pointer;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 3px 3px 0 0 var(--ink);
+  padding: 0.4rem 0.8rem;
+  margin-bottom: 1.1rem;
+  font-family: var(--font-noto);
+  font-size: 0.75rem;
+  color: var(--ink);
+  transition: background 0.12s;
+}
+.flip-back-btn:hover,
+.flip-back-btn:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.flip-back-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+.flip-back-btn .cursor {
+  color: var(--accent-dark);
+}
+
+/* 앞면(.flip-card-front) 안에 그대로 얹히는 요약 콘텐츠 —
+   카드 테두리/그림자는 이미 .flip-card-face가 담당하므로 안쪽은 여백만 남긴다.
+   위에서 아래로 "한 문장 요약 → 핵심 성분 → 성분 구성 설명 → 주의사항" 순서로 한 줄기 세로
+   흐름을 만든다(.result-headline + .result-section 반복). flex-grow를 주지 않고 내용 높이
+   그대로 두는 게 중요하다 — flex:1로 남은 공간에 맞춰 눌리게 하면(예전 2단 구성 때는
+   안전했지만) 지금처럼 섹션이 여러 개로 늘어난 내용은 강제로 눌려 다음 형제와 겹쳐 보인다.
+   대신 카드 높이를 넘는 만큼은 .flip-card-face의 overflow-y:auto가 통째로 스크롤 처리한다. */
+.result-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* 제품명(좌) + "카드를 눌러 전성분 N개 보기" 힌트(우) — 예전엔 힌트가 카드 맨 아래에서
+   구분선 + 여백을 따로 차지했는데, 스크롤을 줄이려고 제품명과 같은 줄 우측으로 옮겼다.
+   클릭 가능 영역은 카드 앞면(.flip-card-front) 전체이므로 이 줄 자체는 안내 문구일 뿐이다. */
+.result-summary-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.result-product-name {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+.result-flip-hint {
+  flex-shrink: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+  text-align: right;
+}
+.result-flip-hint .cursor {
+  color: var(--accent-dark);
+  opacity: 1;
+  animation: blink 1.2s steps(1) infinite;
+}
+
+/* ---- 1. 한 문장 요약 ----
+   이 카드에서 가장 먼저·가장 크게 읽혀야 하는 유일한 문장이다 — 성분명 나열도, 태그도
+   여기서는 만들지 않는다(그 역할은 핵심 성분·성분 구성 설명이 나눠 맡는다). 아래 다른
+   텍스트(핵심 성분 칸의 성분명 1.15rem, 성분 구성 설명 0.8rem)보다 뚜렷하게 커야 "제일 먼저
+   읽어야 하는 자리"라는 게 느껴진다. margin-top은 제품명 줄과 살짝 붙이고, margin-bottom도
+   줄여서 핵심 성분 카드가 카드 앞면 안에서 스크롤 없이 다 보이도록 전체를 위로 당긴다. */
+.result-headline {
+  margin: 0.05rem 0 0.2rem;
+  font-family: var(--font-noto); /* 카드 뒷면 본문과 같은 가독성 폰트 — 픽셀 폰트보다 긴 문장이 편하게 읽힌다 */
+  font-size: clamp(1.3rem, 4vw, 1.6rem);
+  font-weight: bold;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* ---- 2~4. 핵심 성분 / 성분 구성을 살펴보면 / 사용 전 확인해 주세요 공통 섹션 껍데기 ----
+   세 섹션이 전부 같은 무게로 보이면 위계가 안 느껴지므로 구분선을 차등 적용한다:
+   - 첫 섹션(핵심 성분)은 한 문장 요약 바로 다음으로 중요한 정보라 구분선 없이 여백만으로
+     이어붙인다 — 선을 그으면 "완전히 다른 챕터"처럼 보여서 요약과의 연결감이 끊긴다.
+   - 그 다음 섹션(성분 구성 설명·주의사항)부터는 얇고 옅은 점선으로 "보충 설명 영역"임을
+     표시한다. 두께(2px→1.5px)와 색(ink-soft 55%→28%)을 함께 낮춰 존재감을 줄였다. */
+.result-section {
+  padding-top: 0.75rem;
+  border-top: 1.5px dashed rgba(31, 37, 23, 0.28);
+}
+.result-section:first-of-type {
+  padding-top: 0;
+  border-top: none;
+}
+.result-section-title {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-kr);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.result-section-title .cursor {
+  color: var(--accent-dark);
+}
+
+/* ---- 2. 핵심 성분 ----
+   세로로 긴 직사각형 카드: 이름은 위, 대표 배합목적은 아래에 두고 그 사이는 비워서 "카드"처럼
+   보이게 한다. 성분명이 대표 배합목적보다 눈에 띄게 크고 굵어야 "성분명 > 기능" 위계가
+   한눈에 보인다 — 크기 차이(0.86rem 굵게 vs 0.58rem 옅게)뿐 아니라 둘 사이 여백(gap)도
+   벌려서 같은 줄처럼 붙어 보이지 않게 한다.
+   모서리는 --radius-sm(카드 뒷면 행 등에 쓰는 각진 6px)보다 둥근 --radius(아이콘/제품카드용
+   10px)를 써서 "귀여운 스티커 배지"처럼 보이게 하고, 그림자도 3px→2px로 줄여 작은 배지
+   비율에 맞춘다(DESIGN.md: 작은 요소는 shadow-off를 축소하되 비율은 유지). 전체적으로
+   기본기(base/few/single 세 단계)를 한 단계씩 줄여서 카드 앞면 스크롤을 최소화했다.
+   개수가 몇 개든(고정 상한 없음) 한쪽으로 쏠려 보이지 않도록:
+   - justify-content: center — 마지막 줄에 개수가 덜 차도 그 줄 안에서 가운데 정렬된다.
+   - flex: 1 1 4.2rem + max-width — 개수가 적을 때 상자가 살짝 커지면서 빈 공간을 채우고,
+     개수가 많아지면 기본 크기(4.2rem)에 가깝게 줄어든다. */
+.result-ing-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+}
+.result-ing-chip {
+  flex: 1 1 4.2rem;
+  max-width: 5.8rem;
+  min-height: 5.6rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--accent-dark); /* 약간 진한 연두 — 글씨가 흰색이라 accent(연한 연두)보다 대비가 필요하다 */
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 2px 2px 0 0 var(--ink);
+  padding: 0.55rem 0.35rem;
+  text-align: center;
+}
+.result-ing-chip-name {
+  font-family: var(--font-noto); /* 한 문장 요약과 같은 가독성 폰트 — 성분명이 픽셀 폰트보다 또렷하게 읽힌다 */
+  font-weight: 700;
+  font-size: 0.86rem;
+  line-height: 1.25;
+  color: #fff;
+}
+.result-ing-chip-purpose {
+  font-weight: 500;
+  font-size: 0.58rem;
+  line-height: 1.4;
+  color: #fff;
+}
+
+/* 개수별 크기 조절 — 개수가 적을수록 상자를 키워 존재감을 준다(위 result-ing-chips 주석 참고).
+   .result-ing-chips--many(4개 이상)는 위에서 이미 잡아둔 기본 크기를 그대로 쓴다. */
+
+/* 2~3개: 기본보다 한 단계 크게 */
+.result-ing-chips--few .result-ing-chip {
+  flex-basis: 5.4rem;
+  max-width: 7rem;
+  min-height: 6.2rem;
+  padding: 0.65rem 0.45rem;
+  gap: 0.4rem;
+}
+.result-ing-chips--few .result-ing-chip-name {
+  font-size: 0.95rem;
+}
+.result-ing-chips--few .result-ing-chip-purpose {
+  font-size: 0.62rem;
+}
+
+/* 1개: 카드 하나가 가로를 꽉 채우는 히어로 상자 — 한 문장 요약(.result-headline) 다음으로
+   눈에 띄어야 하니 확실히 큼직하게, 다만 요약 문장보다는 작게 유지한다. */
+.result-ing-chips--single .result-ing-chip {
+  flex: 1 1 100%;
+  max-width: 18rem;
+  min-height: 6.6rem;
+  padding: 0.85rem 0.7rem;
+  gap: 0.45rem;
+}
+.result-ing-chips--single .result-ing-chip-name {
+  font-size: 1.05rem;
+}
+.result-ing-chips--single .result-ing-chip-purpose {
+  font-size: 0.68rem;
+}
+
+/* ---- 3. 성분 구성을 살펴보면 ---- */
+.result-explain {
+  margin: 0;
+  font-family: var(--font-noto);
+  font-size: 0.8rem;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+/* ---- 4. 사용 전 확인해 주세요 — 배합 한도/금지 성분이 있을 때만 렌더링된다. ----
+   경고 톤은 --sub 배경 + 실선 보더로만 구분한다(넓은 면적에 accent를 쓰지 않는 원칙 유지). */
+.result-caution-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.result-caution-item {
+  background: var(--sub);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.75rem;
+}
+.result-caution-name {
+  margin: 0;
+  font-family: var(--font-noto); /* 성분명·요약 문장과 같은 가독성 폰트로 통일 */
+  font-weight: bold;
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+.result-caution-reason {
+  margin: 0.3rem 0 0;
+  font-family: var(--font-noto);
+  font-size: 0.72rem;
+  line-height: 1.65;
+  color: var(--ink-soft);
+}
+
+/* ---- 전성분 리스트 (카드 뒷면) ---- */
+.ing-list-section {
+  min-width: 0;
+}
+.ing-list-title {
+  margin: 0 0 1rem;
+  font-family: var(--font-kr); /* 카드 뒷면에서 유일하게 픽셀 폰트를 유지하는 제목 */
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ing-list-title .cursor {
+  color: var(--accent-dark);
+}
+
+.ing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.ing-list--base {
+  margin-top: 0.6rem;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.25s ease;
+}
+.ing-list--base.expanded {
+  max-height: 6000px;
+}
+
+.ing-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 3px 3px 0 0 var(--ink);
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.ing-row:hover,
+.ing-row:focus-visible {
+  border-color: var(--accent-dark);
+  box-shadow: 3px 3px 0 0 var(--accent-dark);
+  outline: none;
+}
+.ing-row:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+.ing-row-arrow {
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--accent-dark);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.ing-row:hover .ing-row-arrow,
+.ing-row:focus-visible .ing-row-arrow {
+  opacity: 1;
+}
+
+.ing-badge {
+  flex-shrink: 0;
+  width: 3rem;
+  text-align: center;
+  padding: 0.25rem 0;
+  font-size: 0.6rem;
+  letter-spacing: 0.02em;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--sub);
+  color: var(--ink);
+}
+.ing-badge--star {
+  background: var(--accent);
+  color: var(--ink);
+}
+.ing-badge--good {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+/* 규제 정보(restricted)가 있는 성분은 등급과 무관하게 이 배지를 최우선으로 받는다
+   (getIngredientBadge 참고) — 카드 앞면의 "사용 전 확인해 주세요" 상자와 같은 --sub 톤. */
+.ing-badge--caution {
+  background: var(--sub);
+  color: var(--ink);
+}
+
+.ing-main {
+  flex: 1;
+  min-width: 0;
+}
+.ing-name {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.ing-name-en {
+  font-size: 0.65rem;
+  color: var(--ink-soft);
+}
+.ing-reason {
+  margin: 0.2rem 0 0;
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+}
+.ing-pill {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.62rem;
+  background: var(--accent);
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  padding: 0.1rem 0.5rem;
+  color: var(--ink);
+}
+.ing-pill--block {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+/* ---- 성분 상세 뷰 — 리스트에서 성분을 클릭하면 카드 뒷면 전체를 차지한다 ---- */
+.ing-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: detail-in 0.18s ease;
+}
+
+.ing-detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+.ing-detail-name {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+.ing-detail-name:focus-visible {
+  outline: 2px dashed var(--accent-dark);
+  outline-offset: 4px;
+}
+.ing-detail-safety {
+  margin: 0.3rem 0 0;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.ing-detail-section {
+  background: var(--bg);
+  border: 2px dashed var(--ink-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 0.9rem;
+}
+.ing-detail-section p,
+.ing-detail-section ul {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.ing-detail-title {
+  margin: 0 0 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+.ing-detail-title .cursor {
+  color: var(--accent-dark);
+}
+
+/* 좋은 점: 실선 보더 + accent-soft (긍정 강조) / 나쁜 점: 실선 보더 + sub (주의 강조).
+   새 색을 만들지 않고 기존 토큰의 보더 스타일·배경 조합만 바꿔서 구분한다. */
+.ing-detail-section--good {
+  border: 2px solid var(--ink);
+  background: var(--accent-soft);
+}
+.ing-detail-section--caution {
+  border: 2px solid var(--ink);
+  background: var(--sub);
+}
+
+.ing-detail-purpose-list {
+  padding-left: 1.1rem;
+}
+.ing-detail-purpose-list li {
+  margin-bottom: 0.4rem;
+}
+.ing-detail-purpose-list li:last-child {
+  margin-bottom: 0;
+}
+.ing-detail-purpose-list b {
+  color: var(--accent-dark);
+}
+
+@keyframes detail-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ing-more-toggle {
+  appearance: none;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 0.8rem;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 3px 3px 0 0 var(--ink);
+  padding: 0.6rem;
+  font-family: var(--font-noto);
+  font-size: 0.75rem;
+  color: var(--ink);
+  transition: background 0.12s;
+}
+.ing-more-toggle:hover,
+.ing-more-toggle:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.ing-more-toggle:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+
+/* ---- 뒷면 맨 아래: 원문 전성분표 접힘 보기 ---- */
+.raw-toggle-block {
+  margin-top: 1.3rem;
+}
+.raw-toggle-block .raw-panel-text {
+  margin: 0.6rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.8;
+  color: var(--ink-soft);
+  background: var(--bg);
+  border: 2px dashed var(--ink-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.8rem;
+  word-break: keep-all;
+}
+
+/* =========================================================
+   반응형 — 860px 미만은 사진 → 카드 순으로 세로 스택
+   ========================================================= */
+@media (max-width: 860px) {
+  .result-layout {
+    grid-template-columns: 1fr;
+  }
+  .photo-panel {
+    position: static;
+    max-width: 220px;
+    margin: 0 auto;
+  }
+  .flip-card-inner {
+    height: clamp(390px, 77vh, 700px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-loading-text,
+  .result-skeleton-block,
+  .result-flip-hint .cursor {
+    animation: none !important;
+  }
+  .flip-card-inner {
+    transition: none !important;
+  }
+  .ing-detail {
+    animation: none !important;
+  }
+}
