@@ -38,6 +38,19 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 # 이 값과 무관하게 항상 CPU로 실행된다. GPU가 없는 환경에서는 False로 바꿔서 실행할 것.
 USE_GPU = True
 
+# 입력 사진의 최대 변 길이(px). 요즘 폰 사진은 12MP(4032px)까지 나오는데, 그대로 넣으면
+# PaddleOCR가 이 환경의 vGPU(9.5GB)에서 메모리 부족으로 실패한다. 실제 서비스도 업로드
+# 사진을 리사이즈해서 처리하므로, 4개 엔진 모두에 같은 크기로 맞춰 넣는다.
+MAX_SIDE = 2000
+
+
+def _fit_max_side(image: Image.Image) -> Image.Image:
+    w, h = image.size
+    if max(w, h) <= MAX_SIDE:
+        return image
+    scale = MAX_SIDE / max(w, h)
+    return image.resize((round(w * scale), round(h * scale)), Image.LANCZOS)
+
 
 def _load_ground_truth() -> dict:
     if GROUND_TRUTH_PATH.exists():
@@ -78,7 +91,7 @@ def run_benchmark():
 
     for image_path in image_paths:
         print(f"\n=== {image_path.name} ===")
-        image = Image.open(image_path).convert("RGB")
+        image = _fit_max_side(Image.open(image_path).convert("RGB"))
         results = run_all_engines(image, gpu=USE_GPU)
         expected = ground_truth.get(image_path.name)
 
