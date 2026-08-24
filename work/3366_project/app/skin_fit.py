@@ -39,9 +39,10 @@ product_ingredient 테이블에 순서/농도 정보가 갖춰지면 별도 함�
 직접 열어서 재확인하는 절차를 나머지 성분에도 적용하는 게 좋다.
 """
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.ingredient_skin_score import SKIN_TYPES, IngredientSkinScore
@@ -116,3 +117,58 @@ def compute_skin_risk(product_id: str, skin_type: str, db: Session) -> SkinRiskR
 
 def compute_all_skin_risks(product_id: str, db: Session) -> list[SkinRiskResult]:
     return [compute_skin_risk(product_id, skin_type, db) for skin_type in SKIN_TYPES]
+
+
+# 문장에서 "전체"는 특정 피부타입이 아니라 향료 알레르겐처럼 피부타입 무관 항목이라
+# SKIN_TYPES 뒤(마지막)에 오게 정렬하고, 표현도 "~에"가 아니라 "전체 피부타입"으로 바꾼다.
+_SUMMARY_SKIN_TYPE_ORDER = {skin_type: i for i, skin_type in enumerate(SKIN_TYPES)}
+_SUMMARY_SKIN_TYPE_ORDER["전체"] = len(SKIN_TYPES)
+_SUMMARY_POLARITY_LABEL = {False: "좋은", True: "유의해야할"}
+
+
+def summarize_skin_score_matches(product_ids: list[str], db: Session) -> dict[str, str]:
+    """검색 결과 등 여러 제품을 한 번에 보여줄 때, 제품마다 ingredient_skin_score에
+    매칭되는 성분이 있는지를 "지성에 좋은 성분 2개, 건성에 유의해야할 성분 1개
+    있습니다." 같은 한 줄 요약으로 만든다. 매칭이 하나도 없으면 "..."을 반환한다.
+
+    N개 제품을 한 쿼리로 집계해서(product_ingredient x ingredient_skin_score 조인 후
+    product_id/skin_type/is_risk 별 개수) N+1 쿼리를 피한다.
+    """
+    if not product_ids:
+        return {}
+
+    rows = db.execute(
+        select(
+            ProductIngredient.product_id,
+            IngredientSkinScore.skin_type,
+            IngredientSkinScore.is_risk,
+            func.count(func.distinct(ProductIngredient.ingredient_id)),
+        )
+        .join(
+            IngredientSkinScore,
+            IngredientSkinScore.ingredient_id == ProductIngredient.ingredient_id,
+        )
+        .where(ProductIngredient.product_id.in_(product_ids))
+        .group_by(ProductIngredient.product_id, IngredientSkinScore.skin_type, IngredientSkinScore.is_risk)
+    ).all()
+
+    grouped: dict[str, list[tuple[str, bool, int]]] = defaultdict(list)
+    for product_id, skin_type, is_risk, count in rows:
+        grouped[product_id].append((skin_type, is_risk, count))
+
+    summaries: dict[str, str] = {}
+    for product_id in product_ids:
+        items = grouped.get(product_id)
+        if not items:
+            summaries[product_id] = "..."
+            continue
+
+        items.sort(key=lambda item: (_SUMMARY_SKIN_TYPE_ORDER.get(item[0], 99), item[1]))
+        parts = [
+            f"{'전체 피부타입' if skin_type == '전체' else skin_type + '에'} "
+            f"{_SUMMARY_POLARITY_LABEL[is_risk]} 성분 {count}개"
+            for skin_type, is_risk, count in items
+        ]
+        summaries[product_id] = ", ".join(parts) + " 있습니다."
+
+    return summaries

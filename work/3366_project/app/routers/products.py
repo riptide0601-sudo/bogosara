@@ -26,7 +26,7 @@ from app.schemas.product import (
 )
 from app.schemas.skin_fit import SkinRiskRead
 from app.similarity import DEFAULT_TOP_K, find_similar_products
-from app.skin_fit import compute_all_skin_risks, compute_skin_risk
+from app.skin_fit import compute_all_skin_risks, compute_skin_risk, summarize_skin_score_matches
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -43,10 +43,22 @@ def _detail_query():
     )
 
 
+def _with_skin_score_summary(products: list[Product], db: Session) -> list[ProductRead]:
+    """제품 목록에 ingredient_skin_score 매칭 요약 문장을 붙인다 (app/skin_fit.py
+    summarize_skin_score_matches 참고). N개 제품을 한 쿼리로 집계해 N+1을 피한다."""
+    summaries = summarize_skin_score_matches([p.product_id for p in products], db)
+    result = []
+    for p in products:
+        item = ProductRead.model_validate(p)
+        item.skin_score_summary = summaries.get(p.product_id, "...")
+        result.append(item)
+    return result
+
+
 def _build_similar_products(
-    product_id: str, db: Session, *, top_k: int, min_score: float, limit: int
+    product_id: str, db: Session, *, min_score: float, limit: int
 ) -> list[ProductSimilarityRead]:
-    scored = find_similar_products(product_id, db, top_k=top_k, min_score=min_score, limit=limit)
+    scored = find_similar_products(product_id, db, min_score=min_score, limit=limit)
     if not scored:
         return []
     products_by_id = {
@@ -77,13 +89,16 @@ def _to_detail(product: Product, db: Session) -> ProductDetail:
                 ingredient=ingredient_detail,
             )
         )
-    # 유사도 계산(app/similarity.py)과 같은 기준(label_rank 상위 DEFAULT_TOP_K개)으로
-    # "주요 성분"을 뽑는다 — ingredients가 이미 label_rank순으로 정렬돼 있어 그대로 슬라이스.
-    detail.key_ingredients = detail.ingredients[:DEFAULT_TOP_K]
-    # 추천도 같은 key_ingredients 기준(DEFAULT_TOP_K)으로 계산해 이 제품을 볼 때 바로 딸려온다.
+    # label_rank 상위 DEFAULT_TOP_K개 그대로 슬라이스 — ingredients가 이미 label_rank순
+    # 정렬이라 바로 자르면 된다. (유사도는 이제 이 기준이 아니라 product.key_ingredients를
+    # 쓴다 — app/similarity.py 참고)
+    detail.top_ingredients = detail.ingredients[:DEFAULT_TOP_K]
     # 60~70% 구간이 텅 비어있어 70%는 너무 빡빡했음 — 50% 이상으로 완화해 더 많이 노출한다.
     detail.similar_products = _build_similar_products(
-        product.product_id, db, top_k=DEFAULT_TOP_K, min_score=0.5, limit=10
+        product.product_id, db, min_score=0.5, limit=10
+    )
+    detail.skin_score_summary = summarize_skin_score_matches([product.product_id], db).get(
+        product.product_id, "..."
     )
     return detail
 
@@ -113,14 +128,16 @@ def list_products(
                 )
             ).all()
         }
-        return [
+        products = [
             products_by_id[r.product_id] for r in results if r.product_id in products_by_id
         ]
+    else:
+        stmt = select(Product)
+        if category:
+            stmt = stmt.where(Product.category == category)
+        products = db.scalars(stmt.order_by(Product.product_name)).all()
 
-    stmt = select(Product)
-    if category:
-        stmt = stmt.where(Product.category == category)
-    return db.scalars(stmt.order_by(Product.product_name)).all()
+    return _with_skin_score_summary(products, db)
 
 
 @router.post("", response_model=ProductRead, status_code=201)
@@ -144,17 +161,16 @@ def get_product(product_id: str, db: Session = Depends(get_db)):
 @router.get("/{product_id}/similar", response_model=list[ProductSimilarityRead])
 def get_similar_products(
     product_id: str,
-    top_k: int = Query(
-        default=DEFAULT_TOP_K, ge=1, description="주요 성분으로 취급할 상위 성분 개수(label_rank 기준)"
-    ),
     min_score: float = Query(default=0.5, ge=0.0, le=1.0),
     limit: int = Query(default=10, ge=1, le=50),
     db: Session = Depends(get_db),
 ):
+    """주요 성분(product.key_ingredients) 기준 유사도. app/similarity.py 참고 —
+    label_rank 상위 N개가 아니라 core_ingredient_selector가 뽑은 핵심 성분으로 비교한다."""
     if db.get(Product, product_id) is None:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    return _build_similar_products(product_id, db, top_k=top_k, min_score=min_score, limit=limit)
+    return _build_similar_products(product_id, db, min_score=min_score, limit=limit)
 
 
 @router.get("/{product_id}/skin-fit", response_model=list[SkinRiskRead])
