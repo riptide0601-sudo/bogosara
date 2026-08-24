@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, selectinload
 
@@ -15,6 +15,7 @@ from app.models.product_ingredient import ProductIngredient
 from app.models.ingredient_skin_score import SKIN_TYPES
 from app.product_category import ALL_CATEGORIES, classify as classify_category
 from app.schemas.ingredient import IngredientDetail
+from app.search_service import search_products
 from app.schemas.product import (
     ProductCreate,
     ProductDetail,
@@ -23,9 +24,9 @@ from app.schemas.product import (
     ProductRead,
     ProductSimilarityRead,
 )
-from app.schemas.skin_fit import SkinFitRead
+from app.schemas.skin_fit import SkinRiskRead
 from app.similarity import DEFAULT_TOP_K, find_similar_products
-from app.skin_fit import compute_all_skin_fits, compute_skin_fit
+from app.skin_fit import compute_all_skin_risks, compute_skin_risk
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -89,21 +90,34 @@ def _to_detail(product: Product, db: Session) -> ProductDetail:
 
 @router.get("", response_model=list[ProductRead])
 def list_products(
-    query: str | None = Query(default=None, description="product_name/brand 검색어"),
+    query: str | None = Query(default=None, description="product_name/brand/category 검색어"),
     category: str | None = Query(
         default=None,
         description="카테고리 필터: " + ", ".join(c.name for c in ALL_CATEGORIES),
     ),
     db: Session = Depends(get_db),
 ):
-    stmt = select(Product)
     if query:
-        stmt = stmt.where(
-            or_(
-                Product.product_name.ilike(f"%{query}%"),
-                Product.brand.ilike(f"%{query}%"),
-            )
-        )
+        # app/search_service.py: 검색어를 토큰화해 이름/브랜드/카테고리 중 어디든
+        # 전부 매칭되는 제품을 랭킹 점수순으로 반환한다 (성분/배합목적 검색 없음).
+        results = search_products(query, db)
+        if category:
+            results = [r for r in results if r.category == category]
+        if not results:
+            return []
+        products_by_id = {
+            p.product_id: p
+            for p in db.scalars(
+                select(Product).where(
+                    Product.product_id.in_([r.product_id for r in results])
+                )
+            ).all()
+        }
+        return [
+            products_by_id[r.product_id] for r in results if r.product_id in products_by_id
+        ]
+
+    stmt = select(Product)
     if category:
         stmt = stmt.where(Product.category == category)
     return db.scalars(stmt.order_by(Product.product_name)).all()
@@ -143,7 +157,7 @@ def get_similar_products(
     return _build_similar_products(product_id, db, top_k=top_k, min_score=min_score, limit=limit)
 
 
-@router.get("/{product_id}/skin-fit", response_model=list[SkinFitRead])
+@router.get("/{product_id}/skin-fit", response_model=list[SkinRiskRead])
 def get_product_skin_fit(
     product_id: str,
     skin_type: str | None = Query(
@@ -151,8 +165,8 @@ def get_product_skin_fit(
     ),
     db: Session = Depends(get_db),
 ):
-    """피부 타입별 제품 적합도. app/skin_fit.py 참고 — 성분별 피부타입 점수(-3~+3)를
-    합산해 0~100점으로 정규화한 값이며, 시드 데이터는 설계 단계 예시 점수입니다."""
+    """피부 타입별 위험 성분 탐지. app/skin_fit.py 참고 — 적합도 점수 합산 방식은 폐기했고,
+    제품 성분 중 해당 피부타입에 위험하다고 등록된 성분이 있는지만 확인해 보여준다."""
     if db.get(Product, product_id) is None:
         raise HTTPException(status_code=404, detail="Product not found")
 
@@ -161,11 +175,11 @@ def get_product_skin_fit(
             raise HTTPException(
                 status_code=422, detail=f"skin_type은 {SKIN_TYPES} 중 하나여야 합니다"
             )
-        results = [compute_skin_fit(product_id, skin_type, db)]
+        results = [compute_skin_risk(product_id, skin_type, db)]
     else:
-        results = compute_all_skin_fits(product_id, db)
+        results = compute_all_skin_risks(product_id, db)
 
-    return [SkinFitRead.model_validate(r, from_attributes=True) for r in results]
+    return [SkinRiskRead.model_validate(r, from_attributes=True) for r in results]
 
 
 @router.put("/{product_id}/ingredients", status_code=204)

@@ -585,25 +585,24 @@ def seed(db_url: str) -> None:
         rows = 0
         for name, entry in _SEED.items():
             ingredient_id = id_by_name[name]
-            evidence_level, source = entry["evidence"]
-            for skin_type, (score, function, caution) in entry["scores"].items():
+            _evidence_level, source = entry["evidence"]  # evidence_level 컬럼은 제거됨, source만 저장
+            for skin_type, (_score, function, caution) in entry["scores"].items():
+                # score 컬럼은 제거됨 — 이 테이블은 이제 "위험/궁합 여부"만 기록한다(is_risk).
                 stmt = (
                     insert_fn(IngredientSkinScore)
                     .values(
                         ingredient_id=ingredient_id,
                         skin_type=skin_type,
-                        score=score,
+                        is_risk=True,
                         function=function,
-                        evidence_level=evidence_level,
                         source=source,
                         caution=caution,
                     )
                     .on_conflict_do_update(
                         index_elements=["ingredient_id", "skin_type"],
                         set_={
-                            "score": score,
+                            "is_risk": True,
                             "function": function,
-                            "evidence_level": evidence_level,
                             "source": source,
                             "caution": caution,
                         },

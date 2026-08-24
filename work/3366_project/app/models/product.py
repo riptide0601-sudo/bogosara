@@ -22,6 +22,10 @@ class Product(Base):
     category: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # app/core_ingredient_selector.py의 analyze_product_from_orm() 결과를 JSON 배열
+    # 문자열로 저장한다 (성분/효능 각각 최대 5개). scripts/backfill_key_ingredients.py로 채운다.
+    key_ingredients: Mapped[str | None] = mapped_column(Text, nullable=True)
+    key_purposes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     product_ingredients: Mapped[list["ProductIngredient"]] = relationship(
         back_populates="product", cascade="all, delete-orphan"

@@ -1,13 +1,42 @@
-"""피부 타입별 제품 적합도 계산.
+"""피부 타입별 제품 위험성분 탐지.
 
-큰 흐름: 피부 타입 → 피부 고민 → 필요한 성분 기능 → 실제 제품 성분 → 적합도 점수 → 추천.
-이 모듈은 마지막 두 단계(제품 성분 → 적합도 점수)를 맡는다 — 제품에 들어있는 성분들을
-ingredient_skin_score에서 찾아 해당 피부 타입 점수를 모두 더한 뒤, 0~100점으로 정규화한다.
+큰 흐름: 피부 타입 → 피부 고민 → 위험 성분 목록 → 실제 제품 성분 → 위험성분 매칭 → 경고 표시.
 
-주의: ingredient_skin_score의 시드 값은 피부과 가이드(AAD)·문헌에서 소개된 성분별
-경향을 참고해 만든 "설계 단계 예시 점수"다. 실제 서비스에 쓰려면 성분별 근거를 개별
-검토해서 점수를 다시 조정해야 한다 — 이 알고리즘은 그 점수를 제품 단위로 합산하는
-계산 로직을 제공하는 것이지, 점수 자체의 의학적 정확성을 보장하지 않는다.
+[2026-08-21 로직 전면 개편] 기존에는 성분마다 -3~+3 "적합도 점수"를 매겨서 평균 내는
+방식이었으나, 이 접근을 완전히 버렸다. 이유:
+  1) 점수 자체가 가짜 정밀도였음 — "위험한지 아닌지"는 문헌 근거가 있어도, -2점과
+     -3점의 차이가 실제로 뭘 의미하는지는 근거가 없음.
+  2) 유저는 "이 성분이 얼마나 위험한지 등급"보다 "위험 성분이 들어있는지 여부" 자체에
+     관심이 있음 — 조금이라도 안 좋은 작용이 있으면 피하고 싶어함.
+  3) 긍정적 점수(+1~+3, "이 성분이 이 피부타입에 좋음")는 유저 관심사가 아니라고 판단해
+     완전히 제외함. ingredient_skin_score 테이블에는 이제 "위험 성분"만 남아있음
+     (평가 결과 score < 0 이었던 행만 유지, 나머지는 삭제).
+
+그래서 이 모듈이 하는 일은 매우 단순해졌다: 제품 성분 중 ingredient_skin_score에
+등록된 위험 성분과 겹치는 게 있으면 그 목록을 그대로 보여주는 것. 점수 합산도,
+정규화도 하지 않는다.
+
+[2026-08-21 추가 메모] "위험 성분이 제품 전성분표에서 상위권(주요성분)에 있는지,
+하위권(미량 추정)에 있는지"는 노출량과 직결되는 중요한 정보지만, 이건 실제 제품별
+전성분 순서 데이터와 연동해야 하는 별도 로직이라 이 모듈 범위 밖이다. 추후
+product_ingredient 테이블에 순서/농도 정보가 갖춰지면 별도 함수로 구현 예정.
+
+주의: ingredient_skin_score의 값 중 평가 완료되지 않았던 성분(evidence_level='E',
+"화장품 성분과학 컨센서스, 개별 문헌 미검증")은 검증을 이어가지 않기로 하고 삭제했다.
+즉 지금 이 모듈이 참조하는 테이블에는 실제 논문/공식기관 자료로 뒷받침되는 위험
+성분만 들어있다(evidence_level='B'). 다만 전체 화장품 성분 중 극히 일부(14개)만
+검토된 상태이므로, "매칭되는 위험 성분이 없다"는 결과가 "검증된 안전"을 의미하지는
+않는다 — 단지 "현재까지 확인된 위험 성분이 없다"는 뜻이다. 새로운 성분을 추가로
+검증해 이 테이블에 넣는 작업은 계속 필요하다.
+
+[2026-08-21 출처 검증 관련 메모] evidence_level='B'라고 해서 전부 같은 수준으로
+검증된 건 아니다. 원문을 직접 열어 확인한 출처(EU SCCS, Nature Sci Rep 등)가 있는
+반면, 검색엔진 스니펫만으로 인용한 출처도 아직 섞여있다(PubMed/PMC/Wiley 계열은
+자동화 접속이 봇 차단에 걸려 직접 열람이 잘 안 됨). 실제로 이 검증 과정에서 두 건의
+오류를 발견해 정정한 바 있다 — 에탄올 caution이 논문의 실제 결론(저농도는 안전)을
+반영 못 하고 있었고, 캠퍼는 원래 인용한 논문이 자극 유발 근거가 아니라 오히려
+치료 후보물질 임상시험이라 출처 자체가 안 맞았다. source 컬럼에 있는 링크를 사람이
+직접 열어서 재확인하는 절차를 나머지 성분에도 적용하는 게 좋다.
 """
 
 from dataclasses import dataclass, field
@@ -18,42 +47,30 @@ from sqlalchemy.orm import Session
 from app.models.ingredient_skin_score import SKIN_TYPES, IngredientSkinScore
 from app.models.product_ingredient import ProductIngredient
 
-_MAX_ABS_SCORE = 3  # IngredientSkinScore.score의 범위(-3~+3) 중 절댓값 최대치.
-
 
 @dataclass
-class SkinScoreBreakdownItem:
+class RiskIngredient:
     ingredient_id: int
     name_kr: str | None
-    score: int
-    function: str | None
-    caution: str | None
+    risk_type: str | None  # 예: "향료(EU 지정 알레르겐)", "수렴/용제"
+    reason: str | None  # caution 텍스트 — 왜 위험한지 사람이 읽을 수 있는 설명
+    source: str | None  # 근거 논문/기관 자료 (제목 + URL)
 
 
 @dataclass
-class SkinFitResult:
+class SkinRiskResult:
     skin_type: str
-    fit_score: float  # 0~100으로 정규화된 적합도 점수 (50 = 중립)
-    raw_score: int  # 매칭된 성분들의 점수 합 (정규화 전)
-    matched_count: int  # 점수 데이터가 있는 성분 개수
-    total_ingredient_count: int  # 제품 전성분 개수 (매칭 여부 무관)
-    breakdown: list[SkinScoreBreakdownItem] = field(default_factory=list)
+    has_risk: bool  # 위험 성분이 하나라도 매칭됐는지 — 화면에 경고 배지를 띄울지 여부
+    risk_ingredients: list[RiskIngredient] = field(default_factory=list)
+    total_ingredient_count: int = 0  # 제품 전성분 개수 (참고용)
 
 
-def _normalize(raw_score: int, matched_count: int) -> float:
-    """합산 점수를 0~100 스케일로 정규화한다 (50 = 중립, 매칭된 성분이 없으면 50).
+def compute_skin_risk(product_id: str, skin_type: str, db: Session) -> SkinRiskResult:
+    """제품 성분 중 해당 피부 타입에 위험한 것으로 등록된 성분을 찾아 반환한다.
 
-    이론상 최댓값은 matched_count * 3, 최솟값은 -matched_count * 3이므로,
-    그 구간에서의 위치를 0~100으로 선형 변환한다.
+    ingredient_skin_score 테이블엔 이제 "위험 성분"만 들어있으므로(평가 결과 마이너스였던
+    것만 남김), 단순히 제품 성분 ID와 겹치는 행을 찾기만 하면 된다. 점수 합산·정규화 없음.
     """
-    if matched_count == 0:
-        return 50.0
-    max_possible = _MAX_ABS_SCORE * matched_count
-    normalized = 50 + (raw_score / max_possible) * 50
-    return round(max(0.0, min(100.0, normalized)), 1)
-
-
-def compute_skin_fit(product_id: str, skin_type: str, db: Session) -> SkinFitResult:
     if skin_type not in SKIN_TYPES:
         raise ValueError(f"알 수 없는 피부 타입입니다: {skin_type} (허용값: {SKIN_TYPES})")
 
@@ -66,37 +83,36 @@ def compute_skin_fit(product_id: str, skin_type: str, db: Session) -> SkinFitRes
     )
     total_ingredient_count = len(ingredient_ids)
 
+    # skin_type == 조회한 피부타입인 행 + skin_type == '전체'(피부타입 무관 위험, 예: 향료
+    # 알레르겐)인 행을 모두 가져온다. 향료류처럼 "피부가 건성이든 지성이든 상관없이
+    # 개인 감작 여부로 생기는 위험"을 굳이 4개 피부타입 행으로 쪼개면 같은 내용이
+    # 반복돼 보이므로, 그런 성분은 DB에 skin_type='전체' 한 줄로만 저장돼 있다.
     rows = db.execute(
         select(IngredientSkinScore).where(
             IngredientSkinScore.ingredient_id.in_(ingredient_ids),
-            IngredientSkinScore.skin_type == skin_type,
+            IngredientSkinScore.skin_type.in_([skin_type, "전체"]),
+            IngredientSkinScore.is_risk.is_(True),
         )
     ).scalars().all()
 
-    breakdown = [
-        SkinScoreBreakdownItem(
+    risk_ingredients = [
+        RiskIngredient(
             ingredient_id=row.ingredient_id,
             name_kr=row.ingredient.name_kr if row.ingredient else None,
-            score=row.score,
-            function=row.function,
-            caution=row.caution,
+            risk_type=row.function,
+            reason=row.caution,
+            source=row.source,
         )
         for row in rows
     ]
-    breakdown.sort(key=lambda item: item.score, reverse=True)
 
-    raw_score = sum(item.score for item in breakdown)
-    matched_count = len(breakdown)
-
-    return SkinFitResult(
+    return SkinRiskResult(
         skin_type=skin_type,
-        fit_score=_normalize(raw_score, matched_count),
-        raw_score=raw_score,
-        matched_count=matched_count,
+        has_risk=len(risk_ingredients) > 0,
+        risk_ingredients=risk_ingredients,
         total_ingredient_count=total_ingredient_count,
-        breakdown=breakdown,
     )
 
 
-def compute_all_skin_fits(product_id: str, db: Session) -> list[SkinFitResult]:
-    return [compute_skin_fit(product_id, skin_type, db) for skin_type in SKIN_TYPES]
+def compute_all_skin_risks(product_id: str, db: Session) -> list[SkinRiskResult]:
+    return [compute_skin_risk(product_id, skin_type, db) for skin_type in SKIN_TYPES]
