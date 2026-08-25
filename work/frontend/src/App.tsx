@@ -8,6 +8,7 @@ import ScanOverlay from './components/ScanOverlay';
 import ResultsSection, { type SearchStatus } from './components/ResultsSection';
 import ResultView from './components/ResultView';
 import MyPageView from './components/MyPageView';
+import RoutineView from './components/RoutineView';
 import LoginView from './components/LoginView';
 import { useAuth } from './context/AuthContext';
 import MagnifierIcon from './icons/MagnifierIcon';
@@ -58,6 +59,11 @@ export default function App() {
   // true로 남아있는다 — 저장한 결과를 열어봤다가 뒤로가기를 누르면 마이페이지로 돌아오게 하기
   // 위함(아래 렌더 분기 참고).
   const [mypageOpen, setMypageOpen] = useState(false);
+
+  // ---- 내 화장품 조합 진입 상태 ----
+  // mypageOpen과 같은 패턴 — routineOpen이 켜져도 mypageOpen은 그대로 true로 남아있어서,
+  // 뒤로가기를 누르면 마이페이지가 남아있던 자리에 다시 나타난다.
+  const [routineOpen, setRoutineOpen] = useState(false);
 
   const closeOverlay = () => setActiveOverlay(null);
 
@@ -121,6 +127,17 @@ export default function App() {
     );
   }
 
+  // 내 화장품 조합 화면 — 로그인 상태에서만 마이페이지의 "내 조합 확인하기"로 들어올 수
+  // 있으므로 여기서 다시 로그인 여부를 가릴 필요는 없다. 뒤로가기는 항상 마이페이지로.
+  if (routineOpen) {
+    return (
+      <>
+        <BackgroundSparkles />
+        <RoutineView onBack={() => setRoutineOpen(false)} />
+      </>
+    );
+  }
+
   // 마이페이지 진입 상태면 랜딩 대신 MyPageView(로그인 상태) 또는 LoginView(비로그인)로
   // 전체 화면을 교체한다. initializing 동안은(새로고침 직후 저장된 토큰으로 /users/me
   // 조회 중) 로그인 여부를 아직 몰라서 둘 다 그리지 않고 잠깐 비워둔다.
@@ -133,7 +150,11 @@ export default function App() {
         ))}
         {!initializing &&
           (user ? (
-            <MyPageView onBack={() => setMypageOpen(false)} onSelectSavedResult={handleSelectSavedResult} />
+            <MyPageView
+              onBack={() => setMypageOpen(false)}
+              onSelectSavedResult={handleSelectSavedResult}
+              onOpenRoutine={() => setRoutineOpen(true)}
+            />
           ) : (
             <LoginView onBack={() => setMypageOpen(false)} onSuccess={() => {}} />
           ))}

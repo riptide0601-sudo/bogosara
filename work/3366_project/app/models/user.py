@@ -33,3 +33,6 @@ class User(Base):
     saved_results: Mapped[list["SavedResult"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    routine_items: Mapped[list["RoutineItem"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )

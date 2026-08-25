@@ -38,3 +38,6 @@ class Product(Base):
     saved_by: Mapped[list["SavedResult"]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
     )
+    in_routines: Mapped[list["RoutineItem"]] = relationship(
+        back_populates="product", cascade="all, delete-orphan"
+    )

@@ -10,6 +10,8 @@ interface MyPageViewProps {
   onBack: () => void;
   /** 저장한 결과 카드를 클릭하면 App.tsx가 이 결과를 ResultView로 이어준다. */
   onSelectSavedResult: (result: SavedResult) => void;
+  /** "내 화장품 조합" 진입점 클릭 → App.tsx가 RoutineView로 전체 화면을 교체한다. */
+  onOpenRoutine: () => void;
 }
 
 const GRADE_LABEL: Record<NonNullable<SavedResult['grade']>, string> = {
@@ -34,7 +36,7 @@ type FetchStatus = 'loading' | 'done' | 'error';
  * 없고, 피부 프로필·저장한 결과만 이 화면에서 따로 불러온다. 각 섹션은 실패해도 서로에게
  * 영향을 주지 않도록 로딩/에러 상태를 독립적으로 관리한다.
  */
-export default function MyPageView({ onBack, onSelectSavedResult }: MyPageViewProps) {
+export default function MyPageView({ onBack, onSelectSavedResult, onOpenRoutine }: MyPageViewProps) {
   const { user, setUser, logout } = useAuth();
 
   // ---- 저장한 결과 ----
@@ -342,6 +344,19 @@ export default function MyPageView({ onBack, onSelectSavedResult }: MyPageViewPr
             ))}
           </div>
         )}
+      </section>
+
+      {/* ---- 내 화장품 조합 ---- */}
+      <section className="mypage-section" aria-labelledby="mypage-routine-heading">
+        <h2 className="mypage-section-title" id="mypage-routine-heading">
+          내 화장품 조합
+        </h2>
+        <p className="mypage-section-desc">
+          쓰는 화장품을 등록하면 전성분을 합쳐서 수분·보습 밸런스와 내 피부 타입 기준 궁합을 분석해드려요.
+        </p>
+        <button type="button" className="mypage-ghost-btn" onClick={onOpenRoutine}>
+          내 조합 확인하기
+        </button>
       </section>
 
       {/* ---- 나의 피부 프로필 · 주의 성분 ---- */}

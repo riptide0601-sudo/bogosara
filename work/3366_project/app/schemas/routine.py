@@ -1,0 +1,58 @@
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
+
+class RoutineItemCreate(BaseModel):
+    product_id: str
+
+
+class RoutineItemRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    product_id: str
+    product_name: str
+    brand: str | None = None
+    category: str | None = None
+    added_at: datetime
+    # 제품 하나에 대한 간단 설명 — product.summary(LLM 요약)가 있으면 그대로, 없으면 빈 문자열
+    # (app/routine_analysis.py의 build_item_description 참고). 핵심 성분은 별도로
+    # key_ingredients에 리스트 그대로 내려주므로 여기서 문장으로 대신 만들지 않는다.
+    description: str = ""
+    key_ingredients: list[str] = []
+    key_purposes: list[str] = []
+
+
+class RoutineIngredientNoteRead(BaseModel):
+    ingredient_id: int
+    name_kr: str | None = None
+    # ingredient.summary — 성분 자체에 대한 일반 설명(항상 보임). reason은 이 피부타입에
+    # 왜 위험/궁합인지에 대한 설명(호버 툴팁으로만 보임) — app/routine_analysis.py 참고.
+    description: str | None = None
+    risk_type: str | None = None
+    reason: str | None = None
+
+
+class RoutineSkinTypeNoteRead(BaseModel):
+    skin_type: str
+    risk_ingredients: list[RoutineIngredientNoteRead] = []
+    good_ingredients: list[RoutineIngredientNoteRead] = []
+
+
+class RoutineRelationNoteRead(BaseModel):
+    relation_type: str  # "시너지" | "악화"
+    ingredient_a: str
+    ingredient_b: str
+    message: str | None = None
+
+
+class RoutineAnalysisRead(BaseModel):
+    product_count: int
+    ingredient_count: int
+    headline: str
+    # 루틴 전체 제품들의 key_purposes를 모아 만든, 조합 전체에 대한 한 단락 설명.
+    overall_description: str
+    hydration_note: str
+    skin_type_notes: list[RoutineSkinTypeNoteRead] = []
+    # 서로 다른 제품에 걸쳐 있는 성분 조합 중 ingredient_relation에 등록된 시너지/악화 쌍.
+    relations: list[RoutineRelationNoteRead] = []
