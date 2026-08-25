@@ -4,20 +4,11 @@
    (design-handoff/DESIGN.md 9번 "새 페이지 시작하기" 규칙 참고).
    ========================================================= */
 
-/* 전체 화면이 뷰포트 한 페이지에 딱 맞고(스크롤 없음), 카드 내부 긴 내용만 카드 자체
-   overflow-y:auto로 스크롤되게 한다 — 아래 .result-layout(flex:1)/.flip-card-inner(height:100%)와
-   한 세트. 860px 미만(모바일 스택 레이아웃)에서는 이 고정 높이가 오히려 내용을 잘라버리므로
-   미디어 쿼리에서 되돌린다. */
 .result-view {
-  display: flex;
-  flex-direction: column;
   width: 100%;
   max-width: 1120px;
-  height: 100vh;
-  box-sizing: border-box;
   margin: 0 auto;
-  padding: clamp(1.25rem, 4vw, 1.5rem) 1.25rem clamp(1rem, 2vw, 1.5rem);
-  overflow: hidden;
+  padding: clamp(1.25rem, 4vw, 1.5rem) 1.25rem clamp(3rem, 8vw, 5rem);
 }
 
 /* ---- 상단 바: 뒤로가기 + 저장 버튼 ---- */
@@ -30,7 +21,6 @@
   gap: clamp(1.25rem, 3vw, 2rem);
   align-items: center;
   margin-bottom: 0.5rem;
-  flex-shrink: 0;
 }
 
 /* 왼쪽 상단 고정 햄버거 버튼(.hamburger-btn, App.css)과 같은 자리에 겹치지 않도록
@@ -108,10 +98,27 @@
   transform: translate(3px, 3px);
   box-shadow: 0 0 0 0 var(--ink);
 }
+.result-save-btn.is-saved {
+  background: var(--accent);
+  border-color: var(--ink);
+}
+.result-save-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* 저장 실패/저장 불가 안내 — result-topbar 바로 아래에 붙는다. */
+.result-save-error {
+  margin: 0.4rem 0 0.5rem;
+  text-align: right;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: #a53a3a;
+}
 
 /* 저장 버튼을 눌렀을 때 뜨는 "로그인이 필요해요" 팝업(Overlay 재사용) 안의 안내 문구. */
 .overlay-message {
-  margin: 0;
+  margin: 0 0 1rem;
   font-size: 0.8rem;
   line-height: 1.7;
   color: var(--ink);
@@ -170,14 +177,13 @@
   display: grid;
   grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
   gap: clamp(1.25rem, 3vw, 2rem);
-  align-items: stretch;
-  flex: 1;
-  min-height: 0;
+  align-items: start;
 }
 
 /* ---- 왼쪽: 제품 사진 / 촬영한 사진 ---- */
 .photo-panel {
-  height: 100%;
+  position: sticky;
+  top: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
@@ -185,7 +191,6 @@
 
 .photo-panel-img,
 .photo-panel-placeholder {
-  flex-shrink: 0;
   width: 100%;
   aspect-ratio: 3 / 4;
   border: var(--border-w) solid var(--ink);
@@ -206,19 +211,16 @@
   opacity: 0.55;
 }
 
-/* ---- 사진 밑 추천 제품 칸 — 뒤집기 없이 항상 보이는 정적인 목록 ----
-   margin-top:auto로 사진 상자 아래 남는 공간을 전부 위쪽으로 밀어내, 이 칸이 .photo-panel
-   맨 아래(=오른쪽 .flip-card-inner 아래쪽)에 붙는다. 모바일(스택 레이아웃)에서는 이 여백을
-   기대할 필요가 없어 미디어 쿼리에서 고정 간격으로 되돌린다. */
+/* ---- 사진 밑 추천 제품 칸 — 뒤집기 없이 항상 보이는 정적인 목록 ---- */
 .photo-reco-section {
-  margin-top: auto;
+  margin-top: 0.2rem;
 }
 .photo-reco-title {
   margin: 0 0 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
 }
 .photo-reco-title .cursor {
@@ -234,12 +236,8 @@
   gap: 0.4rem;
 }
 /* 브랜드·이름을 한 줄로 붙여서 항목 높이를 압축한다 — 그래야 세 번째 항목의 아래쪽이
-   오른쪽 성분 카드(.flip-card-inner)의 아래쪽과 맞춰진다. 길면 말줄임표로 자른다.
-   클릭하면 그 제품의 결과 화면으로 이동하는 버튼이라 <button> 기본 스타일을 리셋했다. */
+   오른쪽 성분 카드(.flip-card-inner)의 아래쪽과 맞춰진다. 길면 말줄임표로 자른다. */
 .photo-reco-item {
-  appearance: none;
-  width: 100%;
-  cursor: pointer;
   display: flex;
   align-items: baseline;
   padding: 0.53rem 0.65rem;
@@ -247,39 +245,23 @@
   border: 2px solid var(--ink);
   border-radius: var(--radius-sm);
   box-shadow: 2px 2px 0 0 var(--ink);
-  font-family: inherit;
   font-size: 0.75rem;
   line-height: 1.3;
-  text-align: left;
   overflow: hidden;
   white-space: nowrap;
-  transition: border-color 0.12s, box-shadow 0.12s;
-}
-.photo-reco-item:hover,
-.photo-reco-item:focus-visible {
-  border-color: var(--accent-dark);
-  box-shadow: 2px 2px 0 0 var(--accent-dark);
-  outline: none;
-}
-.photo-reco-item:active {
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 0 var(--ink);
 }
 .photo-reco-brand {
   flex-shrink: 0;
-  margin: 2px 0;
   font-size: 0.6rem;
   letter-spacing: 0.04em;
-  color: rgba(31, 37, 23, 0.75); /* --ink-soft(0.55)보다 진하게 */
+  color: var(--ink-soft);
 }
 .photo-reco-sep {
   flex-shrink: 0;
-  margin: 2px 0;
   color: var(--ink-soft);
 }
 .photo-reco-name {
   min-width: 0;
-  margin: 2px 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -289,15 +271,14 @@
    ========================================================= */
 .flip-card {
   perspective: 1800px;
-  height: 100%;
 }
 
 .flip-card-inner {
   position: relative;
-  /* .result-layout(flex:1)이 뷰포트에서 topbar를 뺀 나머지 전부를 차지하고, 이 카드는 그
-     칸을 100%로 채운다 — 페이지 자체는 스크롤 없이 한 화면에 맞고, 카드 내용이 넘치는 만큼만
-     .flip-card-face의 overflow-y:auto가 카드 안에서 스크롤 처리한다. */
-  height: 100%;
+  /* 위쪽(사진과 같은 시작선)은 그대로 두고 아래로만 더 키운다 — 그래도 전체 페이지가
+     스크롤되지 않도록 뷰포트 높이 기준(vh)으로 상한을 둔다. 상단 바 여백을 줄이면서 생긴
+     여유만큼 73vh로 한 번 더 살짝 늘렸다 — 위쪽(사진과의 시작선)은 그대로, 아래쪽만 더 늘어난다. */
+  height: clamp(430px, 73vh, 800px);
   transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
   transform-style: preserve-3d;
 }
@@ -320,6 +301,16 @@
   transition: border-color 0.12s, box-shadow 0.12s;
 }
 
+.flip-card-front {
+  cursor: pointer;
+}
+.flip-card-front:hover,
+.flip-card-front:focus-visible {
+  border-color: var(--accent-dark);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--accent-dark);
+  outline: none;
+}
+
 .flip-card-back {
   transform: rotateY(180deg);
   /* 카드 뒷면은 "전성분 · 배합목적" 제목(.ing-list-title)만 픽셀 폰트로 남기고
@@ -338,10 +329,10 @@
   border: 2px solid var(--ink);
   border-radius: var(--radius-sm);
   box-shadow: 3px 3px 0 0 var(--ink);
-  padding: 0.3875rem 0.7875rem;
+  padding: 0.4rem 0.8rem;
   margin-bottom: 1.1rem;
   font-family: var(--font-noto);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   color: var(--ink);
   transition: background 0.12s;
 }
@@ -386,33 +377,18 @@
 }
 .result-product-name {
   margin: 0;
-  font-size: 0.845rem;
+  font-size: 0.72rem;
   color: var(--ink-soft);
 }
-/* 예전엔 카드 앞면 전체가 클릭 영역이었지만, 지금은 이 버튼만 눌러야 카드가 뒤집힌다
-   (ResultSummaryPanel의 onFlip 참고) — 그래서 <p>가 아니라 <button>이고, 버튼 기본
-   스타일(테두리/배경)을 지우고 기존 텍스트 힌트 모양 그대로 유지한다. */
 .result-flip-hint {
-  appearance: none;
-  background: none;
-  border: none;
-  cursor: pointer;
   flex-shrink: 0;
   margin: 0;
-  padding: 0;
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  font-family: inherit;
-  font-size: 0.743rem;
+  font-size: 0.68rem;
   color: var(--ink-soft);
   text-align: right;
-  transition: color 0.12s;
-}
-.result-flip-hint:hover,
-.result-flip-hint:focus-visible {
-  color: var(--accent-dark);
-  outline: none;
 }
 .result-flip-hint .cursor {
   color: var(--accent-dark);
@@ -427,36 +403,12 @@
    읽어야 하는 자리"라는 게 느껴진다. margin-top은 제품명 줄과 살짝 붙이고, margin-bottom도
    줄여서 핵심 성분 카드가 카드 앞면 안에서 스크롤 없이 다 보이도록 전체를 위로 당긴다. */
 .result-headline {
-  margin: 0.1125rem 0 0.2625rem;
-  padding: 2px 0;
+  margin: 0.05rem 0 0.2rem;
   font-family: var(--font-noto); /* 카드 뒷면 본문과 같은 가독성 폰트 — 픽셀 폰트보다 긴 문장이 편하게 읽힌다 */
-  font-size: clamp(1.175rem, 4vw, 1.475rem);
+  font-size: clamp(1.3rem, 4vw, 1.6rem);
   font-weight: bold;
   line-height: 1.5;
   color: var(--ink);
-}
-
-/* 올리브영 검색 결과 페이지 링크 — 한 문장 요약 바로 아래, 핵심 성분 섹션 전에 붙인다. */
-.result-oliveyoung-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin: 0 0 0.3rem;
-  font-family: var(--font-kr);
-  font-size: 0.7rem;
-  letter-spacing: 0.02em;
-  color: var(--ink-soft);
-  text-decoration: none;
-}
-.result-oliveyoung-link:hover,
-.result-oliveyoung-link:focus-visible {
-  color: var(--accent-dark);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  outline: none;
-}
-.result-oliveyoung-link .cursor {
-  color: var(--accent-dark);
 }
 
 /* ---- 2~4. 핵심 성분 / 성분 구성을 살펴보면 / 사용 전 확인해 주세요 공통 섹션 껍데기 ----
@@ -476,7 +428,7 @@
 .result-section-title {
   margin: 0 0 0.6rem;
   font-family: var(--font-kr);
-  font-size: 0.813rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   color: var(--ink-soft);
   display: flex;
@@ -528,13 +480,13 @@
 .result-ing-chip-name {
   font-family: var(--font-noto); /* 한 문장 요약과 같은 가독성 폰트 — 성분명이 픽셀 폰트보다 또렷하게 읽힌다 */
   font-weight: 700;
-  font-size: 0.923rem;
+  font-size: 0.86rem;
   line-height: 1.25;
   color: #fff;
 }
 .result-ing-chip-purpose {
   font-weight: 500;
-  font-size: 0.643rem;
+  font-size: 0.58rem;
   line-height: 1.4;
   color: #fff;
 }
@@ -551,10 +503,10 @@
   gap: 0.4rem;
 }
 .result-ing-chips--few .result-ing-chip-name {
-  font-size: 1.013rem;
+  font-size: 0.95rem;
 }
 .result-ing-chips--few .result-ing-chip-purpose {
-  font-size: 0.683rem;
+  font-size: 0.62rem;
 }
 
 /* 1개: 카드 하나가 가로를 꽉 채우는 히어로 상자 — 한 문장 요약(.result-headline) 다음으로
@@ -567,17 +519,17 @@
   gap: 0.45rem;
 }
 .result-ing-chips--single .result-ing-chip-name {
-  font-size: 1.113rem;
+  font-size: 1.05rem;
 }
 .result-ing-chips--single .result-ing-chip-purpose {
-  font-size: 0.743rem;
+  font-size: 0.68rem;
 }
 
 /* ---- 3. 성분 구성을 살펴보면 ---- */
 .result-explain {
   margin: 0;
   font-family: var(--font-noto);
-  font-size: 0.863rem;
+  font-size: 0.8rem;
   line-height: 1.75;
   color: var(--ink);
 }
@@ -602,15 +554,36 @@
   margin: 0;
   font-family: var(--font-noto); /* 성분명·요약 문장과 같은 가독성 폰트로 통일 */
   font-weight: bold;
-  font-size: 0.843rem;
+  font-size: 0.78rem;
   color: var(--ink);
 }
 .result-caution-reason {
   margin: 0.3rem 0 0;
   font-family: var(--font-noto);
-  font-size: 0.783rem;
+  font-size: 0.72rem;
   line-height: 1.65;
   color: var(--ink-soft);
+}
+
+/* 내 피부 타입 기준 주의 성분 전용 — 전성분표 상위 5개(label_rank 기준)에 드는지
+   표시하는 태그. 상위권일수록 배합량이 많다고 추정되니("다량 함유") accent로 강조하고,
+   그 밖은 미량 추정("미량 함유")이라 옅은 톤으로 낮춘다 (app/skin_fit.py 참고). */
+.result-caution-position {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.08rem 0.42rem;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  font-family: var(--font-kr);
+  font-weight: 400;
+  font-size: 0.6rem;
+  vertical-align: middle;
+  color: var(--ink-soft);
+  background: var(--panel);
+}
+.result-caution-position--key {
+  color: var(--ink);
+  background: var(--accent);
 }
 
 /* ---- 전성분 리스트 (카드 뒷면) ---- */
@@ -648,12 +621,12 @@
 .ing-row {
   display: flex;
   align-items: flex-start;
-  gap: 0.85rem;
+  gap: 0.7rem;
   background: var(--panel);
   border: 2px solid var(--ink);
   border-radius: var(--radius-sm);
   box-shadow: 3px 3px 0 0 var(--ink);
-  padding: 0.85rem 1.05rem;
+  padding: 0.6rem 0.8rem;
   cursor: pointer;
   transition: border-color 0.12s, box-shadow 0.12s;
 }
@@ -681,10 +654,10 @@
 
 .ing-badge {
   flex-shrink: 0;
-  width: 3.4rem;
+  width: 3rem;
   text-align: center;
   padding: 0.25rem 0;
-  font-size: 0.725rem;
+  font-size: 0.6rem;
   letter-spacing: 0.02em;
   border: 2px solid var(--ink);
   border-radius: var(--radius-sm);
@@ -692,14 +665,12 @@
   color: var(--ink);
 }
 .ing-badge--star {
-  background: var(--accent-dark); /* #6ba32e */
-  color: #fff;
-  font-weight: 600;
+  background: var(--accent);
+  color: var(--ink);
 }
 .ing-badge--good {
   background: var(--accent-soft);
   color: var(--ink);
-  font-weight: 600;
 }
 /* 규제 정보(restricted)가 있는 성분은 등급과 무관하게 이 배지를 최우선으로 받는다
    (getIngredientBadge 참고) — 카드 앞면의 "사용 전 확인해 주세요" 상자와 같은 --sub 톤. */
@@ -714,24 +685,22 @@
 }
 .ing-name {
   margin: 0;
-  font-size: 0.925rem;
-  font-weight: bold;
+  font-size: 0.8rem;
   line-height: 1.4;
 }
 .ing-name-en {
-  font-size: 0.775rem;
-  font-weight: normal;
+  font-size: 0.65rem;
   color: var(--ink-soft);
 }
 .ing-reason {
   margin: 0.2rem 0 0;
-  font-size: 0.805rem;
-  color: rgba(31, 37, 23, 0.75); /* --ink-soft(0.55)보다 진하게 */
+  font-size: 0.68rem;
+  color: var(--ink-soft);
 }
 .ing-pill {
   display: inline-block;
   margin-top: 0.35rem;
-  font-size: 0.745rem;
+  font-size: 0.62rem;
   background: var(--accent);
   border: 1.5px solid var(--ink);
   border-radius: 4px;
@@ -781,15 +750,10 @@
   border-radius: var(--radius-sm);
   padding: 0.8rem 0.9rem;
 }
-.ing-detail-section p {
-  margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.7;
-  color: var(--ink);
-}
+.ing-detail-section p,
 .ing-detail-section ul {
   margin: 0;
-  font-size: 0.905rem;
+  font-size: 0.78rem;
   line-height: 1.7;
   color: var(--ink);
 }
@@ -885,30 +849,16 @@
    반응형 — 860px 미만은 사진 → 카드 순으로 세로 스택
    ========================================================= */
 @media (max-width: 860px) {
-  /* 데스크톱 전용 "한 화면에 딱 맞추기"(.result-view height:100vh + overflow:hidden)를
-     되돌린다 — 스택 레이아웃은 내용이 길어 페이지 자체가 스크롤돼야 한다. */
-  .result-view {
-    display: block;
-    height: auto;
-    overflow: visible;
-    padding-bottom: clamp(3rem, 8vw, 5rem);
-  }
   .result-layout {
     grid-template-columns: 1fr;
   }
   .photo-panel {
-    height: auto;
+    position: static;
     max-width: 220px;
     margin: 0 auto;
   }
-  .photo-reco-section {
-    margin-top: 0.2rem;
-  }
-  .flip-card {
-    height: auto;
-  }
   .flip-card-inner {
-    height: clamp(420px, 80vh, 750px);
+    height: clamp(390px, 77vh, 700px);
   }
 }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Ingredient, IngredientResultProduct } from '../data/ingredientResult';
+import type { SkinRiskInfo } from './ResultView';
 import ResultSummaryPanel from './ResultSummaryPanel';
 import IngredientList from './IngredientList';
 import IngredientDetail from './IngredientDetail';
@@ -10,12 +11,12 @@ interface ResultCardProps {
   ingredients: Ingredient[];
   /** 스캔(OCR)으로 들어왔으면 제품명 대신 "스캔한 제품"으로 표시한다 (ResultSummaryPanel 참고). */
   isScan: boolean;
+  /** 마이페이지 피부 타입 ↔ 이 제품 위험 성분 연동 결과 (ResultView.tsx에서 조회). */
+  skinRisk: SkinRiskInfo;
 }
 
 /**
- * 결과 화면 오른쪽 — 카드 형태로, 앞면(요약) 우측 상단의 "카드를 눌러 전성분 N개 보기" 버튼을
- * 클릭하면 뒤집혀서 뒷면(전성분 나열+설명)이 보인다(ResultSummaryPanel의 onFlip 참고 — 앞면
- * 전체가 아니라 이 버튼만 클릭 영역이다).
+ * 결과 화면 오른쪽 — 카드 형태로, 앞면(요약)을 클릭하면 뒤집혀서 뒷면(전성분 나열+설명)이 보인다.
  * 두 면은 절대 위치로 겹쳐 있고(backface-visibility: hidden), 카드 자체 높이는 고정폭이라
  * 뒷면(리스트가 긴 쪽)은 내부 스크롤로 담는다 (ResultView.css 참고).
  *
@@ -23,7 +24,7 @@ interface ResultCardProps {
  * 그 성분의 상세 뷰(IngredientDetail)가 뒷면 전체를 차지한다. 이 상태는 `selectedIngredient`로
  * 관리하며, 카드가 앞면으로 뒤집힐 때는 항상 초기화해 다음에 뒷면을 다시 열면 목록부터 보인다.
  */
-export default function ResultCard({ product, ingredients, isScan }: ResultCardProps) {
+export default function ResultCard({ product, ingredients, isScan, skinRisk }: ResultCardProps) {
   const [flipped, setFlipped] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const totalCount = ingredients.length;
@@ -32,6 +33,13 @@ export default function ResultCard({ product, ingredients, isScan }: ResultCardP
   const flipToFront = () => {
     setFlipped(false);
     setSelectedIngredient(null);
+  };
+
+  const handleFrontKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      flipToBack();
+    }
   };
 
   // 뒷면 상단 "◀" 버튼 — 상세 뷰가 열려 있으면 한 단계만 목록으로, 아니면 앞면으로 되돌아간다.
@@ -46,16 +54,17 @@ export default function ResultCard({ product, ingredients, isScan }: ResultCardP
   return (
     <div className={`flip-card${flipped ? ' is-flipped' : ''}`}>
       <div className="flip-card-inner">
-        {/* 앞면: 요약 페이지 — 카드 전체가 아니라 ResultSummaryPanel 안의 "카드를 눌러
-            전성분 N개 보기" 버튼(onFlip)만 뒤집기를 트리거한다. */}
-        <div className="flip-card-face flip-card-front">
-          <ResultSummaryPanel
-            product={product}
-            totalCount={totalCount}
-            isScan={isScan}
-            isFlipped={flipped}
-            onFlip={flipToBack}
-          />
+        {/* 앞면: 요약 페이지 */}
+        <div
+          className="flip-card-face flip-card-front"
+          role="button"
+          tabIndex={0}
+          aria-expanded={flipped}
+          aria-label={`카드를 눌러 전성분 ${totalCount}개 보기`}
+          onClick={flipToBack}
+          onKeyDown={handleFrontKeyDown}
+        >
+          <ResultSummaryPanel product={product} totalCount={totalCount} isScan={isScan} skinRisk={skinRisk} />
         </div>
 
         {/* 뒷면: 전성분 나열 + 배합목적 설명. 성분을 클릭하면 상세 뷰가 이 면 전체를 차지한다. */}

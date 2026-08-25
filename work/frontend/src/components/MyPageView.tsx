@@ -1,11 +1,9 @@
-import { useState, type KeyboardEvent } from 'react';
-import {
-  MOCK_SAVED_RESULTS,
-  MOCK_SKIN_PROFILE,
-  MOCK_USER,
-  SKIN_TYPE_OPTIONS,
-  type SavedResult,
-} from '../data/myPage';
+import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { ApiError } from '../api/client';
+import { getSkinProfile, listSavedResults, unsaveResult, updateMe, updateSkinProfile } from '../api/users';
+import type { SkinProfile } from '../api/types';
+import { SKIN_TYPE_OPTIONS, toSavedResult, type SavedResult } from '../data/myPage';
 import '../MyPageView.css';
 
 interface MyPageViewProps {
@@ -14,42 +12,156 @@ interface MyPageViewProps {
   onSelectSavedResult: (result: SavedResult) => void;
 }
 
-const GRADE_LABEL: Record<SavedResult['grade'], string> = {
+const GRADE_LABEL: Record<NonNullable<SavedResult['grade']>, string> = {
   star: '베스트',
   good: '순한 편',
   base: '주의 필요',
 };
 
+function errorMessage(err: unknown): string {
+  if (err instanceof ApiError) return err.message;
+  return '네트워크 상태를 확인하고 다시 시도해주세요.';
+}
+
+type FetchStatus = 'loading' | 'done' | 'error';
+
 /**
  * 마이페이지 — 회원정보 / 저장한 결과 / 나의 피부 프로필·주의 성분 / 설정 4개 섹션.
- * 오버레이가 아니라 ResultView와 동일한 "페이지 전체 전환" 패턴을 쓴다 — 내용이 길어
- * 스크롤이 깊고, 저장한 결과 카드에서 다시 ResultView로 더 들어갈 수 있어야 하기 때문
- * (App.tsx의 resultRequest/ mypageOpen 상태 참고).
+ * 오버레이가 아니라 ResultView와 동일한 "페이지 전체 전환" 패턴을 쓴다 (App.tsx 참고).
  *
- * 로그인/회원가입은 아직 없다(App.tsx·CLAUDE.md 참고) — 여기 보이는 회원정보·저장한 결과·
- * 피부 프로필은 전부 목 데이터이고, "로그인 연동 준비 중"인 액션(로그아웃/회원 탈퇴/정보 수정)은
- * 비활성 처리해뒀다. 피부 프로필·알림 설정은 이 화면 안에서만 로컬 상태로 바뀌고 새로고침하면
- * 초기 목값으로 돌아간다 — 실제 저장은 백엔드 연동 후에 붙는다.
+ * App.tsx가 로그인 상태일 때만 이 화면을 띄우므로 useAuth().user는 항상 값이 있다고 가정한다.
+ * 회원정보(닉네임/이메일/가입일/알림설정)는 AuthContext가 이미 들고 있어 별도 조회가 필요
+ * 없고, 피부 프로필·저장한 결과만 이 화면에서 따로 불러온다. 각 섹션은 실패해도 서로에게
+ * 영향을 주지 않도록 로딩/에러 상태를 독립적으로 관리한다.
  */
 export default function MyPageView({ onBack, onSelectSavedResult }: MyPageViewProps) {
-  const [savedResults, setSavedResults] = useState<SavedResult[]>(MOCK_SAVED_RESULTS);
-  const [skinTypes, setSkinTypes] = useState<string[]>(MOCK_SKIN_PROFILE.skinTypes);
-  const [watchedIngredients, setWatchedIngredients] = useState<string[]>(MOCK_SKIN_PROFILE.watchedIngredients);
-  const [ingredientInput, setIngredientInput] = useState('');
-  const [notifyAlerts, setNotifyAlerts] = useState(true);
+  const { user, setUser, logout } = useAuth();
 
+  // ---- 저장한 결과 ----
+  const [savedStatus, setSavedStatus] = useState<FetchStatus>('loading');
+  const [savedResults, setSavedResults] = useState<SavedResult[]>([]);
+  const [savedError, setSavedError] = useState<string | null>(null);
+
+  // ---- 피부 프로필 ----
+  const [skinStatus, setSkinStatus] = useState<FetchStatus>('loading');
+  const [skinProfile, setSkinProfile] = useState<SkinProfile | null>(null);
+  const [skinLoadError, setSkinLoadError] = useState<string | null>(null);
+  const [skinSaveError, setSkinSaveError] = useState<string | null>(null);
+  const [ingredientInput, setIngredientInput] = useState('');
+
+  // ---- 회원정보 수정 ----
+  const [editingNickname, setEditingNickname] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState(user?.nickname ?? '');
+  const [savingNickname, setSavingNickname] = useState(false);
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
+
+  // ---- 설정 ----
+  const [notifySaving, setNotifySaving] = useState(false);
+  const [notifyError, setNotifyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    listSavedResults()
+      .then((results) => {
+        if (cancelled) return;
+        setSavedResults(results.map(toSavedResult));
+        setSavedStatus('done');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSavedError(errorMessage(err));
+        setSavedStatus('error');
+      });
+
+    getSkinProfile()
+      .then((profile) => {
+        if (cancelled) return;
+        setSkinProfile(profile);
+        setSkinStatus('done');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSkinLoadError(errorMessage(err));
+        setSkinStatus('error');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!user) return null;
+
+  // ---- 회원정보 수정 ----
+  const startEditNickname = () => {
+    setNicknameDraft(user.nickname);
+    setNicknameError(null);
+    setEditingNickname(true);
+  };
+
+  const saveNickname = async () => {
+    const value = nicknameDraft.trim();
+    if (!value || savingNickname) return;
+    setSavingNickname(true);
+    setNicknameError(null);
+    try {
+      const updated = await updateMe({ nickname: value });
+      setUser(updated);
+      setEditingNickname(false);
+    } catch (err) {
+      setNicknameError(errorMessage(err));
+    } finally {
+      setSavingNickname(false);
+    }
+  };
+
+  // ---- 저장한 결과 ----
+  const unsaveResultCard = async (id: string) => {
+    const prev = savedResults;
+    setSavedResults((list) => list.filter((r) => r.id !== id));
+    setSavedError(null);
+    try {
+      await unsaveResult(id);
+    } catch (err) {
+      setSavedResults(prev);
+      setSavedError(errorMessage(err));
+    }
+  };
+
+  // ---- 피부 프로필 ----
   const toggleSkinType = (type: string) => {
-    setSkinTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
+    if (!skinProfile) return;
+    const nextTypes = skinProfile.skin_types.includes(type)
+      ? skinProfile.skin_types.filter((t) => t !== type)
+      : [...skinProfile.skin_types, type];
+    const prev = skinProfile;
+    setSkinProfile({ ...skinProfile, skin_types: nextTypes });
+    setSkinSaveError(null);
+    updateSkinProfile({ skin_types: nextTypes })
+      .then(setSkinProfile)
+      .catch((err) => {
+        setSkinProfile(prev);
+        setSkinSaveError(errorMessage(err));
+      });
   };
 
   const addWatchedIngredient = () => {
+    if (!skinProfile) return;
     const value = ingredientInput.trim();
-    if (!value || watchedIngredients.includes(value)) {
-      setIngredientInput('');
-      return;
-    }
-    setWatchedIngredients((prev) => [...prev, value]);
     setIngredientInput('');
+    if (!value || skinProfile.watched_ingredients.includes(value)) return;
+
+    const nextIngredients = [...skinProfile.watched_ingredients, value];
+    const prev = skinProfile;
+    setSkinProfile({ ...skinProfile, watched_ingredients: nextIngredients });
+    setSkinSaveError(null);
+    updateSkinProfile({ watched_ingredients: nextIngredients })
+      .then(setSkinProfile)
+      .catch((err) => {
+        setSkinProfile(prev);
+        setSkinSaveError(errorMessage(err));
+      });
   };
 
   const handleIngredientKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -60,11 +172,36 @@ export default function MyPageView({ onBack, onSelectSavedResult }: MyPageViewPr
   };
 
   const removeWatchedIngredient = (value: string) => {
-    setWatchedIngredients((prev) => prev.filter((v) => v !== value));
+    if (!skinProfile) return;
+    const nextIngredients = skinProfile.watched_ingredients.filter((v) => v !== value);
+    const prev = skinProfile;
+    setSkinProfile({ ...skinProfile, watched_ingredients: nextIngredients });
+    setSkinSaveError(null);
+    updateSkinProfile({ watched_ingredients: nextIngredients })
+      .then(setSkinProfile)
+      .catch((err) => {
+        setSkinProfile(prev);
+        setSkinSaveError(errorMessage(err));
+      });
   };
 
-  const unsaveResult = (id: string) => {
-    setSavedResults((prev) => prev.filter((r) => r.id !== id));
+  // ---- 설정 ----
+  const toggleNotifyAlerts = async () => {
+    if (notifySaving) return;
+    const prev = user;
+    const next = !user.notify_alerts;
+    setUser({ ...user, notify_alerts: next });
+    setNotifySaving(true);
+    setNotifyError(null);
+    try {
+      const updated = await updateMe({ notify_alerts: next });
+      setUser(updated);
+    } catch (err) {
+      setUser(prev);
+      setNotifyError(errorMessage(err));
+    } finally {
+      setNotifySaving(false);
+    }
   };
 
   return (
@@ -87,20 +224,60 @@ export default function MyPageView({ onBack, onSelectSavedResult }: MyPageViewPr
         <div className="mypage-account-card">
           <div className="mypage-account-row">
             <span className="mypage-account-label">닉네임</span>
-            <span className="mypage-account-value">{MOCK_USER.nickname}</span>
+            {editingNickname ? (
+              <input
+                type="text"
+                className="search-input login-input"
+                value={nicknameDraft}
+                onChange={(e) => setNicknameDraft(e.target.value)}
+                aria-label="닉네임 수정"
+                autoFocus
+              />
+            ) : (
+              <span className="mypage-account-value">{user.nickname}</span>
+            )}
           </div>
           <div className="mypage-account-row">
             <span className="mypage-account-label">이메일</span>
-            <span className="mypage-account-value">{MOCK_USER.email}</span>
+            <span className="mypage-account-value">{user.email}</span>
           </div>
           <div className="mypage-account-row">
             <span className="mypage-account-label">가입일</span>
-            <span className="mypage-account-value">{MOCK_USER.joinedAt}</span>
+            <span className="mypage-account-value">{user.joined_at.slice(0, 10)}</span>
           </div>
-          <p className="mypage-demo-note">체험용 데모 계정이에요 · 로그인/회원가입 연동 준비 중</p>
-          <button type="button" className="mypage-ghost-btn" disabled title="로그인 연동 준비 중">
-            회원정보 수정
-          </button>
+
+          {nicknameError && <p className="login-error">{nicknameError}</p>}
+
+          {editingNickname ? (
+            <div className="mypage-ingredient-add">
+              <button
+                type="button"
+                className="mypage-ghost-btn"
+                onClick={saveNickname}
+                disabled={savingNickname}
+              >
+                {savingNickname ? (
+                  <>
+                    <span className="spinner" aria-hidden="true" /> 저장 중...
+                  </>
+                ) : (
+                  '저장'
+                )}
+              </button>
+              <button
+                type="button"
+                className="mypage-ghost-btn"
+                onClick={() => setEditingNickname(false)}
+                disabled={savingNickname}
+              >
+                취소
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="mypage-ghost-btn" onClick={startEditNickname}>
+              회원정보 수정
+            </button>
+          )}
         </div>
       </section>
 
@@ -108,36 +285,58 @@ export default function MyPageView({ onBack, onSelectSavedResult }: MyPageViewPr
       <section className="mypage-section" aria-labelledby="mypage-saved-heading">
         <h2 className="mypage-section-title" id="mypage-saved-heading">
           저장한 결과
-          <span className="mypage-section-count">{savedResults.length}개</span>
+          {savedStatus === 'done' && <span className="mypage-section-count">{savedResults.length}개</span>}
         </h2>
 
-        {savedResults.length === 0 ? (
+        {savedStatus === 'loading' && (
+          <p className="results-status">
+            <span className="spinner" aria-hidden="true" /> 불러오는 중...
+          </p>
+        )}
+
+        {savedStatus === 'error' && (
+          <div className="error-banner" role="alert">
+            {savedError}
+          </div>
+        )}
+
+        {savedStatus === 'done' && savedError && (
+          <p className="login-error" role="alert">
+            {savedError}
+          </p>
+        )}
+
+        {savedStatus === 'done' && savedResults.length === 0 && (
           <div className="results-empty">
             <p>아직 저장한 결과가 없어요.</p>
             <p className="results-empty-sub">전성분 결과 화면에서 저장하면 여기에 모여요.</p>
           </div>
-        ) : (
+        )}
+
+        {savedStatus === 'done' && savedResults.length > 0 && (
           <div className="mypage-saved-grid">
             {savedResults.map((result) => (
               <div className="mypage-saved-card" key={result.id}>
                 <button
                   type="button"
                   className="mypage-saved-card-remove"
-                  onClick={() => unsaveResult(result.id)}
+                  onClick={() => unsaveResultCard(result.id)}
                   aria-label={`${result.productName} 저장 해제`}
                   title="저장 해제"
                 >
                   ✕
                 </button>
                 <button type="button" className="mypage-saved-card-main" onClick={() => onSelectSavedResult(result)}>
-                  <span className={`ing-badge ing-badge--${result.grade} mypage-saved-badge`}>
-                    {GRADE_LABEL[result.grade]}
-                  </span>
-                  <span className="mypage-saved-brand">{result.brand}</span>
+                  {result.grade && (
+                    <span className={`ing-badge ing-badge--${result.grade} mypage-saved-badge`}>
+                      {GRADE_LABEL[result.grade]}
+                    </span>
+                  )}
+                  <span className="mypage-saved-brand">{result.brand ?? '브랜드 정보 없음'}</span>
                   <span className="mypage-saved-name">{result.productName}</span>
-                  <span className="mypage-saved-meta">
-                    주의 성분 {result.cautionCount}개 · {result.savedAt} 저장
-                  </span>
+                  {result.cautionCount != null && (
+                    <span className="mypage-saved-meta">주의 성분 {result.cautionCount}개</span>
+                  )}
                 </button>
               </div>
             ))}
@@ -154,54 +353,69 @@ export default function MyPageView({ onBack, onSelectSavedResult }: MyPageViewPr
           등록해두면 다음 검색·스캔 결과에서 해당 성분이 나올 때 먼저 표시해줄 예정이에요.
         </p>
 
-        <div className="mypage-profile-card">
-          <p className="mypage-profile-label">피부 타입 (복수 선택 가능)</p>
-          <div className="mypage-chip-row">
-            {SKIN_TYPE_OPTIONS.map((type) => (
-              <button
-                key={type}
-                type="button"
-                className={`mypage-chip${skinTypes.includes(type) ? ' is-active' : ''}`}
-                aria-pressed={skinTypes.includes(type)}
-                onClick={() => toggleSkinType(type)}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
+        {skinStatus === 'loading' && (
+          <p className="results-status">
+            <span className="spinner" aria-hidden="true" /> 불러오는 중...
+          </p>
+        )}
 
-          <p className="mypage-profile-label mypage-profile-label--spaced">주의하고 싶은 성분</p>
-          <div className="mypage-chip-row">
-            {watchedIngredients.map((ingredient) => (
-              <span className="mypage-chip mypage-chip--tag" key={ingredient}>
-                {ingredient}
+        {skinStatus === 'error' && (
+          <div className="error-banner" role="alert">
+            {skinLoadError}
+          </div>
+        )}
+
+        {skinStatus === 'done' && skinProfile && (
+          <div className="mypage-profile-card">
+            <p className="mypage-profile-label">피부 타입 (복수 선택 가능)</p>
+            <div className="mypage-chip-row">
+              {SKIN_TYPE_OPTIONS.map((type) => (
                 <button
+                  key={type}
                   type="button"
-                  className="mypage-chip-remove"
-                  onClick={() => removeWatchedIngredient(ingredient)}
-                  aria-label={`${ingredient} 삭제`}
+                  className={`mypage-chip${skinProfile.skin_types.includes(type) ? ' is-active' : ''}`}
+                  aria-pressed={skinProfile.skin_types.includes(type)}
+                  onClick={() => toggleSkinType(type)}
                 >
-                  ✕
+                  {type}
                 </button>
-              </span>
-            ))}
+              ))}
+            </div>
+
+            <p className="mypage-profile-label mypage-profile-label--spaced">주의하고 싶은 성분</p>
+            <div className="mypage-chip-row">
+              {skinProfile.watched_ingredients.map((ingredient) => (
+                <span className="mypage-chip mypage-chip--tag" key={ingredient}>
+                  {ingredient}
+                  <button
+                    type="button"
+                    className="mypage-chip-remove"
+                    onClick={() => removeWatchedIngredient(ingredient)}
+                    aria-label={`${ingredient} 삭제`}
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="mypage-ingredient-add">
+              <input
+                type="text"
+                className="mypage-ingredient-input"
+                placeholder="예: 파라벤"
+                value={ingredientInput}
+                onChange={(e) => setIngredientInput(e.target.value)}
+                onKeyDown={handleIngredientKeyDown}
+                aria-label="주의 성분 추가"
+              />
+              <button type="button" className="mypage-ghost-btn" onClick={addWatchedIngredient}>
+                추가
+              </button>
+            </div>
+            {skinSaveError && <p className="login-error">{skinSaveError}</p>}
+            <p className="mypage-demo-note">변경사항은 자동으로 저장돼요.</p>
           </div>
-          <div className="mypage-ingredient-add">
-            <input
-              type="text"
-              className="mypage-ingredient-input"
-              placeholder="예: 파라벤"
-              value={ingredientInput}
-              onChange={(e) => setIngredientInput(e.target.value)}
-              onKeyDown={handleIngredientKeyDown}
-              aria-label="주의 성분 추가"
-            />
-            <button type="button" className="mypage-ghost-btn" onClick={addWatchedIngredient}>
-              추가
-            </button>
-          </div>
-          <p className="mypage-demo-note">지금은 이 화면 안에서만 임시로 기억돼요 · 로그인 연동 후 계정에 저장돼요</p>
-        </div>
+        )}
       </section>
 
       {/* ---- 설정 ---- */}
@@ -214,17 +428,19 @@ export default function MyPageView({ onBack, onSelectSavedResult }: MyPageViewPr
             type="button"
             className="mypage-toggle-row"
             role="switch"
-            aria-checked={notifyAlerts}
-            onClick={() => setNotifyAlerts((v) => !v)}
+            aria-checked={user.notify_alerts}
+            onClick={toggleNotifyAlerts}
+            disabled={notifySaving}
           >
-            <span className={`mypage-toggle-box${notifyAlerts ? ' is-on' : ''}`} aria-hidden="true">
-              {notifyAlerts ? '✓' : ''}
+            <span className={`mypage-toggle-box${user.notify_alerts ? ' is-on' : ''}`} aria-hidden="true">
+              {notifySaving ? <span className="spinner" aria-hidden="true" /> : user.notify_alerts ? '✓' : ''}
             </span>
             <span className="mypage-toggle-text">
               <span className="mypage-toggle-title">주의 성분 알림 받기</span>
               <span className="mypage-toggle-sub">등록한 주의 성분이 검색·스캔 결과에 나오면 알려줘요.</span>
             </span>
           </button>
+          {notifyError && <p className="login-error">{notifyError}</p>}
 
           <div className="mypage-settings-divider" role="separator" />
 
@@ -238,10 +454,17 @@ export default function MyPageView({ onBack, onSelectSavedResult }: MyPageViewPr
 
           <div className="mypage-settings-divider" role="separator" />
 
-          <button type="button" className="mypage-ghost-btn mypage-ghost-btn--danger" disabled title="로그인 연동 준비 중">
+          <button
+            type="button"
+            className="mypage-ghost-btn mypage-ghost-btn--danger"
+            onClick={() => {
+              logout();
+              onBack();
+            }}
+          >
             로그아웃
           </button>
-          <button type="button" className="mypage-settings-link mypage-settings-link--danger" disabled title="로그인 연동 준비 중">
+          <button type="button" className="mypage-settings-link mypage-settings-link--danger" disabled title="준비 중">
             회원 탈퇴
           </button>
         </div>

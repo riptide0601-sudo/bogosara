@@ -7,6 +7,8 @@ from app.models.product import Product
 from app.models.product_concern import ProductConcern
 from app.models.product_ingredient import ProductIngredient
 from app.models.purpose import Purpose
+from app.models.saved_result import SavedResult
+from app.models.user import User
 
 __all__ = [
     "Ingredient",
@@ -18,4 +20,6 @@ __all__ = [
     "ProductConcern",
     "ProductIngredient",
     "Purpose",
+    "SavedResult",
+    "User",
 ]
