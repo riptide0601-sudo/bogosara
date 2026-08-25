@@ -96,6 +96,28 @@ function toProduct(p: ApiProduct): Product {
   return { id: p.product_id, name: p.product_name, brand: p.brand ?? '', summary: p.summary ?? '' };
 }
 
+// app/schemas/skin_fit.py의 SkinRiskRead와 1:1.
+interface ApiSkinRiskIngredient {
+  ingredient_id: number;
+  name_kr: string | null;
+  risk_type: string | null;
+  reason: string | null;
+  source: string | null;
+}
+
+export interface ApiSkinRisk {
+  skin_type: string;
+  has_risk: boolean;
+  risk_ingredients: ApiSkinRiskIngredient[];
+  total_ingredient_count: number;
+}
+
+/** GET /products/{id}/skin-fit — skin_type 생략 시 4개 피부 타입 전부 반환. 로그인한 유저의
+ * skin_types와 대조해 개인화된 위험 성분을 보여주는 용도(ResultView.tsx 참고). */
+export async function fetchSkinFit(productId: string): Promise<ApiSkinRisk[]> {
+  return apiFetch<ApiSkinRisk[]>(`/products/${encodeURIComponent(productId)}/skin-fit`);
+}
+
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`);
   if (!res.ok) {

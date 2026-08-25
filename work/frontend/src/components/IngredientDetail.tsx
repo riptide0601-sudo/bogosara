@@ -5,6 +5,9 @@ import { getIngredientBadge } from '../data/ingredientGrade';
 interface IngredientDetailProps {
   ingredient: Ingredient;
   onBack: () => void;
+  /** 뒤로가기 버튼 라벨 — 전성분 목록에서 들어왔으면 "목록으로"(기본값), 카드 앞면의
+   * 핵심 성분 칩에서 곧장 들어왔으면 ResultCard가 "요약으로"를 넘겨준다. */
+  backLabel?: string;
 }
 
 /**
@@ -13,7 +16,7 @@ interface IngredientDetailProps {
  * 궁합 팁(combo_recommendation) 순으로 보여준다. 색은 새로 만들지 않고 대신
  * "실선+accent-soft(좋은 점)" ↔ "실선+sub(나쁜 점)" ↔ "점선(그 외 정보)" 보더 스타일로 구분한다.
  */
-export default function IngredientDetail({ ingredient, onBack }: IngredientDetailProps) {
+export default function IngredientDetail({ ingredient, onBack, backLabel = '목록으로' }: IngredientDetailProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const badge = getIngredientBadge(ingredient);
   const { summary_text, benefit_text, caution_text, combo_recommendation } = ingredient.llm_summary;
@@ -26,7 +29,7 @@ export default function IngredientDetail({ ingredient, onBack }: IngredientDetai
   return (
     <div className="ing-detail" role="region" aria-label={`${ingredient.name_kr} 상세 정보`}>
       <button type="button" className="flip-back-btn" onClick={onBack}>
-        <span className="cursor">◀</span>목록으로
+        <span className="cursor">◀</span>{backLabel}
       </button>
 
       <div className="ing-detail-head">

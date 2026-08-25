@@ -8,6 +8,8 @@ import ScanOverlay from './components/ScanOverlay';
 import ResultsSection, { type SearchStatus } from './components/ResultsSection';
 import ResultView from './components/ResultView';
 import MyPageView from './components/MyPageView';
+import LoginView from './components/LoginView';
+import { useAuth } from './context/AuthContext';
 import MagnifierIcon from './icons/MagnifierIcon';
 import ScannerIcon from './icons/ScannerIcon';
 import CosmeticMascotIcon from './icons/CosmeticMascotIcon';
@@ -36,6 +38,7 @@ type OverlayKind = 'search' | 'scan' | null;
  * 오버레이가 뜬다 — 실제 검색·OCR 연동은 각 오버레이 컴포넌트의 TODO 지점에서 이어 붙이면 된다.
  */
 export default function App() {
+  const { user, initializing } = useAuth();
   const [activeOverlay, setActiveOverlay] = useState<OverlayKind>(null);
 
   // ---- 검색 결과 상태 (백엔드 미연동 — 목 데이터로 대체) ----
@@ -118,7 +121,9 @@ export default function App() {
     );
   }
 
-  // 마이페이지 진입 상태면 랜딩 대신 MyPageView로 전체 화면을 교체한다.
+  // 마이페이지 진입 상태면 랜딩 대신 MyPageView(로그인 상태) 또는 LoginView(비로그인)로
+  // 전체 화면을 교체한다. initializing 동안은(새로고침 직후 저장된 토큰으로 /users/me
+  // 조회 중) 로그인 여부를 아직 몰라서 둘 다 그리지 않고 잠깐 비워둔다.
   if (mypageOpen) {
     return (
       <>
@@ -126,7 +131,12 @@ export default function App() {
         {WALKING_MASCOTS.map((mascot, i) => (
           <WalkingMascot key={i} {...mascot} />
         ))}
-        <MyPageView onBack={() => setMypageOpen(false)} onSelectSavedResult={handleSelectSavedResult} />
+        {!initializing &&
+          (user ? (
+            <MyPageView onBack={() => setMypageOpen(false)} onSelectSavedResult={handleSelectSavedResult} />
+          ) : (
+            <LoginView onBack={() => setMypageOpen(false)} onSuccess={() => {}} />
+          ))}
       </>
     );
   }

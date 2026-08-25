@@ -1,4 +1,5 @@
 import type { IngredientResultProduct } from '../data/ingredientResult';
+import type { SkinRiskInfo } from './ResultView';
 
 /** 한 줄 요약 문장이 보통 "{제품명}은/는 ..."으로 시작하는데, 제품명은 바로 위 헤더 줄에서
  * 이미 보여주므로 이 문장에서는 그 앞머리만 잘라내고 설명부터 보여준다. */
@@ -12,10 +13,14 @@ interface ResultSummaryPanelProps {
   /** 우측 상단 "카드를 눌러 전성분 N개 보기" 표기에 쓰는 전체 성분 개수 (카드 뒷면과 동일한 ingredients.length). */
   totalCount: number;
   isScan: boolean;
+  /** 로그인한 유저의 마이페이지 피부 타입 기준 개인화된 위험 성분 (ResultView.tsx가 조회). */
+  skinRisk: SkinRiskInfo;
   /** 카드가 뒷면으로 넘어가 있는지 — "카드를 눌러 전성분 N개 보기" 버튼의 aria-expanded에 쓴다. */
   isFlipped: boolean;
   /** "카드를 눌러 전성분 N개 보기" 클릭 시 카드 뒤집기 (ResultCard의 flipToBack). */
   onFlip: () => void;
+  /** 핵심 성분 칩 클릭 시 그 성분 이름으로 상세 뷰를 연다 (ResultCard의 handleSelectFromChip). */
+  onSelectIngredient: (name: string) => void;
 }
 
 /**
@@ -49,7 +54,15 @@ interface ResultSummaryPanelProps {
  * 대신 제품명과 같은 줄, 우측 상단에 붙인다 — 스크롤을 줄이려는 목적. 카드 앞면 전체가 아니라
  * 이 버튼 자체가 클릭 영역이다(ResultCard의 flipToBack을 onFlip으로 받아 호출).
  */
-export default function ResultSummaryPanel({ product, totalCount, isScan, isFlipped, onFlip }: ResultSummaryPanelProps) {
+export default function ResultSummaryPanel({
+  product,
+  totalCount,
+  isScan,
+  skinRisk,
+  isFlipped,
+  onFlip,
+  onSelectIngredient,
+}: ResultSummaryPanelProps) {
   const {
     summary,
     key_ingredients,
@@ -104,8 +117,14 @@ export default function ResultSummaryPanel({ product, totalCount, isScan, isFlip
           <ul className={`result-ing-chips ${chipsSizeClass}`}>
             {key_ingredients.map((item) => (
               <li key={item.name} className="result-ing-chip">
-                <span className="result-ing-chip-name">{item.name}</span>
-                <span className="result-ing-chip-purpose">{item.purpose}</span>
+                <button
+                  type="button"
+                  className="result-ing-chip-btn"
+                  onClick={() => onSelectIngredient(item.name)}
+                >
+                  <span className="result-ing-chip-name">{item.name}</span>
+                  <span className="result-ing-chip-purpose">{item.purpose}</span>
+                </button>
               </li>
             ))}
           </ul>
@@ -139,6 +158,41 @@ export default function ResultSummaryPanel({ product, totalCount, isScan, isFlip
             <span className="cursor">▶</span>피부 타입별 참고
           </h3>
           <p className="result-explain">{skin_score_summary}</p>
+        </div>
+      )}
+
+      {/* 5-1. 내 피부 타입 기준 — 마이페이지에 등록한 피부 타입(로그인 필요)과 대조한
+          개인화된 위험 성분(app/skin_fit.py GET /products/{id}/skin-fit). 위의 "피부 타입별
+          참고"는 전체 4개 타입을 요약한 일반 문구고, 이건 로그인한 유저 본인 기준만 본다. */}
+      {skinRisk.status !== 'error' && (
+        <div className="result-section">
+          <h3 className="result-section-title">
+            <span className="cursor">▶</span>내 피부 타입 기준
+          </h3>
+          {skinRisk.status === 'signed-out' && (
+            <p className="result-explain">로그인하면 내 피부 타입 기준 위험 성분을 알려드려요.</p>
+          )}
+          {skinRisk.status === 'no-skin-type' && (
+            <p className="result-explain">마이페이지에서 피부 타입을 등록하면 여기에 표시돼요.</p>
+          )}
+          {skinRisk.status === 'loading' && <p className="results-status">불러오는 중...</p>}
+          {skinRisk.status === 'ok' && skinRisk.risks.length === 0 && (
+            <p className="result-explain">등록하신 피부 타입 기준으로 주의할 성분이 없어요.</p>
+          )}
+          {skinRisk.status === 'ok' && skinRisk.risks.length > 0 && (
+            <ul className="result-caution-list">
+              {skinRisk.risks.map((risk) => (
+                <li key={risk.skinType} className="result-caution-item">
+                  <p className="result-caution-name">{risk.skinType}</p>
+                  {risk.ingredients.map((ing) => (
+                    <p key={ing.name} className="result-caution-reason">
+                      {ing.name} — {ing.reason}
+                    </p>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

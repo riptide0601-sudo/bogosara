@@ -88,6 +88,18 @@
   word-break: break-all;
 }
 
+/* 섹션 데이터 조회 자체가 실패했을 때(저장한 결과/피부 프로필) — 부분 저장 실패 시 쓰는
+   .login-error(LoginView.css)보다 눈에 띄게, 박스로 감싼다. */
+.error-banner {
+  background: var(--sub);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
 .mypage-demo-note {
   margin: 0.9rem 0 0;
   font-size: 0.65rem;

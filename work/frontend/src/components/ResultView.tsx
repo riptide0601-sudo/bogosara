@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { loadIngredientResult, type IngredientResult, type IngredientResultRequest } from '../data/ingredientResult';
 import type { Product } from '../data/mockProducts';
+import { fetchSkinFit } from '../api';
+import { getSkinProfile } from '../api/users';
+import { useAuth } from '../context/AuthContext';
 import PhotoPanel from './PhotoPanel';
 import ResultCard from './ResultCard';
 import HamburgerButton from './HamburgerButton';
@@ -19,6 +22,21 @@ interface ResultViewProps {
 
 type LoadStatus = 'loading' | 'done' | 'error';
 
+export interface SkinRiskItem {
+  skinType: string;
+  ingredients: { name: string; reason: string }[];
+}
+
+/** 로그인한 유저의 마이페이지 피부 타입 기준 개인화된 위험 성분 정보 (ResultSummaryPanel에
+ * "내 피부 타입 기준" 섹션으로 전달됨). 비로그인/피부타입 미등록이면 그 상태를 그대로 넘겨서
+ * ResultSummaryPanel이 로그인·설정을 유도하는 문구를 보여줄 수 있게 한다. */
+export type SkinRiskInfo =
+  | { status: 'signed-out' }
+  | { status: 'no-skin-type' }
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'ok'; risks: SkinRiskItem[] };
+
 /**
  * 검색 리스트 클릭 / 스캔 OCR 성공 두 진입점이 도착하는 결과 화면.
  * 오버레이가 아니라 페이지 전환으로 다룬다 — 전성분 리스트가 길어 스크롤이 깊고,
@@ -28,12 +46,14 @@ type LoadStatus = 'loading' | 'done' | 'error';
  * 로딩·에러 문구만 갈라지고, 성공 시 렌더링하는 데이터 형태(IngredientResult)는 동일하다.
  */
 export default function ResultView({ request, onBack, onOpenMyPage, onSelectProduct }: ResultViewProps) {
+  const { user } = useAuth();
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [data, setData] = useState<IngredientResult | null>(null);
   // 로그인/회원가입이 아직 없어서(App.tsx·CLAUDE.md 참고) 저장 버튼을 누르면 실제로 저장하는
   // 대신 "로그인이 필요하다"는 팝업만 띄운다. TODO: 로그인 연동 후 — 로그인 상태면 바로 저장
   // (마이페이지 저장한 결과에 추가), 비로그인이면 로그인/회원가입 화면으로 유도.
   const [showLoginPopup, setShowLoginPopup] = useState(false);
+  const [skinRisk, setSkinRisk] = useState<SkinRiskInfo>({ status: 'signed-out' });
 
   useEffect(() => {
     let cancelled = false;
@@ -56,6 +76,51 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
       cancelled = true;
     };
   }, [request]);
+
+  // 로그인한 유저의 마이페이지 피부 타입 기준 개인화된 위험 성분 — search 진입(실제 product_id가
+  // 있는 경우)에만 의미가 있다. skin-fit은 skin_type을 생략하면 4개 타입 전부 내려주므로,
+  // 별도 API 호출 없이 유저의 skin_types와 클라이언트에서 대조한다.
+  useEffect(() => {
+    if (request.source !== 'search' || !user) {
+      setSkinRisk({ status: 'signed-out' });
+      return;
+    }
+
+    let cancelled = false;
+    setSkinRisk({ status: 'loading' });
+
+    getSkinProfile()
+      .then((profile) => {
+        if (cancelled) return null;
+        if (profile.skin_types.length === 0) {
+          setSkinRisk({ status: 'no-skin-type' });
+          return null;
+        }
+        return fetchSkinFit(request.productId).then((all) => {
+          if (cancelled) return;
+          const mySkinTypes = new Set(profile.skin_types);
+          const risks = all
+            .filter((r) => mySkinTypes.has(r.skin_type) && r.has_risk)
+            .map((r) => ({
+              skinType: r.skin_type,
+              ingredients: r.risk_ingredients.map((i) => ({
+                name: i.name_kr ?? '',
+                reason: i.reason ?? i.risk_type ?? '',
+              })),
+            }));
+          setSkinRisk({ status: 'ok', risks });
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('[보고사라][결과 화면] 피부 타입별 위험 성분 조회 실패', err);
+        setSkinRisk({ status: 'error' });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [request, user]);
 
   const isScan = request.source === 'scan';
 
@@ -120,7 +185,7 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
             recommendedProducts={data.product.recommended_products}
             onSelectProduct={onSelectProduct}
           />
-          <ResultCard product={data.product} ingredients={data.ingredients} isScan={isScan} />
+          <ResultCard product={data.product} ingredients={data.ingredients} isScan={isScan} skinRisk={skinRisk} />
         </div>
       )}
     </div>
