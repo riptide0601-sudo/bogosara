@@ -39,7 +39,8 @@ def run(db_url: str, xlsx_path: str, dry_run: bool) -> None:
 
     wb = openpyxl.load_workbook(xlsx_path)
     ws = wb[wb.sheetnames[0]]
-    rows = [r for r in list(ws.iter_rows(values_only=True))[1:] if r and r[0] is not None]
+    # 시트에 서식만 있고 값은 없는 빈 열(D열 이후)이 따라붙는 파일도 있어 앞 3열만 쓴다.
+    rows = [r[:3] for r in list(ws.iter_rows(values_only=True))[1:] if r and r[0] is not None]
 
     new_products = 0
     existing_products = 0

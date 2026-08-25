@@ -781,10 +781,15 @@
   border-radius: var(--radius-sm);
   padding: 0.8rem 0.9rem;
 }
-.ing-detail-section p,
-.ing-detail-section ul {
+.ing-detail-section p {
   margin: 0;
   font-size: 0.78rem;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.ing-detail-section ul {
+  margin: 0;
+  font-size: 0.905rem;
   line-height: 1.7;
   color: var(--ink);
 }
