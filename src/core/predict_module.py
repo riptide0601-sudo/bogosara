@@ -5,15 +5,76 @@ import re
 import sys
 import traceback
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 import ocr_engines
 
-# LabelLens OCR - 성분 토큰 분리용 구분자(쉼표류만). 실제 라벨 샘플 검증하며 보완 예정.
-_INGREDIENT_SPLIT_PATTERN = re.compile(r"[,，;]+")
+# LabelLens OCR - 성분 토큰 분리용 구분자(쉼표류만).
+# 단, 숫자와 숫자 사이의 쉼표는 성분명의 일부라 자르지 않는다.
+#   "1,2-헥산다이올", "2,3-부탄다이올"  -> 한 성분
+#   "하이드롤라이즈드하이알루로닉애씨드(1,000ppm)"  -> 자릿수 구분 쉼표
+# 양쪽이 모두 숫자일 때만 구분자로 보지 않는다(앞뒤 중 하나라도 숫자가 아니면 자른다).
+_INGREDIENT_SPLIT_PATTERN = re.compile(r"(?<!\d)[,，;]+|[,，;]+(?!\d)")
 
 # message에 engine을 지정하지 않았을 때 사용하는 기본 엔진.
 _DEFAULT_ENGINE = "paddleocr"
+
+# 입력 사진의 최대 변 길이(px). 폰 카메라 사진은 12MP(4032px)까지 오는데, 그대로 넣으면
+# PaddleOCR가 GPU 메모리 부족(OOM)으로 실패하고 CPU에서도 매우 느려진다. 라벨 글자를 읽는 데
+# 2000px이면 충분해서 이 크기로 줄여 넣는다. 환경변수로 조정 가능.
+_MAX_SIDE = int(os.getenv("LABELLENS_OCR_MAX_SIDE", "2000"))
+
+# GPU 사용 여부. "auto"(기본)면 CUDA GPU가 보일 때만 쓰고, 없으면 자동으로 CPU로 떨어진다.
+# 강제하려면 LABELLENS_OCR_GPU=1(켜기) / 0(끄기).
+_GPU_SETTING = os.getenv("LABELLENS_OCR_GPU", "auto").strip().lower()
+_gpu_resolved = None
+
+
+def _use_gpu() -> bool:
+    """이 환경에서 GPU를 쓸지 한 번만 판단하고 결과를 재사용합니다."""
+    global _gpu_resolved
+    if _gpu_resolved is not None:
+        return _gpu_resolved
+
+    if _GPU_SETTING in ("1", "true", "yes", "on"):
+        _gpu_resolved = True
+    elif _GPU_SETTING in ("0", "false", "no", "off"):
+        _gpu_resolved = False
+    else:
+        try:
+            import paddle
+
+            _gpu_resolved = paddle.device.cuda.device_count() > 0
+        except Exception:
+            _gpu_resolved = False
+
+    print(f"[LabelLens OCR] 실행 장치: {'GPU' if _gpu_resolved else 'CPU'}")
+    return _gpu_resolved
+
+
+def _apply_exif_orientation(image: Image.Image) -> Image.Image:
+    """EXIF 회전 정보를 실제 픽셀에 반영합니다.
+
+    폰 카메라는 센서 방향 그대로 저장하고 "돌려서 보라"는 EXIF Orientation 태그만
+    따로 붙인다. 갤러리·메신저는 이 태그를 읽어 똑바로 보여주지만, PIL의 Image.open()은
+    적용하지 않아서 그대로 넣으면 90도 누운 사진을 OCR하게 된다.
+    (실제로 4032x3024 / Orientation=6 사진에서 글자가 전혀 다르게 읽혔다.)
+    """
+    fixed = ImageOps.exif_transpose(image)
+    if fixed.size != image.size:
+        print(f"[LabelLens OCR] EXIF 회전 보정: {image.size[0]}x{image.size[1]} "
+              f"-> {fixed.size[0]}x{fixed.size[1]}")
+    return fixed
+
+
+def _fit_max_side(image: Image.Image) -> Image.Image:
+    w, h = image.size
+    if max(w, h) <= _MAX_SIDE:
+        return image
+    scale = _MAX_SIDE / max(w, h)
+    resized = image.resize((round(w * scale), round(h * scale)), Image.LANCZOS)
+    print(f"[LabelLens OCR] 입력 이미지 축소: {w}x{h} -> {resized.width}x{resized.height}")
+    return resized
 
 
 def init():
@@ -41,10 +102,14 @@ def _load_image(message: dict) -> Image.Image:
     """
     if message.get("image_base64"):
         image_bytes = base64.b64decode(message["image_base64"])
-        return Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    if message.get("image_path"):
-        return Image.open(message["image_path"]).convert("RGB")
-    raise ValueError("message에 'image_base64' 또는 'image_path'가 필요합니다.")
+        raw = Image.open(io.BytesIO(image_bytes))
+    elif message.get("image_path"):
+        raw = Image.open(message["image_path"])
+    else:
+        raise ValueError("message에 'image_base64' 또는 'image_path'가 필요합니다.")
+
+    # 순서 주의: convert("RGB")가 EXIF를 떨어뜨리므로 회전 보정을 먼저 한다.
+    return _fit_max_side(_apply_exif_orientation(raw).convert("RGB"))
 
 
 def _split_ingredients(raw_text: str) -> list:
@@ -85,7 +150,9 @@ def predict(
         engine = message.get("engine", _DEFAULT_ENGINE)
 
         if engine == "all":
-            engine_results = ocr_engines.run_all_engines(image, language=language)
+            engine_results = ocr_engines.run_all_engines(
+                image, language=language, gpu=_use_gpu()
+            )
             data = {
                 "engines": [
                     {
@@ -96,7 +163,9 @@ def predict(
                 ]
             }
         else:
-            result = ocr_engines.run_engine(engine, image, language=language)
+            result = ocr_engines.run_engine(
+                engine, image, language=language, gpu=_use_gpu()
+            )
             if not result["ok"]:
                 raise RuntimeError(result["error"])
             ingredients = _split_ingredients(result["text"])
