@@ -100,8 +100,7 @@ src/core/results/
 .cache/doctr/
 
 # --- 데이터 / 모델 산출물 ---
-data
-data/
+work/3366_project/data/
 src/core/model/
 src/core/models/
 src/core/checkpoints/
