@@ -30,6 +30,8 @@ export interface IngredientRestriction {
 }
 
 export interface Ingredient {
+  /** GET /products/{id}/ingredients/{ingredient_id}/family-rank 호출에 필요한 DB PK. */
+  ingredient_id: number;
   name_kr: string;
   name_en: string;
   /** DB 등급이 아니라 프론트에서 임시로 매기는 표시 등급 — api.ts의 toIngredient() 참고. */
@@ -53,11 +55,16 @@ export interface IngredientResultCaution {
 }
 
 export interface IngredientResultProduct {
+  /** 검색 진입(source==='search')에서만 실재 — 계열 비교(family-rank) API 호출에 쓰인다.
+   * 스캔 진입은 DB product가 없어 null (data/ingredientResult.ts의 loadIngredientResult 참고). */
+  product_id: string | null;
   product_name: string;
   raw_ingredients: string;
   summary: string;
   key_ingredients: IngredientResultKeyIngredient[];
   ingredient_explanation: string;
+  /** api.ts toAbsoluteImageUrl()이 백엔드 origin을 붙인 절대 URL — 없으면 null(PhotoPanel이 플레이스홀더로 대체). */
+  image_url: string | null;
   category_description: string;
   /** app/schemas/product.py computed_field — 제품명 기반 올리브영 검색 결과 페이지 링크. */
   oliveyoung_url: string;

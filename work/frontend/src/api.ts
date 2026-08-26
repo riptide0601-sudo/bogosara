@@ -75,6 +75,10 @@ interface ApiProduct {
   // app/schemas/product.py의 computed_field — 올리브영에 등록된 상품별 직접 링크(goodsNo)는
   // DB에 없어서, 제품명으로 올리브영 검색 결과 페이지를 가리키는 URL을 그때그때 만들어 준다.
   oliveyoung_url: string;
+  // app/static/images/products/{product_id}.* 를 가리키는 상대 경로(scripts/backfill_product_images.py로
+  // 채움). 백엔드가 이 origin(API_BASE_URL)에서 정적 파일로 서빙하므로 프론트에서 절대 URL로
+  // 붙여써야 한다(toAbsoluteImageUrl 참고) — Vite 개발 서버(5173) 기준 상대경로로 쓰면 404난다.
+  image_url: string | null;
 }
 
 interface ApiProductSimilarity {
@@ -92,8 +96,20 @@ export interface ApiProductDetail extends ApiProduct {
   similar_products: ApiProductSimilarity[];
 }
 
+/** image_url은 백엔드가 상대 경로로 내려주므로, 이미지를 실제로 서빙하는 백엔드 origin을 붙여야 한다
+ * (프론트는 Vite 개발 서버(5173)에서 뜨고 API_BASE_URL(기본 8000)이 이미지도 같이 서빙함 — app/main.py 참고). */
+function toAbsoluteImageUrl(imageUrl: string | null): string | null {
+  return imageUrl ? `${API_BASE_URL}${imageUrl}` : null;
+}
+
 function toProduct(p: ApiProduct): Product {
-  return { id: p.product_id, name: p.product_name, brand: p.brand ?? '', summary: p.summary ?? '' };
+  return {
+    id: p.product_id,
+    name: p.product_name,
+    brand: p.brand ?? '',
+    summary: p.summary ?? '',
+    image_url: toAbsoluteImageUrl(p.image_url),
+  };
 }
 
 // app/schemas/skin_fit.py의 SkinRiskRead와 1:1.
@@ -168,6 +184,7 @@ function toIngredient(pi: ApiProductIngredient, starNames: Set<string>): Ingredi
   const llm = ing.llm_summary;
   const shortPurposeLabel = pickShortPurposeLabel(ing.purposes);
   return {
+    ingredient_id: ing.ingredient_id,
     name_kr: ing.name_kr ?? '',
     name_en: ing.name_en ?? '',
     // display_grade는 백엔드에 없는 개념이라, product.key_ingredients(core_ingredient_selector가
@@ -210,6 +227,7 @@ export function mapDetailToIngredientResult(detail: ApiProductDetail): Ingredien
 
   return {
     product: {
+      product_id: detail.product_id,
       product_name: detail.product_name,
       raw_ingredients: detail.ingredients.map((pi) => pi.matched_text).filter(Boolean).join(', '),
       // 한 줄 요약(product.summary)과 성분 구성 줄글(product.composition_text)은 DB에서도 별도
@@ -220,6 +238,7 @@ export function mapDetailToIngredientResult(detail: ApiProductDetail): Ingredien
         purpose: pickShortPurposeLabel(pi.ingredient.purposes),
       })),
       ingredient_explanation: detail.composition_text ?? '', // Qwen 교체 지점
+      image_url: toAbsoluteImageUrl(detail.image_url),
       category_description: detail.category_description,
       oliveyoung_url: detail.oliveyoung_url,
       // 매칭 없으면 백엔드가 "..."를 내려준다 — 그건 "값 없음"과 같은 뜻이라 빈 문자열로 취급.
@@ -231,6 +250,37 @@ export function mapDetailToIngredientResult(detail: ApiProductDetail): Ingredien
     },
     ingredients: detail.ingredients.map((pi) => toIngredient(pi, starNames)),
   };
+}
+
+// app/schemas/ingredient_family.py FamilyRankRead와 1:1.
+export interface FamilyRankInfo {
+  family_name: string;
+  // 큐레이션은 돼있지만(product_family_member) 실제 전성분표에서 이 계열 성분을 하나도
+  // 못 찾았을 때 false — 이땐 아래 필드가 전부 null/0이고, "없다"고 단정하는 대신
+  // "{family_name} 성분 비교 데이터가 없어요"로 완곡하게 안내한다(ResultSummaryPanel 참고).
+  has_data: boolean;
+  representative_ingredient: string | null;
+  // 라벨에 함량이 적혀있을 때만("2,400ppm", "0.2%" 등 원문 그대로) — 없으면 null.
+  representative_concentration: string | null;
+  label_rank: number | null;
+  rank: number | null;
+  total_count: number | null;
+  average_label_rank: number | null;
+  top_percentile: number | null;
+  // 계열 내 큐레이션 제품들의 대표 성분 함량을 %로 환산한 평균 — 함량 표시된 제품이 하나도
+  // 없으면 null.
+  average_concentration_percent: number | null;
+  // 위 평균이 몇 개 제품 값으로 계산됐는지(total_count 중 일부일 수 있음).
+  concentration_sample_count: number;
+}
+
+/** GET /products/{id}/family-rank — "비슷한 제품과 비교하면" 카드(ResultSummaryPanel).
+ * 한 제품이 여러 성분 계열에 동시에 큐레이션될 수 있어(예: 더마토리 히알샷 = 히알루론산 계열
+ * + B5 계열) 배열로 온다. 어떤 계열에도 속하지 않으면 빈 배열(에러 아님) — 호출부가 섹션을 숨긴다. */
+export async function fetchProductFamilyRank(productId: string): Promise<FamilyRankInfo[]> {
+  const res = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(productId)}/family-rank`);
+  if (!res.ok) throw new Error(`family-rank 조회 실패: HTTP ${res.status}`);
+  return res.json() as Promise<FamilyRankInfo[]>;
 }
 
 /** 성분 결과 화면 — GET /products/{id} 를 IngredientResult로 변환. */

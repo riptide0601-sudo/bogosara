@@ -16,6 +16,7 @@ class ProductBase(BaseModel):
     brand: str | None = None
     summary: str | None = None
     composition_text: str | None = None
+    image_url: str | None = None
 
 
 class ProductCreate(ProductBase):

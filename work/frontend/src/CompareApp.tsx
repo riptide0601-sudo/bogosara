@@ -101,6 +101,7 @@ function CompareSide({ productId, model }: { productId: string; model: string })
           ingredients={state.result.ingredients}
           isScan={false}
           skinRisk={{ status: 'signed-out' }}
+          familyRank={{ status: 'idle' }}
         />
       )}
     </div>

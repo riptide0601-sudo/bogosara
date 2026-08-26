@@ -4,6 +4,9 @@ import type { Product } from '../data/mockProducts';
 interface PhotoPanelProps {
   request: IngredientResultRequest;
   productName: string;
+  /** data.product.image_url(api.ts가 절대 URL로 변환) — 검색 진입(source==='search')일 때만 쓰인다.
+   * 스캔 진입은 항상 request.imageDataUrl(촬영한 사진)을 그대로 보여준다. */
+  productImageUrl: string | null;
   /** app/similarity.py 코사인 유사도 기준 Top3 — ResultView가 IngredientResult에서 그대로 전달한다. */
   recommendedProducts: Product[];
   /** 추천 제품 클릭 시 그 제품의 결과 화면으로 이동 (App.tsx의 handleSelectProduct). */
@@ -21,13 +24,21 @@ interface PhotoPanelProps {
  * 저장 버튼은 이 컴포넌트가 아니라 ResultView 상단 바에 있다 (사진 상자 오른쪽 선에
  * 맞춘 정사각형 버튼 — ResultView.tsx/ResultView.css 참고).
  */
-export default function PhotoPanel({ request, productName, recommendedProducts, onSelectProduct }: PhotoPanelProps) {
+export default function PhotoPanel({
+  request,
+  productName,
+  productImageUrl,
+  recommendedProducts,
+  onSelectProduct,
+}: PhotoPanelProps) {
   const isScan = request.source === 'scan';
 
   return (
     <div className="photo-panel">
       {isScan ? (
         <img className="photo-panel-img" src={request.imageDataUrl} alt="촬영한 전성분표 뒷면 사진" />
+      ) : productImageUrl ? (
+        <img className="photo-panel-img" src={productImageUrl} alt={productName} />
       ) : (
         <div className="photo-panel-placeholder" aria-hidden="true">
           <span className="photo-panel-mono">{productName.charAt(0)}</span>

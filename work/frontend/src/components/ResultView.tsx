@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { loadIngredientResult, type IngredientResult, type IngredientResultRequest } from '../data/ingredientResult';
 import type { Product } from '../data/mockProducts';
-import { fetchSkinFit } from '../api';
+import { fetchProductFamilyRank, fetchSkinFit, type FamilyRankInfo } from '../api';
 import { getSkinProfile } from '../api/users';
 import { useAuth } from '../context/AuthContext';
 import PhotoPanel from './PhotoPanel';
@@ -37,6 +37,17 @@ export type SkinRiskInfo =
   | { status: 'error' }
   | { status: 'ok'; risks: SkinRiskItem[] };
 
+/** "비슷한 제품과 비교하면" 카드(ResultSummaryPanel) — GET /products/{id}/family-rank 결과.
+ * 한 제품이 여러 계열에 동시에 속할 수 있어(예: 더마토리 히알샷 = 히알루론산+B5) data는 배열.
+ * 스캔 진입(source==='scan')은 실재 product_id가 없어 항상 'idle'. 'none'은 이 제품이 어떤
+ * 성분 계열에도 속하지 않는 정상 상태(백엔드가 빈 배열)라 에러와 구분해서 섹션을 그냥 숨긴다. */
+export type FamilyRankState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'none' }
+  | { status: 'error' }
+  | { status: 'ok'; data: FamilyRankInfo[] };
+
 /**
  * 검색 리스트 클릭 / 스캔 OCR 성공 두 진입점이 도착하는 결과 화면.
  * 오버레이가 아니라 페이지 전환으로 다룬다 — 전성분 리스트가 길어 스크롤이 깊고,
@@ -54,6 +65,7 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
   // (마이페이지 저장한 결과에 추가), 비로그인이면 로그인/회원가입 화면으로 유도.
   const [showLoginPopup, setShowLoginPopup] = useState(false);
   const [skinRisk, setSkinRisk] = useState<SkinRiskInfo>({ status: 'signed-out' });
+  const [familyRank, setFamilyRank] = useState<FamilyRankState>({ status: 'idle' });
 
   useEffect(() => {
     let cancelled = false;
@@ -122,6 +134,32 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
     };
   }, [request, user]);
 
+  // "비슷한 제품과 비교하면" — search 진입(실제 product_id가 있는 경우)에만 조회한다.
+  useEffect(() => {
+    if (request.source !== 'search') {
+      setFamilyRank({ status: 'idle' });
+      return;
+    }
+
+    let cancelled = false;
+    setFamilyRank({ status: 'loading' });
+
+    fetchProductFamilyRank(request.productId)
+      .then((data) => {
+        if (cancelled) return;
+        setFamilyRank(data.length > 0 ? { status: 'ok', data } : { status: 'none' });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('[보고사라][결과 화면] 계열 비교 조회 실패', err);
+        setFamilyRank({ status: 'error' });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [request]);
+
   const isScan = request.source === 'scan';
 
   return (
@@ -182,10 +220,17 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
           <PhotoPanel
             request={request}
             productName={data.product.product_name}
+            productImageUrl={data.product.image_url}
             recommendedProducts={data.product.recommended_products}
             onSelectProduct={onSelectProduct}
           />
-          <ResultCard product={data.product} ingredients={data.ingredients} isScan={isScan} skinRisk={skinRisk} />
+          <ResultCard
+            product={data.product}
+            ingredients={data.ingredients}
+            isScan={isScan}
+            skinRisk={skinRisk}
+            familyRank={familyRank}
+          />
         </div>
       )}
     </div>

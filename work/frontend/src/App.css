@@ -770,6 +770,13 @@ footer {
   aspect-ratio: 1 / 1;
   border-bottom: var(--border-w) solid var(--ink);
   background-color: var(--sub);
+  overflow: hidden;
+}
+
+.product-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .product-thumb-mono {

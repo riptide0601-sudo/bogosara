@@ -28,6 +28,8 @@ class Product(Base):
     # 문자열로 저장한다 (성분/효능 각각 최대 5개). scripts/backfill_key_ingredients.py로 채운다.
     key_ingredients: Mapped[str | None] = mapped_column(Text, nullable=True)
     key_purposes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # /static 아래 상대 경로 (예: /images/products/p-xxxx.jpg). scripts/backfill_product_images.py로 채운다.
+    image_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
     product_ingredients: Mapped[list["ProductIngredient"]] = relationship(
         back_populates="product", cascade="all, delete-orphan"

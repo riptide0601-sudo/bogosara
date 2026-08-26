@@ -1,5 +1,110 @@
+import { useState } from 'react';
+import type { FamilyRankInfo } from '../api';
 import type { IngredientResultProduct } from '../data/ingredientResult';
-import type { SkinRiskInfo } from './ResultView';
+import type { FamilyRankState, SkinRiskInfo } from './ResultView';
+
+/** top_percentile(작을수록 좋음, 1~100)을 "상위권"류 4단계 문구로 변환. */
+function percentileTierLabel(topPercentile: number): string {
+  if (topPercentile <= 20) return '상위권';
+  if (topPercentile <= 50) return '중상위권';
+  if (topPercentile <= 80) return '중하위권';
+  return '하위권';
+}
+
+/** "비슷한 제품과 비교하면" 카드 하나 — 여러 계열에 걸쳐 반복 렌더링된다(FamilyRankSection 참고).
+ * has_data가 false면(큐레이션은 됐지만 전성분표에서 이 계열 성분을 못 찾은 경우) "없다"고
+ * 단정하지 않고 "비교 데이터가 없다"로 완곡하게 안내만 한다. */
+function FamilyRankCard({ item }: { item: FamilyRankInfo }) {
+  if (!item.has_data) {
+    return (
+      <div className="result-family-rank">
+        <p className="result-family-rank-family">{item.family_name}</p>
+        <p className="result-family-rank-no-data">{item.family_name} 성분 비교 데이터가 없어요</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="result-family-rank">
+      <p className="result-family-rank-family">{item.family_name}</p>
+      <p className="result-family-rank-ingredient">
+        대표 성분 · {item.representative_ingredient}
+        {item.representative_concentration && (
+          <span className="result-family-rank-pct"> ({item.representative_concentration})</span>
+        )}
+      </p>
+      <p className="result-family-rank-rank">
+        {item.rank}위 / {item.total_count}개 중
+      </p>
+      <p className="result-family-rank-detail">
+        이 제품은 함량 순위 {percentileTierLabel(item.top_percentile!)}이에요
+        <span className="result-family-rank-avg">평균: 전성분 {item.average_label_rank}번째</span>
+      </p>
+      {item.average_concentration_percent != null && (
+        <div className="result-family-rank-conc">
+          <span className="result-family-rank-conc-label">계열 평균 함량</span>
+          <span className="result-family-rank-conc-value">{item.average_concentration_percent}%</span>
+          <span className="result-family-rank-conc-note">
+            함량 표시된 {item.concentration_sample_count}개 제품 기준
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * "비슷한 제품과 비교하면" 섹션 전체 — 한 제품이 여러 계열에 동시에 속할 수 있어(예: 더마토리
+ * 히알샷 = 히알루론산 계열 + B5 계열) top_percentile이 가장 좋은(작은) 계열 하나만 기본으로
+ * 펼쳐 보여주고, 나머지 계열은 "{family_name} 보기" 토글 버튼 뒤에 접어둔다. 계열이 하나뿐이면
+ * 토글 없이 그 하나만 보인다.
+ */
+function FamilyRankSection({ items }: { items: FamilyRankInfo[] }) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // has_data가 false인 항목(순위 정보 없음)은 항상 맨 뒤로 — 대표로 뽑힐 실제 순위가
+  // 하나라도 있으면 그게 우선이다.
+  const sorted = [...items].sort((a, b) => {
+    if (a.has_data !== b.has_data) return a.has_data ? -1 : 1;
+    if (!a.has_data) return 0;
+    return a.top_percentile! - b.top_percentile!;
+  });
+  const [primary, ...rest] = sorted;
+
+  const toggle = (familyName: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(familyName)) next.delete(familyName);
+      else next.add(familyName);
+      return next;
+    });
+  };
+
+  return (
+    <div className="result-family-rank-list">
+      <FamilyRankCard item={primary} />
+      {rest.map((item) => (
+        <div key={item.family_name}>
+          <button
+            type="button"
+            className="result-family-rank-toggle"
+            aria-expanded={expanded.has(item.family_name)}
+            onClick={(e) => {
+              // 카드 앞면 전체가 클릭 시 뒤집히는 버튼이라(ResultCard의 flipToBack), 이 버튼
+              // 클릭이 거기로 버블링되면 토글과 동시에 카드가 뒤집혀 버린다 — 막아야 한다.
+              e.stopPropagation();
+              toggle(item.family_name);
+            }}
+          >
+            <span className="cursor">▶</span>
+            {item.family_name} {expanded.has(item.family_name) ? '접기' : '보기'}
+          </button>
+          {expanded.has(item.family_name) && <FamilyRankCard item={item} />}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /** 한 줄 요약 문장이 보통 "{제품명}은/는 ..."으로 시작하는데, 제품명은 바로 위 헤더 줄에서
  * 이미 보여주므로 이 문장에서는 그 앞머리만 잘라내고 설명부터 보여준다. */
@@ -15,6 +120,8 @@ interface ResultSummaryPanelProps {
   isScan: boolean;
   /** 로그인한 유저의 마이페이지 피부 타입 기준 개인화된 위험 성분 (ResultView.tsx가 조회). */
   skinRisk: SkinRiskInfo;
+  /** "비슷한 제품과 비교하면" — 성분 계열 순위 (ResultView.tsx가 조회). */
+  familyRank: FamilyRankState;
   /** 카드가 뒷면으로 넘어가 있는지 — "카드를 눌러 전성분 N개 보기" 버튼의 aria-expanded에 쓴다. */
   isFlipped: boolean;
   /** "카드를 눌러 전성분 N개 보기" 클릭 시 카드 뒤집기 (ResultCard의 flipToBack). */
@@ -59,6 +166,7 @@ export default function ResultSummaryPanel({
   totalCount,
   isScan,
   skinRisk,
+  familyRank,
   isFlipped,
   onFlip,
   onSelectIngredient,
@@ -138,6 +246,19 @@ export default function ResultSummaryPanel({
             <span className="cursor">▶</span>성분 구성을 살펴보면
           </h3>
           <p className="result-explain">{ingredient_explanation}</p>
+        </div>
+      )}
+
+      {/* 3-1. 비슷한 제품과 비교하면 — GET /products/{id}/family-rank(ResultView.tsx가 조회).
+          이 제품이 어떤 성분 계열(scripts/backfill_ingredient_families.py)에도 속하지
+          않으면(status: 'none') 섹션 자체를 숨긴다 — 에러가 아니라 정상 상태. 한 제품이 여러
+          계열에 동시에 속할 수 있어(예: 히알루론산+B5) 계열마다 카드를 하나씩 반복한다. */}
+      {familyRank.status === 'ok' && (
+        <div className="result-section">
+          <h3 className="result-section-title">
+            <span className="cursor">▶</span>비슷한 제품과 비교하면
+          </h3>
+          <FamilyRankSection items={familyRank.data} />
         </div>
       )}
 

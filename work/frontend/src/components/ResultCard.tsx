@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Ingredient, IngredientResultProduct } from '../data/ingredientResult';
-import type { SkinRiskInfo } from './ResultView';
+import type { FamilyRankState, SkinRiskInfo } from './ResultView';
 import ResultSummaryPanel from './ResultSummaryPanel';
 import IngredientList from './IngredientList';
 import IngredientDetail from './IngredientDetail';
@@ -13,6 +13,8 @@ interface ResultCardProps {
   isScan: boolean;
   /** 마이페이지 피부 타입 ↔ 이 제품 위험 성분 연동 결과 (ResultView.tsx에서 조회). */
   skinRisk: SkinRiskInfo;
+  /** "비슷한 제품과 비교하면" — 성분 계열 순위 (ResultView.tsx에서 조회). */
+  familyRank: FamilyRankState;
 }
 
 /**
@@ -29,7 +31,7 @@ interface ResultCardProps {
  * `ingredientEntryPoint`로 두 진입 경로('list' / 'chip')를 구분해 handleBackNav의 동작과
  * 상세 뷰의 "뒤로" 버튼 라벨을 갈라 보여준다.
  */
-export default function ResultCard({ product, ingredients, isScan, skinRisk }: ResultCardProps) {
+export default function ResultCard({ product, ingredients, isScan, skinRisk, familyRank }: ResultCardProps) {
   const [flipped, setFlipped] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [ingredientEntryPoint, setIngredientEntryPoint] = useState<'list' | 'chip' | null>(null);
@@ -97,6 +99,7 @@ export default function ResultCard({ product, ingredients, isScan, skinRisk }: R
             totalCount={totalCount}
             isScan={isScan}
             skinRisk={skinRisk}
+            familyRank={familyRank}
             isFlipped={flipped}
             onFlip={flipToBack}
             onSelectIngredient={handleSelectFromChip}
