@@ -1,19 +1,5 @@
-/**
- * 성분 결과 화면(ResultView)의 데이터 계약.
- *
- * 검색 리스트 클릭과 스캔 OCR 성공 두 진입점 모두 최종적으로 이 모양(IngredientResult)의
- * 데이터에 도달한다 — 화면 컴포넌트는 어느 경로로 왔는지 몰라도 되게 하기 위함.
- *
- * 파이프라인: OCR(전성분표 인식) → DB 매칭(성분별 슈퍼스타/구디/기본 등급·배합목적·규제정보 확정)
- * → LLM 요약(아래 summary/key_ingredients/ingredient_explanation/cautions 생성) → 카드 앞면 출력.
- * LLM에게 실제로 보내는 프롬프트와 출력 스키마는 `docs/LLM_PROMPT.md` 참고 — 이 파일의
- * `KeyIngredient`/`Caution`은 그 스키마와 1:1로 대응한다.
- *
- * `ingredients` 배열(성분별 등급·배합목적·규제정보)은 OCR→DB 매칭 결과 그대로이며 LLM이
- * 건드리지 않는 사실 데이터다 — 카드 뒷면(IngredientList/IngredientDetail)이 이 배열 전체를
- * 그대로 사용한다.
- */
 import { loadIngredientResultFromApi } from '../api';
+import type { Product } from './mockProducts';
 
 export type IngredientGrade = 'star' | 'good' | 'base';
 
@@ -22,9 +8,10 @@ export interface IngredientPurpose {
   description: string;
 }
 
-export interface IngredientRestriction {
-  regulate_type: string;
-  limit_cond: string;
+export interface IngredientRelation {
+  relation_type: string;
+  user_message: string;
+  related_ingredient_name: string;
 }
 
 export interface IngredientLlmSummary {
@@ -36,68 +23,101 @@ export interface IngredientLlmSummary {
   combo_recommendation: string;
 }
 
-/** 이 성분과 다른 성분 사이의 시너지/악화 조합 (DB ingredient_relation, LLM 아님). */
-export interface IngredientRelationInfo {
-  relation_type: string;
-  user_message: string;
-  related_ingredient_name: string;
+/** 배합 한도/금지 성분 등 규제 정보 — 현재 백엔드 DB엔 아직 데이터가 없어 항상 null (api.ts 참고). */
+export interface IngredientRestriction {
+  regulate_type: string;
+  limit_cond: string;
 }
 
 export interface Ingredient {
+  /** GET /products/{id}/ingredients/{ingredient_id}/family-rank 호출에 필요한 DB PK. */
+  ingredient_id: number;
   name_kr: string;
   name_en: string;
+  /** DB 등급이 아니라 프론트에서 임시로 매기는 표시 등급 — api.ts의 toIngredient() 참고. */
   display_grade: IngredientGrade;
   label_rank: number;
   safety_level: string;
   purposes: IngredientPurpose[];
   restricted: IngredientRestriction | null;
-  relations: IngredientRelationInfo[];
+  relations: IngredientRelation[];
   llm_summary: IngredientLlmSummary;
 }
 
-/** 카드 앞면 "핵심 성분" 그리드 한 칸 — DB의 슈퍼스타 성분만 대상. */
-export interface KeyIngredient {
+export interface IngredientResultKeyIngredient {
   name: string;
-  /** 대표 배합목적 한 단어. 예: "주름개선". */
   purpose: string;
 }
 
-/** 카드 앞면 "사용 전 확인해 주세요" 한 항목 — DB의 배합 한도/금지/사용 제한 성분만 대상. */
-export interface Caution {
+export interface IngredientResultCaution {
   name: string;
-  /** 주의가 필요한 이유 — DB의 restricted.limit_cond에 근거해야 하며 LLM이 임의로 새로 만들지 않는다. */
   reason: string;
 }
 
+/** "상품명 성분, 진짜 들어있나요?" 계열 묶음 한 칸(app/marketing_families.py 참고). */
+export interface MatchedFamilyIngredient {
+  name_kr: string;
+  label_rank: number | null;
+  /** 전성분표 원문(matched_text)에 있는 용량 표기 그대로(예: "29,049ppm"). 없으면 null — 지어내지 않는다. */
+  dosage: string | null;
+  /** "정확(어근일치)" | "정확(DB 정의문 근거)" | "유연물질(관련이지만 다른 물질)". */
+  match_type: string;
+  is_key_ingredient: boolean;
+}
+
+/** 계열 하나 — 마케팅 용어(상품명 또는 일반 매칭)와 이 제품에 실제로 들어있는 해당 계열 성분들. */
+export interface MatchedFamily {
+  name: string;
+  /** true면 상품명에 이 계열 용어가 실제로 등장(1순위), false면 상품명엔 없지만 전성분에서 발견(2순위). */
+  from_product_name: boolean;
+  ingredients: MatchedFamilyIngredient[];
+}
+
+/** "이 성분들, 무슨 일을 하나요?" 배합목적 카운트 카드 하나(app/purpose_counts.py 참고).
+ * label은 원본 purpose_name을 최소 가공(괄호만 처리)한 것 — 새 카테고리명을 짓지 않는다. */
+export interface PurposeCount {
+  label: string;
+  count: number;
+  total: number;
+}
+
+/** "피부 타입별 참고" 막대바 한 줄(app/skin_fit.py compute_skin_type_counts 참고).
+ * skin_type은 "지성"/"복합성"/"건성"/"민감성" 또는 피부타입 무관 "전체"(향료 알레르겐 등). */
+export interface SkinTypeCount {
+  skin_type: string;
+  good_count: number;
+  caution_count: number;
+}
+
 export interface IngredientResultProduct {
+  /** 검색 진입(source==='search')에서만 실재 — 계열 비교(family-rank) API 호출에 쓰인다.
+   * 스캔 진입은 DB product가 없어 null (data/ingredientResult.ts의 loadIngredientResult 참고). */
+  product_id: string | null;
   product_name: string;
   raw_ingredients: string;
-  /**
-   * 카드 앞면 최상단 — 전체 성분 구성을 함축한 자연스러운 문장 하나. "화면에서 가장 먼저,
-   * 가장 크게" 읽히는 자리다. 성분명을 나열하지 않고(성분명 설명은 key_ingredients/
-   * ingredient_explanation의 몫), 광고 카피처럼 과장하지 않고 DB에서 확인되는 배합목적
-   * 범위 안에서만 표현한다. 아래 네 필드가 LLM 응답 전체를 이룬다
-   * (docs/LLM_PROMPT.md의 출력 스키마와 동일).
-   */
   summary: string;
-  /** DB의 슈퍼스타 성분 → 그대로 매핑. 개수 제한 없음 — ResultSummaryPanel의 반응형 Grid가 그대로 받는다. */
-  key_ingredients: KeyIngredient[];
-  /** "성분 구성을 살펴보면" 본문 — 슈퍼스타+구디 성분을 근거로 상단 요약의 이유를 설명한다. */
+  key_ingredients: IngredientResultKeyIngredient[];
   ingredient_explanation: string;
-  /**
-   * 스킨케어 루틴 안내 문구(LLM 아님, DB) — `app/product_category.py`가 제품 카테고리(스킨/토너,
-   * 세럼/에센스/앰플, 크림 등)로부터 만든 고정 문구를 그대로 보여준다. 카테고리 미분류면
-   * 빈 문자열(백엔드가 "" 그대로 내려줌) — 그 경우 섹션 자체를 숨긴다.
-   */
+  /** api.ts toAbsoluteImageUrl()이 백엔드 origin을 붙인 절대 URL — 없으면 null(PhotoPanel이 플레이스홀더로 대체). */
+  image_url: string | null;
   category_description: string;
-  /**
-   * 피부 타입별 위험/궁합 성분 요약 문장 — DB `ingredient_skin_score`를 집계한 것(LLM 아님,
-   * `app/skin_fit.py summarize_skin_score_matches`). 매칭이 없으면 백엔드가 "..."를 내려주는데,
-   * 그 경우 프론트가 빈 문자열로 취급해 섹션 자체를 숨긴다.
-   */
+  /** app/schemas/product.py computed_field — 제품명 기반 올리브영 검색 결과 페이지 링크. */
+  oliveyoung_url: string;
   skin_score_summary: string;
-  /** "사용 전 확인해 주세요" 목록 — 없으면 빈 배열(그러면 해당 섹션 자체가 렌더링되지 않는다). */
-  cautions: Caution[];
+  /** "피부 타입별 참고" 막대바용 — skin_score_summary(문장)와 같은 근거의 숫자 버전. */
+  skin_type_counts: SkinTypeCount[];
+  cautions: IngredientResultCaution[];
+  /** app/similarity.py 코사인 유사도 기준 추천 제품 Top3 (PhotoPanel "이런 제품은 어때요?"). */
+  recommended_products: Product[];
+  /**
+   * "상품명 성분, 진짜 들어있나요?" 계열 묶음 — app/marketing_families.py가 계산.
+   * 근거(ingredient_family/ingredient_family_member)가 아직 지정 상품 기준이라 대상 밖
+   * 제품은 항상 빈 배열(그러면 섹션 자체가 렌더링되지 않는다). 최대 3개, 상품명 용어 우선.
+   */
+  ingredient_families: MatchedFamily[];
+  /** "이 성분들, 무슨 일을 하나요?" — app/purpose_counts.py가 계산, 지정 상품 제한 없음.
+   * 배합목적 데이터가 아예 없는 경우만 빈 배열(그러면 섹션 자체를 숨긴다). */
+  purpose_counts: PurposeCount[];
 }
 
 export interface IngredientResult {
@@ -105,20 +125,11 @@ export interface IngredientResult {
   ingredients: Ingredient[];
 }
 
-/**
- * 결과 화면 진입 요청 — 검색 리스트 클릭(search) / 스캔 OCR 성공(scan) 두 경로.
- * ResultView는 이 값을 받아 로딩 문구·에러 문구만 경로별로 갈라 보여주고,
- * 실제 데이터 형태(IngredientResult)는 두 경로가 동일하게 취급한다.
- */
 export type IngredientResultRequest =
   | { source: 'search'; productId: string; productName: string }
   | { source: 'scan'; imageDataUrl: string };
 
-/**
- * 결과 데이터 로더 — 검색/스캔 두 진입점을 하나의 함수로 받는다.
- * 실제 API 연동은 api.ts(loadIngredientResultFromApi) 참고 — search는 GET /products/{id},
- * scan(OCR)은 아직 백엔드에 연동 전이라 에러로 처리된다 (ResultView의 에러 화면으로 이어짐).
- */
-export async function loadIngredientResult(request: IngredientResultRequest): Promise<IngredientResult> {
+/** ResultView가 쓰는 단일 진입점 — 실제 로딩 로직(API 호출)은 api.ts에 있다. */
+export function loadIngredientResult(request: IngredientResultRequest): Promise<IngredientResult> {
   return loadIngredientResultFromApi(request);
 }

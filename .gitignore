@@ -91,6 +91,10 @@ mlruns/
 # --- Ollama 모델 캐시/설정 (자체 SSH 키페어 포함, 절대 커밋 금지) ---
 .ollama/
 
+# --- vLLM 런타임 컴파일 캐시 (GPU 커널 빌드 산출물, 재생성 가능) ---
+.humming/
+.triton/
+
 # --- LabelLens OCR 벤치마크 산출물 (재생성 가능) ---
 src/core/results/
 
@@ -113,7 +117,11 @@ src/core/checkpoints/
 *.env
 .env.*
 *.log
+work/3366_project/logs/
 nohup.out
+
+# --- 프론트엔드 빌드 산출물 (npm run build 결과, 재생성 가능) ---
+work/frontend/dist/
 /tmp/*
 /var/tmp/*
 /cache/*
@@ -132,3 +140,6 @@ labellens_korean_rec/
 
 # --- 임시로 뽑은 스크래치 산출물 ---
 labellens_sample_tables.xlsx
+
+# --- 디자인 되돌리기용 로컬 백업 스냅샷 (git에는 안 올림) ---
+work/frontend/_legacy-design-*/

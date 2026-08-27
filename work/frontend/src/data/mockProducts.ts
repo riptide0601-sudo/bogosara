@@ -1,22 +1,41 @@
-/**
- * 검색 결과 목(mock) 데이터.
- * 백엔드 성분 검색 API가 아직 없어서, 검색어와 무관하게 이 배열을 결과로 보여준다.
- * (App.tsx의 runSearch 참고 — 데모용으로 검색어에 "없음"이 포함되면 빈 결과를 흉내낸다)
- */
 export interface Product {
   id: string;
   name: string;
   brand: string;
   summary: string;
+  /** 백엔드 절대 URL로 변환된 값(api.ts toProduct 참고) — 없으면 null. */
+  image_url: string | null;
 }
 
+/** 검색 API 미연동 화면(추천 제품 등)에서 쓰는 목 데이터 — product_id는 로컬 DB에 실재하는 제품이라
+ * 클릭하면 실제 /products/{id} 결과로 이어진다. */
 export const MOCK_PRODUCTS: Product[] = [
-  { id: 'p1', name: '수분진정크림', brand: '그린무드', summary: '주의 성분 0개 · 보습 위주' },
-  { id: 'p2', name: '저자극 선크림 SPF50+', brand: '선데이랩', summary: '주의 성분 1개 · 자외선 차단' },
-  { id: 'p3', name: '판테놀 카밍 토너', brand: '포레스트베리', summary: '주의 성분 0개 · 진정 위주' },
-  { id: 'p4', name: '비타민C 앰플', brand: '글로우무드', summary: '주의 성분 2개 · 브라이트닝' },
-  { id: 'p5', name: '약산성 클렌징 폼', brand: '퓨어데이즈', summary: '주의 성분 0개 · 저자극 세안' },
-  { id: 'p6', name: '센텔라 리페어 크림', brand: '리페어랩', summary: '주의 성분 1개 · 재생·진정' },
-  { id: 'p7', name: '히알루론산 세럼', brand: '모먼트스킨', summary: '주의 성분 0개 · 고보습' },
-  { id: 'p8', name: '레티놀 나이트 크림', brand: '나잇모드', summary: '주의 성분 3개 · 주름개선(자극 주의)' },
+  {
+    id: 'p-1d9314842bc4',
+    name: 'AHC 프로샷 글루타 브라이트 인트라 세럼 40ml',
+    brand: 'AHC',
+    summary: '나이아신아마이드로 결 정돈, 스쿠알란으로 유수분 밸런스를 잡아주는 세럼.',
+    image_url: null,
+  },
+  {
+    id: 'p-76d4e4a3eb49',
+    name: 'VT 리들샷 100 에센스 30ml',
+    brand: 'VT',
+    summary: '마이크로니들 성분감으로 유수분 라인을 정돈해주는 에센스.',
+    image_url: null,
+  },
+  {
+    id: 'p-b400dc62b46f',
+    name: '[단독기획] 토리든 밸런스풀 시카 진정 크림 80ml 기획',
+    brand: '토리든',
+    summary: '시카 성분으로 예민해진 피부를 진정시켜주는 크림.',
+    image_url: null,
+  },
+  {
+    id: 'p-25071cd9a85a',
+    name: 'VT 피디알엔 에센스 100 30ml',
+    brand: 'VT',
+    summary: '보습 유연 성분 위주로 구성된 산뜻한 에센스.',
+    image_url: null,
+  },
 ];

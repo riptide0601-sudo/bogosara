@@ -1,0 +1,408 @@
+/* =========================================================
+   랜딩 히어로 — 배경/색은 앱 전역 토큰(index.css)을 그대로 쓰고,
+   워드마크·커서 연출에만 참고 랜딩페이지 서체(Big Shoulders Display / IBM Plex Mono)를 얹는다.
+   ========================================================= */
+.lh-hero {
+  --lh-font-display: 'Big Shoulders Display', var(--font-en), sans-serif;
+  --lh-font-mono: 'IBM Plex Mono', var(--font-en), monospace;
+
+  position: relative;
+  /* min-height가 아니라 고정 height — 내용이 넘치더라도 페이지 자체가 늘어나 스크롤이
+     생기는 일이 없게 하고, 대신 아래 각 요소 크기를 vh 기준으로도 잡아 한 화면에 맞춘다. */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  cursor: pointer;
+}
+.lh-hero.lh-has-cursor-fx {
+  cursor: none;
+}
+
+.lh-hero-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  padding: clamp(1rem, 3.5vh, 2rem) clamp(1.1rem, 4vw, 3rem) clamp(1rem, 3vh, 1.8rem);
+}
+
+.lh-mark {
+  align-self: flex-end;
+  font-family: var(--lh-font-mono);
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+}
+
+/* ---- 좌우 끝 SEARCH/SCAN 라벨 — 커서가 해당 절반에 있으면 accent-dark로 켜진다 ---- */
+.lh-edge-label {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  font-family: var(--lh-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  color: var(--ink-soft);
+  transition: color 0.2s ease;
+  z-index: 3;
+  user-select: none;
+}
+.lh-edge-label--left {
+  left: clamp(0.5rem, 2.4vw, 1.6rem);
+}
+.lh-edge-label--right {
+  right: clamp(0.5rem, 2.4vw, 1.6rem);
+}
+.lh-hero[data-zone='search'] .lh-edge-label--left {
+  color: var(--accent-dark);
+}
+.lh-hero[data-zone='scan'] .lh-edge-label--right {
+  color: var(--accent-dark);
+}
+@media (hover: none), (pointer: coarse) {
+  .lh-edge-label {
+    display: none;
+  }
+}
+
+/* ---- 카피+워드마크+안내+진입카드 전체를 화면 세로 중앙에 한 덩어리로 배치 ---- */
+.lh-hero-middle {
+  flex: 1;
+  min-height: 0; /* flex 자식이 내용 때문에 부모보다 커지는 것 방지 — 한 화면 안에 맞추기 위함 */
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.5rem, 1.6vh, 1.1rem);
+}
+
+/* ---- 워드마크 + 성분 단어 burst ----
+   블롭 크기(vw/vh 동시 제한 — 좁은 화면도 짧은 화면도 항상 한 화면에 맞게)를 hero-center의
+   최소 높이로도 주고, burst는 그 안에 inset:0으로 깐다. 단어 위치 퍼센트는 원래 참고
+   디자인처럼 hero-center 전체(가로는 100%) 기준이라 화면이 넓으면 블롭보다 조금 더 넓게도
+   퍼진다 — 의도된 모습(원래 디자인 그대로). */
+.lh-hero-center {
+  position: relative;
+  width: 100%;
+  min-height: min(56vw, 74vh, 620px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.lh-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.lh-blob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(56vw, 74vh, 620px);
+  height: min(56vw, 74vh, 620px);
+  transform: translate(-50%, -50%);
+  background: var(--accent);
+  border-radius: 42% 58% 63% 37% / 45% 40% 60% 55%;
+}
+.lh-w {
+  position: absolute;
+  white-space: nowrap;
+  font-family: var(--lh-font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.01em;
+  color: rgba(31, 37, 23, 0.38);
+}
+.lh-w-on {
+  color: var(--ink);
+  font-weight: 500;
+}
+.lh-w1 { left: 18%; top: 22%; transform: rotate(-9deg); }
+.lh-w2 { left: 62%; top: 16%; transform: rotate(6deg); font-size: 0.68rem; }
+.lh-w3 { left: 40%; top: 30%; transform: rotate(-3deg); }
+.lh-w4 { left: 68%; top: 34%; transform: rotate(11deg); }
+.lh-w5 { left: 24%; top: 44%; transform: rotate(4deg); }
+.lh-w6 { left: 52%; top: 48%; transform: rotate(-7deg); font-size: 0.7rem; }
+.lh-w7 { left: 33%; top: 58%; transform: rotate(8deg); }
+.lh-w8 { left: 66%; top: 60%; transform: rotate(-5deg); }
+.lh-w9 { left: 20%; top: 68%; transform: rotate(-11deg); font-size: 0.68rem; }
+.lh-w10 { left: 58%; top: 72%; transform: rotate(5deg); }
+.lh-w11 { left: 41%; top: 78%; transform: rotate(-2deg); }
+.lh-w12 { left: 76%; top: 50%; transform: rotate(-13deg); font-size: 0.66rem; }
+
+.lh-wordmark {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  font-family: var(--lh-font-display);
+  font-weight: 900;
+  line-height: 0.82;
+  letter-spacing: -0.01em;
+}
+.lh-wm-line {
+  display: block;
+  /* 가로(vw)·세로(vh) 둘 중 더 좁은 쪽 기준 — 화면이 낮아도(짧은 브라우저 창) 안 넘치게 */
+  font-size: clamp(5rem, min(30vw, 24vh), 19rem);
+}
+.lh-wm-line--a {
+  text-align: left;
+  color: var(--ink);
+}
+.lh-wm-line--b {
+  text-align: right;
+  margin-top: -0.06em;
+  color: var(--panel);
+  -webkit-text-stroke: 2px var(--ink);
+}
+
+/* ---- 카피 — 블롭 안, 워드마크 바로 아래에 겹쳐 들어간다(참고 디자인과 동일한 자리) ---- */
+.lh-tagline {
+  position: relative;
+  z-index: 2;
+  margin: clamp(0.5rem, 1.6vh, 1.1rem) 0 0;
+  max-width: 26ch;
+  text-align: center;
+  font-size: clamp(0.85rem, min(1.7vw, 2vh), 1.15rem);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.lh-instruction {
+  position: relative;
+  z-index: 2;
+  margin: clamp(0.4rem, 1.2vh, 0.8rem) 0 0;
+  font-family: var(--lh-font-mono);
+  font-weight: 600;
+  font-size: clamp(0.82rem, min(1.7vw, 1.9vh), 1rem);
+  letter-spacing: 0.02em;
+  /* 검은색 대신 진한 회색 — 블롭(초록) 위에서도 튀지 않으면서 잘 읽히게 */
+  color: rgba(31, 37, 23, 0.78);
+}
+.lh-instruction-link {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0 0.1em;
+  font: inherit;
+  font-weight: 700;
+  /* 링크만 초록으로 튀면 블롭 위에서 거의 안 보여서, 나머지 설명글과 같은 색으로 통일 */
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+.lh-instruction-link:hover,
+.lh-instruction-link:focus-visible {
+  color: var(--ink);
+}
+
+/* ---- SEARCH/SCAN 진입 카드 — 커서 연출과 별개로 모든 기기에서 항상 노출되는 명시적 진입점 ---- */
+.lh-entry-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 460px;
+  gap: 0.6rem;
+}
+.lh-entry-card {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex: 1 1 200px;
+  padding: 0.7rem 0.9rem;
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+}
+.lh-entry-card:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+.lh-entry-card .pixel-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--accent-dark);
+  flex-shrink: 0;
+}
+.lh-entry-label {
+  display: block;
+  font-family: var(--lh-font-mono);
+}
+.lh-entry-sub {
+  display: block;
+  margin-top: 0.15em;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+/* ---- 렌즈 확대(zoom) 레이어 — 중앙 그룹을 한 번 더 그려두고 렌즈 아래에서만 원형으로 노출 ---- */
+.lh-hero-zoom {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  will-change: opacity, clip-path, transform;
+}
+.lh-hero-zoom .lh-entry-row {
+  /* 확대 레이어는 실제 레이어와 정확히 겹치는 자리에 그려지지만, 카드 버튼까지 확대되어
+     보일 필요는 없어 여기서만 꺼둔다(실제 레이어의 카드는 그대로 항상 보임). */
+  display: none !important;
+}
+
+/* ---- 커서 연출: 왼쪽 = 돋보기 렌즈(검색), 오른쪽 = OCR 스캐너(스캔) ---- */
+.lh-cursor-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+.lh-lens,
+.lh-scanner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  will-change: transform, opacity;
+}
+.lh-lens {
+  width: 168px;
+  height: 168px;
+  margin: -84px 0 0 -84px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  box-shadow: 0 8px 26px rgba(31, 37, 23, 0.18);
+}
+.lh-lens::after {
+  content: '';
+  position: absolute;
+  width: 30px;
+  height: 3px;
+  background: var(--ink);
+  right: -20px;
+  bottom: 4px;
+  transform: rotate(45deg);
+  transform-origin: left center;
+  border-radius: 2px;
+}
+.lh-lens-crosshair {
+  position: absolute;
+  inset: 0;
+}
+.lh-lens-crosshair::before,
+.lh-lens-crosshair::after {
+  content: '';
+  position: absolute;
+  background: var(--ink);
+  opacity: 0.5;
+}
+.lh-lens-crosshair::before {
+  left: 50%;
+  top: 14px;
+  bottom: 14px;
+  width: 1px;
+  margin-left: -0.5px;
+}
+.lh-lens-crosshair::after {
+  top: 50%;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  margin-top: -0.5px;
+}
+
+.lh-scanner {
+  width: 168px;
+  height: 118px;
+  margin: -59px 0 0 -84px;
+}
+.lh-scan-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--ink);
+}
+.lh-scan-corner.tl { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.lh-scan-corner.tr { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+.lh-scan-corner.bl { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+.lh-scan-corner.br { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+.lh-scan-line {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 4px;
+  height: 2px;
+  background: var(--accent-dark);
+  animation: lh-scan-sweep 1.7s ease-in-out infinite;
+}
+@keyframes lh-scan-sweep {
+  0%, 100% { top: 6px; opacity: 0.35; }
+  50% { top: calc(100% - 8px); opacity: 1; }
+}
+.lh-scanner-label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 10px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--lh-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--ink);
+  padding: 0.3em 0.6em;
+  border-radius: 999px;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .lh-cursor-fx,
+  .lh-hero-zoom,
+  .lh-instruction {
+    display: none;
+  }
+  .lh-hero {
+    cursor: default;
+  }
+}
+
+@media (max-width: 860px) {
+  .lh-wm-line { font-size: clamp(2.3rem, min(15vw, 11vh), 5.6rem); }
+  .lh-entry-row { max-width: 320px; }
+  .lh-entry-card { flex: 1 1 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lh-scan-line { animation: none; top: 50%; }
+  .lh-wm-line, .lh-tagline, .lh-instruction { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+@keyframes lh-rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.lh-wm-line--a { animation: lh-rise-in 0.7s cubic-bezier(.2,.7,.2,1) both; }
+.lh-wm-line--b { animation: lh-rise-in 0.7s 0.1s cubic-bezier(.2,.7,.2,1) both; }
+.lh-tagline { animation: lh-rise-in 0.7s 0.22s cubic-bezier(.2,.7,.2,1) both; }
+.lh-instruction { animation: lh-rise-in 0.7s 0.3s cubic-bezier(.2,.7,.2,1) both; }

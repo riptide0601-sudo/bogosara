@@ -3,7 +3,7 @@ import type { Product } from '../data/mockProducts';
 import ProductCard from './ProductCard';
 import PinnedSearchBar from './PinnedSearchBar';
 
-export type SearchStatus = 'idle' | 'loading' | 'done';
+export type SearchStatus = 'idle' | 'loading' | 'done' | 'error';
 
 interface ResultsSectionProps {
   status: SearchStatus;
@@ -16,7 +16,8 @@ interface ResultsSectionProps {
 /**
  * 검색 결과 섹션 — 페이지 이동 없이 검색 오버레이 아래쪽에 나타난다.
  * App.tsx가 검색 제출 시 이 섹션으로 smooth scroll 시킨다 (resultsRef 참고).
- * status: 'idle'(아직 검색 안 함, 렌더링 안 함) / 'loading'(스켈레톤) / 'done'(결과 또는 빈 상태)
+ * status: 'idle'(아직 검색 안 함, 렌더링 안 함) / 'loading'(스켈레톤) / 'done'(결과 또는 빈 상태) /
+ * 'error'(검색 API 요청 자체가 실패 — 결과 0건과는 구분해서 보여준다)
  * onSelectProduct: 카드 클릭 시 성분 결과 화면(ResultView)으로 넘어가는 진입점 (ProductCard로 그대로 전달).
  * onSearch: 제목 줄 오른쪽에 나란히 놓인 재검색 바(PinnedSearchBar) 제출 핸들러 — 화면 맨 위에
  * 고정되던 이전 방식 대신, 이 제목 줄과 같은 높이·같은 칼럼 트랙에 우측 정렬로 배치한다
@@ -48,6 +49,13 @@ const ResultsSection = forwardRef<HTMLElement, ResultsSectionProps>(function Res
               ))}
             </div>
           </>
+        )}
+
+        {status === 'error' && (
+          <div className="results-empty" role="alert">
+            <p>검색 중 문제가 생겼어요.</p>
+            <p className="results-empty-sub">네트워크 상태를 확인하고 다시 검색해보세요.</p>
+          </div>
         )}
 
         {status === 'done' && results.length === 0 && (

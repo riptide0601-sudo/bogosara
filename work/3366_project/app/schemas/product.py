@@ -7,6 +7,9 @@ from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 from app.product_category import get_info as get_category_info
 from app.schemas.ingredient import IngredientDetail
 from app.schemas.ingredient_relation import IngredientRelationRead
+from app.schemas.marketing_family import MatchedFamily
+from app.schemas.purpose_count import PurposeCount
+from app.schemas.skin_fit import SkinTypeCountRead
 
 _OLIVEYOUNG_SEARCH_URL = "https://www.oliveyoung.co.kr/store/search/getSearchMain.do?query={query}"
 
@@ -16,6 +19,7 @@ class ProductBase(BaseModel):
     brand: str | None = None
     summary: str | None = None
     composition_text: str | None = None
+    image_url: str | None = None
 
 
 class ProductCreate(ProductBase):
@@ -99,3 +103,13 @@ class ProductDetail(ProductRead):
     # 상위 DEFAULT_TOP_K개를 그대로 슬라이스한 성분 객체 목록이다 (_to_detail 참고).
     top_ingredients: list[ProductIngredientDetail] = []
     similar_products: list[ProductSimilarityRead] = []
+    # "상품명 성분, 진짜 들어있나요?" 계열 묶음 블록 (app/marketing_families.py 참고).
+    # 근거(ingredient_family/ingredient_family_member)가 아직 지정 10개 상품 기준이라,
+    # 대상 밖 제품은 항상 빈 리스트.
+    ingredient_families: list[MatchedFamily] = []
+    # "이 성분들, 무슨 일을 하나요?" 배합목적 카운트 카드 (app/purpose_counts.py 참고).
+    # 지정 상품 제한 없이 DB 전체 제품에 적용된다.
+    purpose_counts: list[PurposeCount] = []
+    # "피부 타입별 참고" 막대바용 구조화 데이터 (app/skin_fit.py compute_skin_type_counts).
+    # skin_score_summary(문장)와 같은 근거, 막대바 렌더링에 쓰는 숫자 버전.
+    skin_type_counts: list[SkinTypeCountRead] = []

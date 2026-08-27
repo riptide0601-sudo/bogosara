@@ -99,6 +99,35 @@ def call_ollama(model: str, prompt: str, *, num_predict: int = 600) -> tuple[str
     return resp.json().get("response", ""), elapsed
 
 
+def call_vllm(model: str, prompt: str, *, num_predict: int = 600) -> tuple[str, float]:
+    """vLLM OpenAI 호환 서버(/v1/chat/completions) 호출. Qwen3는 기본 thinking mode라
+    chat_template_kwargs로 꺼서 <think> 블록 없이 바로 JSON이 나오게 한다."""
+    from openai import OpenAI
+
+    from app.config import settings
+
+    client = OpenAI(base_url=settings.vllm_base_url, api_key="not-needed")
+    start = time.time()
+    resp = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=num_predict,
+        temperature=0.3,
+        extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+    )
+    elapsed = time.time() - start
+    return resp.choices[0].message.content or "", elapsed
+
+
+def call_llm(model: str, prompt: str, *, num_predict: int = 600) -> tuple[str, float]:
+    """provider(app.config.settings.llm_provider)에 따라 call_ollama/call_vllm 중 하나로 위임."""
+    from app.config import settings
+
+    if settings.llm_provider == "vllm":
+        return call_vllm(model, prompt, num_predict=num_predict)
+    return call_ollama(model, prompt, num_predict=num_predict)
+
+
 def generate_product_summary(db, product_id: str, model: str) -> dict:
     input_data = build_product_input(db, product_id)
     prompt = render_prompt(PROMPTS_DIR / "product_summary.md", input_data)

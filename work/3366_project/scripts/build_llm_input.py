@@ -24,6 +24,7 @@ from app.models.ingredient_relation import IngredientRelation
 from app.models.ingredient_skin_score import IngredientSkinScore
 from app.models.product import Product
 from app.models.product_concern import ProductConcern
+from app.similarity import DEFAULT_TOP_K
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 OUT_DIR = PROMPTS_DIR / "examples"
@@ -42,6 +43,16 @@ def build_ingredient_input(db, ingredient_id: int, product_id: str) -> dict:
     ingredient = db.get(Ingredient, ingredient_id)
     product = db.get(Product, product_id)
     key_names = set(_parse_json_list(product.key_ingredients))
+
+    # 2026-08 병합: "핵심 성분(is_key)" 판정 기준이 key_ingredients(core_ingredient_selector
+    # 큐레이션) 하나만이 아니라 top_ingredients(label_rank 상위 DEFAULT_TOP_K, app/routers/
+    # products.py _to_detail과 동일 기준)도 포함하도록 넓어졌다 — 화면에 "핵심 성분 카드"로
+    # 노출되는 성분과 LLM이 비중 있게 설명하는 성분을 일치시키기 위함.
+    sorted_pis = sorted(
+        product.product_ingredients, key=lambda pi: (pi.label_rank is None, pi.label_rank)
+    )
+    top_ingredient_ids = {pi.ingredient_id for pi in sorted_pis[:DEFAULT_TOP_K]}
+    is_key = (ingredient.name_kr in key_names) or (ingredient_id in top_ingredient_ids)
 
     purposes = db.scalars(
         select(IngredientPurpose)
@@ -82,7 +93,7 @@ def build_ingredient_input(db, ingredient_id: int, product_id: str) -> dict:
             "name_kr": ingredient.name_kr,
             "name_en": ingredient.name_en,
             "safety_level": ingredient.safety_level,
-            "is_key": ingredient.name_kr in key_names,
+            "is_key": is_key,
             "purposes": [
                 {"name": ip.purpose.purpose_name, "description": ip.purpose.description}
                 for ip in purposes
@@ -114,11 +125,21 @@ def build_ingredient_input(db, ingredient_id: int, product_id: str) -> dict:
 
 def build_product_input(db, product_id: str) -> dict:
     """제품의 핵심 성분 구성을 묶은, product_summary.md용 입력."""
+    from app.product_category import get_info as get_category_info
+
     product = db.get(Product, product_id)
     key_names = _parse_json_list(product.key_ingredients)
     concerns = db.scalars(
         select(ProductConcern).where(ProductConcern.product_id == product_id)
     ).all()
+
+    total_ingredient_count = len(product.product_ingredients)
+    # 이름 -> product_ingredient(label_rank/matched_text) 조회용. 같은 이름이 중복될 일은
+    # 없다고 보고 첫 매칭만 쓴다 (label_rank 순 정렬 기준 앞쪽 우선).
+    pi_by_name = {}
+    for pi in sorted(product.product_ingredients, key=lambda x: (x.label_rank is None, x.label_rank)):
+        if pi.ingredient.name_kr and pi.ingredient.name_kr not in pi_by_name:
+            pi_by_name[pi.ingredient.name_kr] = pi
 
     key_ingredients_detail = []
     key_ingredient_ids: list[int] = []
@@ -133,7 +154,17 @@ def build_product_input(db, product_id: str) -> dict:
             .where(IngredientPurpose.ingredient_id == ing.ingredient_id)
         ).all()
         top_purpose = purposes[0].purpose.purpose_name if purposes else None
-        key_ingredients_detail.append({"name": name, "purpose": top_purpose})
+        pi = pi_by_name.get(name)
+        key_ingredients_detail.append({
+            "name": name,
+            "purpose": top_purpose,
+            # 전성분표 순서(1이 가장 앞/고농도 추정) — 뒤쪽일수록 미량 추정. 화장품법상 1%
+            # 미만은 순서 무관이라 완전한 함량 증거는 아니고 "근사 신호"다(호출부/프롬프트가
+            # 이 한계를 인지하고 써야 함).
+            "label_rank": pi.label_rank if pi else None,
+            # 라벨 원문에 함량이 적혀 있을 때만("2,400ppm" 등 그대로) — 없으면 None.
+            "matched_text": pi.matched_text if pi else None,
+        })
 
     # 핵심 성분끼리 실제로 걸린 관계만 — "왜 이 조합인지"에 쓸 수 있는 근거만 남긴다.
     relations = []
@@ -164,6 +195,10 @@ def build_product_input(db, product_id: str) -> dict:
         "product_name": product.product_name,
         "brand": product.brand,
         "category": product.category,
+        # app/product_category.py 고정 문구(LLM 아님, DB) — "스킨케어 순서"를 요약글 안에
+        # 자연스럽게 녹일 때 반드시 이 문구를 근거로 써야 한다(지어내지 않기 위함).
+        "category_description": get_category_info(product.category).description,
+        "total_ingredient_count": total_ingredient_count,
         "key_ingredients": key_ingredients_detail,
         "product_concern": [c.concern for c in concerns],
         "key_ingredient_relations": relations,

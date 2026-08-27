@@ -1,0 +1,610 @@
+<title>BOGOSARA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;700;900&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+  :root {
+    --bg: #f2efe0;
+    --bg-soft: #e9e3ca;
+    --card: #fbf9ee;
+    --ink: #15170e;
+    --ink-soft: #5a5d47;
+    --line: #d7d1b4;
+    --lime: #c3e832;
+    --lime-deep: #5b7a12;
+    --lime-ink: #141a06;
+
+    --closing-bg: #14160d;
+    --closing-ink: #f3f1e2;
+    --closing-ink-soft: #b9bda0;
+    --closing-line: #34371f;
+
+    --r-sm: 6px;
+    --r-md: 12px;
+    --font-display: 'Big Shoulders Display', 'Noto Sans KR', system-ui, sans-serif;
+    --font-body: 'Noto Sans KR', 'Malgun Gothic', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'Noto Sans KR', ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121308;
+      --bg-soft: #1b1c10;
+      --card: #191a10;
+      --ink: #f1eee0;
+      --ink-soft: #b6b99c;
+      --line: #2d2f1b;
+      --lime: #d4f158;
+      --lime-deep: #d4f158;
+      --lime-ink: #12160a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121308;
+    --bg-soft: #1b1c10;
+    --card: #191a10;
+    --ink: #f1eee0;
+    --ink-soft: #b6b99c;
+    --line: #2d2f1b;
+    --lime: #d4f158;
+    --lime-deep: #d4f158;
+    --lime-ink: #12160a;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--font-body);
+    line-height: 1.7; font-variant-numeric: tabular-nums; overflow-x: hidden;
+  }
+  h1, h2, h3, p, ul, ol, dl, dd, dt { margin: 0; padding: 0; }
+  ul, ol { list-style: none; }
+  h1, h2, h3 { text-wrap: balance; }
+  a { color: inherit; text-decoration: none; }
+  img, svg { display: block; max-width: 100%; }
+
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--lime-deep); outline-offset: 3px; border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding-left: clamp(1.1rem, 4vw, 3rem); padding-right: clamp(1.1rem, 4vw, 3rem); }
+  .eyebrow {
+    display: flex; align-items: center; gap: .6em; font-family: var(--font-mono); font-size: .74rem;
+    font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--lime-deep); margin-bottom: 1rem;
+  }
+  .eyebrow::before { content: ""; width: 22px; height: 1px; background: currentColor; }
+
+  /* ---------------- topbar ---------------- */
+  .topbar {
+    position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between;
+    padding: clamp(1rem, 3vw, 1.6rem) clamp(1.1rem, 4vw, 3rem);
+  }
+  .topbar .mark { font-family: var(--font-mono); font-weight: 600; font-size: .82rem; letter-spacing: .12em; }
+  .topbar nav { display: flex; gap: clamp(1rem, 3vw, 2rem); }
+  .topbar nav a { font-family: var(--font-mono); font-size: .74rem; letter-spacing: .08em; color: var(--ink-soft); transition: color .15s; }
+  .topbar nav a:hover { color: var(--lime-deep); }
+
+  /* ---------------- hero ---------------- */
+  .hero { position: relative; min-height: 100vh; min-height: 100dvh; overflow: hidden; }
+  .hero.has-cursor-fx { cursor: none; }
+
+  .hero-inner {
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between;
+    padding: clamp(3.4rem, 8vw, 5.6rem) clamp(1.1rem, 4vw, 3rem) clamp(1.6rem, 4vw, 2.4rem);
+  }
+  #heroZoomLayer { z-index: 4; pointer-events: none; opacity: 0; will-change: opacity, clip-path; }
+  #heroZoomLayer .hero-view, #heroZoomLayer a { pointer-events: none; }
+
+  .edge-label {
+    position: absolute; top: 50%; transform: translateY(-50%); writing-mode: vertical-rl;
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing: .22em; color: var(--ink-soft);
+    transition: color .2s ease; z-index: 2; user-select: none;
+  }
+  .edge-label--left { left: clamp(.5rem, 2.4vw, 1.6rem); }
+  .edge-label--right { right: clamp(.5rem, 2.4vw, 1.6rem); }
+  .hero[data-zone="search"] .edge-label--left { color: var(--lime-deep); }
+  .hero[data-zone="scan"] .edge-label--right { color: var(--lime-deep); }
+
+  .hero-center { position: relative; margin: 0 auto; text-align: center; padding: 0 clamp(2.4rem, 7vw, 4.5rem); }
+
+  .burst { position: absolute; inset: -30% -6% auto -6%; height: 190%; pointer-events: none; z-index: 1; }
+  .burst .blob {
+    position: absolute; left: 50%; top: 46%; width: min(58vw, 620px); height: min(58vw, 620px);
+    transform: translate(-50%, -50%); background: var(--lime);
+    border-radius: 42% 58% 63% 37% / 45% 40% 60% 55%; opacity: .9;
+  }
+  .burst .w {
+    position: absolute; font-family: var(--font-mono); white-space: nowrap; font-size: .74rem;
+    color: var(--ink-soft); letter-spacing: .01em;
+  }
+  .burst .w.on { color: var(--lime-ink); font-weight: 500; }
+  .burst .w1  { left: 18%; top: 22%; transform: rotate(-9deg); }
+  .burst .w2  { left: 62%; top: 16%; transform: rotate(6deg); font-size: .68rem; }
+  .burst .w3  { left: 40%; top: 30%; transform: rotate(-3deg); }
+  .burst .w4  { left: 68%; top: 34%; transform: rotate(11deg); }
+  .burst .w5  { left: 24%; top: 44%; transform: rotate(4deg); }
+  .burst .w6  { left: 52%; top: 48%; transform: rotate(-7deg); font-size: .7rem; }
+  .burst .w7  { left: 33%; top: 58%; transform: rotate(8deg); }
+  .burst .w8  { left: 66%; top: 60%; transform: rotate(-5deg); }
+  .burst .w9  { left: 20%; top: 68%; transform: rotate(-11deg); font-size: .68rem; }
+  .burst .w10 { left: 58%; top: 72%; transform: rotate(5deg); }
+  .burst .w11 { left: 41%; top: 78%; transform: rotate(-2deg); }
+  .burst .w12 { left: 74%; top: 47%; transform: rotate(-13deg); font-size: .66rem; }
+
+  .wordmark { position: relative; z-index: 2; font-family: var(--font-display); font-weight: 900; line-height: .82; letter-spacing: -.01em; }
+  .wm-line { display: block; font-size: clamp(3.6rem, 15vw, 10.5rem); }
+  .wm-line--a { text-align: left; }
+  .wm-line--b { text-align: right; margin-top: -.06em; color: var(--lime-deep); }
+
+  .hero-view {
+    position: relative; z-index: 3; display: inline-flex; align-items: center; justify-content: center;
+    width: 4.6rem; height: 4.6rem; margin-top: 1.2rem; border-radius: 50%; background: var(--lime);
+    color: var(--lime-ink); font-family: var(--font-mono); font-weight: 600; font-size: .82rem;
+    letter-spacing: .04em; transition: transform .18s ease, background .18s ease;
+  }
+  .hero-view:hover { transform: scale(1.06); background: var(--lime-deep); color: var(--closing-ink); }
+
+  .hero-tagline {
+    position: relative; z-index: 2; margin: 1.5rem auto 0; max-width: 30ch;
+    font-size: clamp(1rem, 2vw, 1.2rem); font-weight: 500; color: var(--ink);
+  }
+
+  .hero-bottom { position: relative; z-index: 2; display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(1.5rem, 4vw, 3rem); align-items: end; }
+  .hero-blurb p { max-width: 46ch; font-size: .92rem; color: var(--ink-soft); margin-bottom: .8rem; }
+  .link-arrow { display: inline-flex; align-items: center; gap: .4em; font-size: .86rem; font-weight: 700; border-bottom: 1px solid currentColor; padding-bottom: .1em; }
+  .link-arrow:hover { color: var(--lime-deep); }
+
+  .hero-stats { display: grid; grid-template-columns: repeat(4, auto); gap: clamp(1rem, 3vw, 1.8rem); justify-content: end; text-align: right; }
+  .hero-stats dt { font-family: var(--font-mono); font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: .35em; }
+  .hero-stats dd { font-family: var(--font-mono); font-weight: 600; font-size: clamp(1rem, 2vw, 1.3rem); }
+
+  /* mobile entry cards (shown only without fine hover) */
+  .mobile-entry { display: none; position: relative; z-index: 3; gap: .7rem; margin: 1.6rem 0; }
+  .entry-card {
+    display: flex; align-items: center; gap: .8rem; padding: 1rem 1.1rem; background: var(--card);
+    border: 1px solid var(--line); border-radius: var(--r-md); font-size: .88rem; font-weight: 700;
+  }
+  .entry-card .ic { font-family: var(--font-mono); font-size: 1.1rem; color: var(--lime-deep); }
+  .entry-card .sub { display: block; margin-top: .15em; font-size: .74rem; font-weight: 500; color: var(--ink-soft); }
+
+  /* cursor fx */
+  .cursor-fx { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+  .lens, .scanner { position: absolute; top: 0; left: 0; opacity: 0; transition: opacity .12s ease; will-change: transform, opacity; }
+  .lens {
+    width: 168px; height: 168px; margin: -84px 0 0 -84px; border-radius: 50%;
+    border: 2px solid var(--ink); box-shadow: 0 8px 26px rgba(20, 22, 10, .18);
+  }
+  .lens::after {
+    content: ""; position: absolute; width: 30px; height: 3px; background: var(--ink);
+    right: -20px; bottom: 4px; transform: rotate(45deg); transform-origin: left center; border-radius: 2px;
+  }
+  .lens-crosshair { position: absolute; inset: 0; }
+  .lens-crosshair::before, .lens-crosshair::after { content: ""; position: absolute; background: var(--ink); opacity: .5; }
+  .lens-crosshair::before { left: 50%; top: 14px; bottom: 14px; width: 1px; margin-left: -.5px; }
+  .lens-crosshair::after { top: 50%; left: 14px; right: 14px; height: 1px; margin-top: -.5px; }
+
+  .scanner { width: 168px; height: 118px; margin: -59px 0 0 -84px; }
+  .scan-corner { position: absolute; width: 18px; height: 18px; border: 2px solid var(--ink); }
+  .scan-corner.tl { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+  .scan-corner.tr { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+  .scan-corner.bl { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+  .scan-corner.br { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+  .scan-line { position: absolute; left: 6px; right: 6px; top: 4px; height: 2px; background: var(--lime-deep); animation: scanSweep 1.7s ease-in-out infinite; }
+  @keyframes scanSweep { 0%, 100% { top: 6px; opacity: .35; } 50% { top: calc(100% - 8px); opacity: 1; } }
+  .scanner-label {
+    position: absolute; left: 50%; top: calc(100% + 10px); transform: translateX(-50%); white-space: nowrap;
+    font-family: var(--font-mono); font-size: .7rem; letter-spacing: .02em; color: var(--ink);
+    background: var(--card); border: 1px solid var(--line); padding: .3em .6em; border-radius: 999px;
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    .cursor-fx { display: none; }
+    .mobile-entry { display: grid; }
+    .edge-label { display: none; }
+  }
+
+  /* ---------------- generic section ---------------- */
+  .section { padding: clamp(4.5rem, 10vw, 7.5rem) 0; border-top: 1px solid var(--line); }
+  .section-head { display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(1.5rem, 4vw, 3rem); align-items: end; margin-bottom: clamp(2.6rem, 6vw, 3.6rem); }
+  .section-title { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.9rem, 4.6vw, 3.1rem); line-height: 1.12; }
+  .section-lede { font-size: .96rem; color: var(--ink-soft); max-width: 44ch; }
+
+  /* problem */
+  .problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.4rem, 4vw, 2.4rem); }
+  .label-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: clamp(1.4rem, 3vw, 1.9rem); position: relative; }
+  .label-card::before {
+    content: ""; position: absolute; top: 10px; left: 10px; width: 10px; height: 10px;
+    border-top: 1px solid var(--ink-soft); border-left: 1px solid var(--ink-soft); opacity: .5;
+  }
+  .label-tag { display: block; font-family: var(--font-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--lime-deep); margin-bottom: .9rem; }
+  .raw-inci { font-family: var(--font-mono); font-size: .84rem; line-height: 2; color: var(--ink-soft); text-align: justify; }
+  .unknowns li { position: relative; padding-left: 1.2em; font-size: .92rem; margin-bottom: .75em; }
+  .unknowns li::before { content: "?"; position: absolute; left: 0; top: 0; font-family: var(--font-mono); color: var(--lime-deep); font-weight: 600; }
+  .unknowns li:last-child { margin-bottom: 0; }
+
+  /* flow */
+  .fork-row { display: flex; align-items: center; justify-content: center; gap: clamp(1rem, 3vw, 2.2rem); flex-wrap: wrap; margin-bottom: clamp(2.2rem, 5vw, 3.2rem); }
+  .fork-chip { font-family: var(--font-mono); font-size: .82rem; padding: .8em 1.3em; border: 1px solid var(--line); border-radius: 999px; background: var(--card); }
+  .fork-arrow { font-family: var(--font-mono); color: var(--lime-deep); font-size: .9rem; }
+  .fork-result { font-family: var(--font-mono); font-size: .88rem; padding: .8em 1.4em; border-radius: 999px; background: var(--lime); color: var(--lime-ink); font-weight: 600; }
+
+  .timeline { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(1rem, 3vw, 1.6rem); padding-top: clamp(1.6rem, 4vw, 2.2rem); }
+  .timeline::before { content: ""; position: absolute; top: 0; left: 2%; right: 2%; height: 1px; background: var(--line); }
+  .timeline-step { position: relative; padding-top: 1.6rem; }
+  .timeline-step::before {
+    content: ""; position: absolute; top: -5px; left: 0; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--lime); border: 2px solid var(--bg);
+  }
+  .timeline-step .n { display: block; font-family: var(--font-mono); font-size: .72rem; color: var(--lime-deep); margin-bottom: .5em; }
+  .timeline-step h3 { font-size: 1rem; font-weight: 700; margin-bottom: .4em; }
+  .timeline-step p { font-size: .82rem; color: var(--ink-soft); line-height: 1.6; }
+
+  .flow-outputs { display: flex; gap: 1rem; justify-content: center; margin-top: clamp(2.4rem, 5vw, 3.2rem); flex-wrap: wrap; }
+  .flow-outputs .out { font-family: var(--font-mono); font-size: .8rem; padding: .7em 1.3em; border: 1px dashed var(--line); border-radius: var(--r-sm); color: var(--ink-soft); }
+
+  /* proof */
+  .proof-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(2rem, 5vw, 3.5rem); align-items: start; }
+  .bench-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  .bench-table caption { text-align: left; font-family: var(--font-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: .8rem; }
+  .bench-table th, .bench-table td { padding: .7em .6em; text-align: right; border-bottom: 1px solid var(--line); font-family: var(--font-mono); }
+  .bench-table th:first-child, .bench-table td:first-child { text-align: left; font-family: var(--font-body); }
+  .bench-table th { font-weight: 600; color: var(--ink-soft); font-size: .76rem; }
+  .bench-table td.win { color: var(--lime-deep); font-weight: 600; }
+  .bench-table tr.win-row td { position: relative; }
+  .bench-table tr.win-row td:first-child::before { content: ""; position: absolute; left: -.6em; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--lime); }
+  .bench-note { margin-top: 1rem; font-size: .78rem; color: var(--ink-soft); }
+
+  .proof-stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: clamp(1.6rem, 4vw, 2.2rem); margin-bottom: 1.1rem; }
+  .proof-stat .num { font-family: var(--font-mono); font-weight: 600; font-size: clamp(2rem, 5vw, 2.8rem); }
+  .proof-stat .num .arrow { color: var(--ink-soft); font-size: .55em; margin: 0 .18em; }
+  .proof-stat .num .to { color: var(--lime-deep); }
+  .proof-stat .cap { margin-top: .5rem; font-size: .8rem; color: var(--ink-soft); }
+
+  /* closing */
+  .closing { background: var(--closing-bg); color: var(--closing-ink); border-top: 1px solid var(--closing-line); padding: clamp(5rem, 12vw, 8.5rem) 0; }
+  .closing-line { font-family: var(--font-display); font-weight: 700; font-size: clamp(2rem, 6.5vw, 4.2rem); line-height: 1.16; }
+  .closing-line .accent { color: var(--lime); }
+  .closing-meta { margin-top: clamp(2.4rem, 5vw, 3.4rem); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; font-family: var(--font-mono); font-size: .74rem; letter-spacing: .06em; color: var(--closing-ink-soft); border-top: 1px solid var(--closing-line); padding-top: 1.4rem; }
+  .closing-meta a:hover { color: var(--lime); }
+
+  @media (max-width: 860px) {
+    .topbar nav { display: none; }
+    .wm-line { font-size: clamp(3rem, 17vw, 6rem); }
+    .hero-bottom { grid-template-columns: 1fr; }
+    .hero-stats { grid-template-columns: repeat(2, auto); justify-content: start; text-align: left; }
+    .section-head { grid-template-columns: 1fr; }
+    .problem-grid { grid-template-columns: 1fr; }
+    .timeline { grid-template-columns: repeat(2, 1fr); row-gap: 2rem; }
+    .timeline::before { display: none; }
+    .proof-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scan-line { animation: none; top: 50%; }
+    .wm-line, .hero-view, .hero-tagline { animation: none !important; opacity: 1 !important; transform: none !important; }
+  }
+
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  .wm-line--a { animation: riseIn .7s cubic-bezier(.2,.7,.2,1) both; }
+  .wm-line--b { animation: riseIn .7s .1s cubic-bezier(.2,.7,.2,1) both; }
+  .hero-view { animation: riseIn .7s .22s cubic-bezier(.2,.7,.2,1) both; }
+  .hero-tagline { animation: riseIn .7s .3s cubic-bezier(.2,.7,.2,1) both; }
+</style>
+
+<header class="topbar">
+  <span class="mark">BOGOSARA</span>
+  <nav>
+    <a href="#problem">문제</a>
+    <a href="#flow">흐름</a>
+    <a href="#proof">증명</a>
+  </nav>
+</header>
+
+<section class="hero" id="hero">
+  <div class="hero-inner" id="heroContent">
+    <span class="edge-label edge-label--left">SEARCH</span>
+    <span class="edge-label edge-label--right">SCAN</span>
+
+    <div class="hero-center">
+      <div class="burst" aria-hidden="true">
+        <div class="blob"></div>
+        <span class="w w1">정제수</span>
+        <span class="w w2 on">나이아신아마이드</span>
+        <span class="w w3">부틸렌글라이콜</span>
+        <span class="w w4">에틸헥실글리세린</span>
+        <span class="w w5 on">소듐하이알루로네이트</span>
+        <span class="w w6">다이소듐이디티에이</span>
+        <span class="w w7">아데노신</span>
+        <span class="w w8 on">글리세린</span>
+        <span class="w w9">잔탄검</span>
+        <span class="w w10">하이드록시아세토페논</span>
+        <span class="w w11">다이프로필렌글라이콜</span>
+        <span class="w w12">하이알루로닉애씨드</span>
+      </div>
+
+      <h1 class="wordmark" aria-label="BOGOSARA">
+        <span class="wm-line wm-line--a" aria-hidden="true">BOGO</span>
+        <span class="wm-line wm-line--b" aria-hidden="true">SARA</span>
+      </h1>
+
+      <a class="hero-view" href="#flow">보기</a>
+
+      <p class="hero-tagline">검색하거나 찍으면,<br>복잡한 전성분을 소비자의 언어로.</p>
+    </div>
+
+    <div class="mobile-entry">
+      <a class="entry-card" href="#flow"><span class="ic">⌕</span><span><span>SEARCH</span><span class="sub">제품명으로 찾기</span></span></a>
+      <a class="entry-card" href="#flow"><span class="ic">▣</span><span><span>SCAN</span><span class="sub">전성분표 촬영하기</span></span></a>
+    </div>
+
+    <div class="hero-bottom">
+      <div class="hero-blurb">
+        <p>정제수, 부틸렌글라이콜, 나이아신아마이드… 화장품 뒷면은 암호문처럼 보입니다. BOGOSARA는 제품명을 검색하거나 전성분표를 촬영하는 것만으로, 그 암호를 소비자의 언어로 풀어드립니다.</p>
+        <a class="link-arrow" href="#problem">자세히 보기 →</a>
+      </div>
+      <dl class="hero-stats">
+        <div><dt>OCR 정확도</dt><dd>84.9%</dd></div>
+        <div><dt>평균 처리속도</dt><dd>621ms</dd></div>
+        <div><dt>매칭 알고리즘</dt><dd>3 STEP</dd></div>
+        <div><dt>핵심 테이블</dt><dd>6개</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <div class="hero-inner" id="heroZoomLayer" aria-hidden="true"></div>
+
+  <div class="cursor-fx" id="cursorFx">
+    <div class="lens" id="lens"><div class="lens-crosshair"></div></div>
+    <div class="scanner" id="scanner">
+      <div class="scan-corner tl"></div><div class="scan-corner tr"></div>
+      <div class="scan-corner bl"></div><div class="scan-corner br"></div>
+      <div class="scan-line"></div>
+      <span class="scanner-label" id="scannerLabel">OCR SCANNING</span>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="problem">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Problem</span>
+        <h2 class="section-title">성분표는 있는데,<br>읽을 수가 없다.</h2>
+      </div>
+      <p class="section-lede">전성분 표시제는 있지만, 그 이름들이 무엇을 의미하는지는 아무도 알려주지 않습니다.</p>
+    </div>
+    <div class="problem-grid">
+      <div class="label-card">
+        <span class="label-tag">실제 전성분표</span>
+        <p class="raw-inci">정제수, 부틸렌글라이콜, 나이아신아마이드, 하이드롤라이즈드하이알루로닉애씨드, 하이드록시아세토페논, 에틸헥실글리세린, 다이소듐이디티에이, 다이프로필렌글라이콜, 잔탄검, 소듐하이알루로네이트, 아데노신, 글리세린 …</p>
+      </div>
+      <div class="label-card">
+        <span class="label-tag">이름만으로는 알 수 없는 것</span>
+        <ul class="unknowns">
+          <li>어떤 역할을 하는 성분인지</li>
+          <li>어떤 성분이 제품의 핵심 성분인지</li>
+          <li>무엇이 주의 혹은 유의해야 하는 성분인지</li>
+          <li>내가 무엇을 중점적으로 확인해야 하는지</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="flow">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">How it works</span>
+        <h2 class="section-title">두 개의 입구,<br>하나의 이해</h2>
+      </div>
+      <p class="section-lede">제품명을 알고 있다면 검색을, 눈앞의 제품을 바로 확인하고 싶다면 스캔을 선택합니다. 방식은 다르지만 도착지는 같습니다.</p>
+    </div>
+
+    <div class="fork-row">
+      <span class="fork-chip">제품명 검색 · 제품 DB</span>
+      <span class="fork-arrow">↘</span>
+      <span class="fork-result">전성분 확보</span>
+      <span class="fork-arrow">↙</span>
+      <span class="fork-chip">전성분표 촬영 · OCR 인식</span>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-step">
+        <span class="n">01 · MATCH</span>
+        <h3>성분 DB 매칭</h3>
+        <p>전성분을 성분 백과사전 DB와 비교해 대조합니다.</p>
+      </div>
+      <div class="timeline-step">
+        <span class="n">02 · IDENTIFY</span>
+        <h3>배합목적 확인</h3>
+        <p>예: 글리세린 → 보습제. 성분이 왜 들어갔는지를 찾습니다.</p>
+      </div>
+      <div class="timeline-step">
+        <span class="n">03 · CONNECT</span>
+        <h3>설명 DB 연결</h3>
+        <p>배합목적 명칭과 정의를 담은 설명 DB와 연결합니다.</p>
+      </div>
+      <div class="timeline-step">
+        <span class="n">04 · EXPLAIN</span>
+        <h3>LLM 정보 요약</h3>
+        <p>DB가 밝힌 사실을, 소비자가 이해할 문장으로 바꿉니다.</p>
+      </div>
+    </div>
+
+    <div class="flow-outputs">
+      <span class="out">PAGE 01 · 화장품 성분 요약</span>
+      <span class="out">PAGE 02 · 전성분 상세보기</span>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="proof">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Proof</span>
+        <h2 class="section-title">허투루 짜지 않은<br>인식 정확도</h2>
+      </div>
+      <p class="section-lede">한국어 화장품 라벨은 일반 OCR로는 부정확합니다. 4개 엔진을 비교하고, 직접 Fine-tuning했습니다.</p>
+    </div>
+
+    <div class="proof-grid">
+      <div>
+        <table class="bench-table">
+          <caption>성분 텍스트 완전일치율(Exact Match) · 크롭 이미지 약 400장</caption>
+          <thead><tr><th>엔진</th><th>정확도</th><th>처리속도</th></tr></thead>
+          <tbody>
+            <tr class="win-row"><td>PaddleOCR</td><td class="win">45.2%</td><td class="win">621ms</td></tr>
+            <tr><td>EasyOCR</td><td>22.2%</td><td>3,607ms</td></tr>
+            <tr><td>Tesseract</td><td>13.2%</td><td>461ms</td></tr>
+            <tr><td>docTR</td><td>0.0%</td><td>17,256ms</td></tr>
+          </tbody>
+        </table>
+        <p class="bench-note">※ docTR은 기본 pretrained 모델이 한글 vocabulary를 포함하지 않아 한국어 인식에 부적합.</p>
+      </div>
+      <div>
+        <div class="proof-stat">
+          <div class="num" data-count><span class="from">45.7</span><span class="arrow">→</span><span class="to">84.9</span>%</div>
+          <div class="cap">AI-Hub 코스메틱 라벨 843장(성분 크롭 12.6만 개)으로 PaddleOCR을 Fine-tuning한 뒤의 정확도(Exact Match) 변화</div>
+        </div>
+        <div class="proof-stat">
+          <div class="num" data-count><span class="from">48.5</span><span class="arrow">→</span><span class="to">93.5</span>%</div>
+          <div class="cap">동일 조건에서의 문자열 유사도 변화</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="wrap">
+    <p class="closing-line">검색하거나 찍으면,<br>복잡한 전성분을<br><span class="accent">소비자의 언어로.</span></p>
+    <div class="closing-meta">
+      <span>BOGOSARA · TEAM 3366 · 2026</span>
+      <a href="#hero">맨 위로 ↑</a>
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var fineHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+    var hero = document.getElementById('hero');
+    var heroContent = document.getElementById('heroContent');
+    var zoomLayer = document.getElementById('heroZoomLayer');
+    var cursorFx = document.getElementById('cursorFx');
+    var lens = document.getElementById('lens');
+    var scanner = document.getElementById('scanner');
+    var scannerLabel = document.getElementById('scannerLabel');
+
+    var scanPairs = [
+      '나이아신아마이드 → 톤 케어', '글리세린 → 보습', '아데노신 → 주름 개선',
+      '소듐하이알루로네이트 → 수분 보습', '잔탄검 → 점도 조절'
+    ];
+    var scanIdx = 0, scanTimer = null;
+
+    if (fineHover) {
+      // clone hero content into the zoom layer so the lens can magnify whatever is under it
+      zoomLayer.innerHTML = heroContent.innerHTML;
+      zoomLayer.setAttribute('aria-hidden', 'true');
+      try { zoomLayer.inert = true; } catch (e) {}
+      hero.classList.add('has-cursor-fx');
+
+      var rafId = null, lastX = 0, lastY = 0;
+
+      function render() {
+        rafId = null;
+        var rect = hero.getBoundingClientRect();
+        var x = lastX, y = lastY;
+        var half = rect.width / 2;
+        var zone = x < half ? 'search' : 'scan';
+        hero.dataset.zone = zone;
+
+        if (zone === 'search') {
+          lens.style.opacity = '1';
+          scanner.style.opacity = '0';
+          lens.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+          var xPct = (x / rect.width) * 100;
+          var yPct = (y / rect.height) * 100;
+          zoomLayer.style.transformOrigin = xPct + '% ' + yPct + '%';
+          zoomLayer.style.transform = 'scale(1.9)';
+          zoomLayer.style.clipPath = 'circle(84px at ' + x + 'px ' + y + 'px)';
+          zoomLayer.style.opacity = '1';
+        } else {
+          scanner.style.opacity = '1';
+          lens.style.opacity = '0';
+          zoomLayer.style.opacity = '0';
+          scanner.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+          if (!scanTimer) {
+            scannerLabel.textContent = scanPairs[scanIdx];
+            if (!reduceMotion) {
+              scanTimer = setInterval(function () {
+                scanIdx = (scanIdx + 1) % scanPairs.length;
+                scannerLabel.textContent = scanPairs[scanIdx];
+              }, 1500);
+            }
+          }
+        }
+      }
+
+      hero.addEventListener('pointermove', function (e) {
+        var rect = hero.getBoundingClientRect();
+        lastX = e.clientX - rect.left;
+        lastY = e.clientY - rect.top;
+        if (!rafId) rafId = requestAnimationFrame(render);
+      });
+
+      hero.addEventListener('pointerleave', function () {
+        lens.style.opacity = '0';
+        scanner.style.opacity = '0';
+        zoomLayer.style.opacity = '0';
+        hero.dataset.zone = '';
+        if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+      });
+    }
+
+    // count-up for proof stats, progressive enhancement over the static final values
+    if (!reduceMotion && 'IntersectionObserver' in window) {
+      var counters = document.querySelectorAll('[data-count]');
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          io.unobserve(entry.target);
+          var fromEl = entry.target.querySelector('.from');
+          var toEl = entry.target.querySelector('.to');
+          var from = parseFloat(fromEl.textContent);
+          var to = parseFloat(toEl.textContent);
+          var start = null, duration = 900;
+          function step(ts) {
+            if (!start) start = ts;
+            var p = Math.min(1, (ts - start) / duration);
+            var eased = 1 - Math.pow(1 - p, 3);
+            fromEl.textContent = (from + (to - from) * eased).toFixed(1);
+            if (p < 1) requestAnimationFrame(step);
+            else fromEl.textContent = from.toFixed(1);
+          }
+          requestAnimationFrame(step);
+        });
+      }, { threshold: .5 });
+      counters.forEach(function (c) { io.observe(c); });
+    }
+
+    // smooth in-page scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        var id = a.getAttribute('href').slice(1);
+        var target = document.getElementById(id);
+        if (!target) return;
+        e.preventDefault();
+        target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      });
+    });
+  })();
+</script>

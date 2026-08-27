@@ -78,8 +78,19 @@
     padding: 10px 8px;
     border-radius: 6px;
     cursor: pointer;
+    display: flex;
+    gap: 10px;
   }
   .item:hover { background: #f0f2f5; }
+  .item-thumb {
+    width: 48px;
+    height: 48px;
+    flex: none;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #eef0f3;
+  }
+  .item-body { min-width: 0; flex: 1; }
   .item .name { font-weight: 600; font-size: 14px; }
   .item .sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
   .empty { color: #9ca3af; font-size: 13px; padding: 8px; }
@@ -94,6 +105,15 @@
   }
   .detail h2 { margin: 0 0 4px; font-size: 17px; }
   .detail .brand { color: #6b7280; font-size: 13px; margin-bottom: 12px; }
+  .detail-image {
+    width: 160px;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 10px;
+    background: #eef0f3;
+    float: right;
+    margin-left: 16px;
+  }
   .ing-row {
     display: flex;
     justify-content: space-between;
@@ -455,6 +475,11 @@ function runSearch(query) {
     .catch(() => { ingredientsEl.className = 'empty'; ingredientsEl.textContent = '검색 중 오류가 발생했습니다'; });
 }
 
+function productThumbHtml(p) {
+  if (!p.image_url) return '<div class="item-thumb"></div>';
+  return `<img class="item-thumb" src="${escapeHtml(p.image_url)}" alt="" loading="lazy" onerror="this.remove()">`;
+}
+
 function renderProducts(list) {
   if (list.length === 0) {
     productsEl.className = 'empty';
@@ -470,10 +495,13 @@ function renderProducts(list) {
       ? `<div class="skin-score-summary">${escapeHtml(p.skin_score_summary)}</div>`
       : '';
     div.innerHTML = `
-      <div class="name">${escapeHtml(p.product_name)}</div>
-      <div class="sub">${escapeHtml(p.brand || '')}</div>
-      ${cardSkinScoreHtml}
-      <a class="oliveyoung-link" href="${escapeHtml(p.oliveyoung_url)}" target="_blank" rel="noopener noreferrer">올리브영에서 보기 ↗</a>
+      ${productThumbHtml(p)}
+      <div class="item-body">
+        <div class="name">${escapeHtml(p.product_name)}</div>
+        <div class="sub">${escapeHtml(p.brand || '')}</div>
+        ${cardSkinScoreHtml}
+        <a class="oliveyoung-link" href="${escapeHtml(p.oliveyoung_url)}" target="_blank" rel="noopener noreferrer">올리브영에서 보기 ↗</a>
+      </div>
     `;
     div.addEventListener('click', () => showProductDetail(p.product_id));
     div.querySelector('.oliveyoung-link').addEventListener('click', e => e.stopPropagation());
@@ -555,8 +583,12 @@ function renderProductDetail(p) {
   const skinScoreHtml = p.skin_score_summary && p.skin_score_summary !== '...'
     ? `<div class="skin-score-summary">${escapeHtml(p.skin_score_summary)}</div>`
     : '';
+  const detailImageHtml = p.image_url
+    ? `<img class="detail-image" src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.product_name)}" onerror="this.remove()">`
+    : '';
   detailEl.dataset.productId = p.product_id;
   detailEl.innerHTML = `
+    ${detailImageHtml}
     <h2>${escapeHtml(p.product_name)}</h2>
     <div class="brand">${escapeHtml(p.brand || '')}</div>
     <div class="buy-link">구매처: <a class="oliveyoung-link" href="${escapeHtml(p.oliveyoung_url)}" target="_blank" rel="noopener noreferrer">올리브영에서 보기 ↗</a></div>

@@ -1,20 +1,28 @@
+import math
+import re
 from datetime import datetime, timezone
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db, upsert_insert
 from app.llm_client import summarize_product
+from app.marketing_families import compute_matched_families
+from app.purpose_counts import compute_purpose_counts
 from app.models.ingredient import Ingredient
+from app.models.ingredient_family import IngredientFamily
+from app.models.ingredient_family_member import IngredientFamilyMember
 from app.models.ingredient_purpose import IngredientPurpose
 from app.models.ingredient_relation import IngredientRelation
 from app.models.product import Product
+from app.models.product_family_member import ProductFamilyMember
 from app.models.product_ingredient import ProductIngredient
 from app.models.ingredient_skin_score import SKIN_TYPES
 from app.product_category import ALL_CATEGORIES, classify as classify_category
 from app.schemas.ingredient import IngredientDetail
+from app.schemas.ingredient_family import FamilyRankRead
 from app.schemas.ingredient_relation import IngredientRelationRead
 from app.search_service import search_products
 from app.schemas.product import (
@@ -27,7 +35,12 @@ from app.schemas.product import (
 )
 from app.schemas.skin_fit import SkinRiskRead
 from app.similarity import DEFAULT_TOP_K, find_similar_products
-from app.skin_fit import compute_all_skin_risks, compute_skin_risk, summarize_skin_score_matches
+from app.skin_fit import (
+    compute_all_skin_risks,
+    compute_skin_risk,
+    compute_skin_type_counts,
+    summarize_skin_score_matches,
+)
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -140,6 +153,9 @@ def _to_detail(product: Product, db: Session) -> ProductDetail:
     detail.skin_score_summary = summarize_skin_score_matches([product.product_id], db).get(
         product.product_id, "..."
     )
+    detail.ingredient_families = compute_matched_families(product, db)
+    detail.purpose_counts = compute_purpose_counts(product, db)
+    detail.skin_type_counts = compute_skin_type_counts(product.product_id, db)
     return detail
 
 
@@ -236,6 +252,159 @@ def get_product_skin_fit(
         results = compute_all_skin_risks(product_id, db)
 
     return [SkinRiskRead.model_validate(r, from_attributes=True) for r in results]
+
+
+# scripts/import_product_list.py가 원본 라벨 텍스트를 그대로 옮겨 담을 때, 성분명 뒤
+# 괄호 안에 함량이 써있으면(예: "소듐하이알루로네이트(2,400ppm)") matched_text에 그대로
+# 살아있다. 라벨에 따라 단위가 %/ppm/ppb로 제각각이라 하나로 환산하지 않고, 라벨에 적힌
+# 그대로("2,400ppm") 보여준다 — 없으면(대부분의 성분) None.
+_CONCENTRATION_RE = re.compile(r"\(([\d,]+\.?\d*\s*(?:%|ppm|ppb))\)\s*$")
+
+
+def extract_concentration(matched_text: str | None) -> str | None:
+    if not matched_text:
+        return None
+    m = _CONCENTRATION_RE.search(matched_text)
+    return m.group(1).replace(" ", "") if m else None
+
+
+_CONC_VALUE_RE = re.compile(r"^([\d,]+\.?\d*)(%|ppm|ppb)$")
+# 평균 계산용 — 라벨마다 단위가 제각각이라(위 extract_concentration은 원문 그대로 보여주지만)
+# 평균을 내려면 하나로 맞춰야 한다. 1% = 10,000ppm = 10,000,000ppb.
+_PERCENT_PER_UNIT = {"%": 1.0, "ppm": 1 / 10_000, "ppb": 1 / 10_000_000}
+
+
+def concentration_to_percent(concentration: str | None) -> float | None:
+    if not concentration:
+        return None
+    m = _CONC_VALUE_RE.match(concentration)
+    if not m:
+        return None
+    value = float(m.group(1).replace(",", ""))
+    return value * _PERCENT_PER_UNIT[m.group(2)]
+
+
+def _compute_family_rank(db: Session, family_id: int, product_id: str) -> FamilyRankRead:
+    family = db.get(IngredientFamily, family_id)
+
+    member_ids = db.scalars(
+        select(IngredientFamilyMember.ingredient_id).where(
+            IngredientFamilyMember.family_id == family_id
+        )
+    ).all()
+
+    curated_product_ids = db.scalars(
+        select(ProductFamilyMember.product_id).where(ProductFamilyMember.family_id == family_id)
+    ).all()
+
+    rep_rank_stmt = (
+        select(ProductIngredient.product_id, func.min(ProductIngredient.label_rank).label("rep_rank"))
+        .where(
+            ProductIngredient.product_id.in_(curated_product_ids),
+            ProductIngredient.ingredient_id.in_(member_ids),
+            ProductIngredient.label_rank.isnot(None),
+        )
+        .group_by(ProductIngredient.product_id)
+    )
+    rows = db.execute(rep_rank_stmt).all()
+    this_row = next((r for r in rows if r.product_id == product_id), None)
+    if this_row is None:
+        # 큐레이션은 돼있지만(product_family_member) 실제 전성분표에서 이 계열 성분을 하나도
+        # 못 찾은 경우 — "없다"고 단정하지 않고 "비교 데이터가 없다"로 완곡하게 표현한다.
+        # 원인이 (a) 정말 그 성분이 없거나 (b) scripts/import_product_list.py의 매칭 실패로
+        # 누락됐거나 둘 다일 수 있어서, 확정적인 문구는 피한다.
+        return FamilyRankRead(family_name=family.family_name, has_data=False)
+
+    ranks = [r.rep_rank for r in rows]
+    this_rank_value = this_row.rep_rank
+    rank = sum(1 for r in ranks if r < this_rank_value) + 1
+    total_count = len(ranks)
+    average = sum(ranks) / total_count
+
+    # 큐레이션된 모든 제품의 "대표 성분" matched_text를 한 번에 조회 — 이 제품의 대표 성분
+    # 함량(위 extract_concentration, 라벨 원문 그대로)과, 계열 평균 함량(전부 %로 환산해서
+    # 평균) 둘 다 여기서 뽑는다. 라벨에 함량이 없는 제품은 평균 계산에서 자연히 빠진다.
+    detail_rows = db.execute(
+        select(
+            ProductIngredient.product_id,
+            ProductIngredient.label_rank,
+            ProductIngredient.matched_text,
+        ).where(
+            ProductIngredient.product_id.in_(curated_product_ids),
+            ProductIngredient.ingredient_id.in_(member_ids),
+            ProductIngredient.label_rank.isnot(None),
+        )
+    ).all()
+    rep_rank_by_product = {r.product_id: r.rep_rank for r in rows}
+    rep_matched_text_by_product: dict[str, str] = {}
+    for d in detail_rows:
+        if d.label_rank == rep_rank_by_product.get(d.product_id):
+            rep_matched_text_by_product.setdefault(d.product_id, d.matched_text)
+
+    this_concentration = extract_concentration(rep_matched_text_by_product.get(product_id))
+    rep_ingredient_id = next(
+        (
+            row.ingredient_id
+            for row in db.execute(
+                select(ProductIngredient.ingredient_id).where(
+                    ProductIngredient.product_id == product_id,
+                    ProductIngredient.ingredient_id.in_(member_ids),
+                    ProductIngredient.label_rank == this_rank_value,
+                )
+            )
+        ),
+        None,
+    )
+    rep_ingredient = db.get(Ingredient, rep_ingredient_id) if rep_ingredient_id else None
+    rep_name = (rep_ingredient.name_kr or rep_ingredient.name_en or "") if rep_ingredient else ""
+
+    concentration_percents = [
+        pct
+        for text in rep_matched_text_by_product.values()
+        if (pct := concentration_to_percent(extract_concentration(text))) is not None
+    ]
+    average_concentration_percent = (
+        round(sum(concentration_percents) / len(concentration_percents), 4)
+        if concentration_percents
+        else None
+    )
+
+    return FamilyRankRead(
+        family_name=family.family_name,
+        representative_ingredient=rep_name,
+        representative_concentration=this_concentration,
+        label_rank=this_rank_value,
+        rank=rank,
+        total_count=total_count,
+        average_label_rank=round(average, 1),
+        top_percentile=math.ceil(rank / total_count * 100),
+        average_concentration_percent=average_concentration_percent,
+        concentration_sample_count=len(concentration_percents),
+    )
+
+
+@router.get("/{product_id}/family-rank", response_model=list[FamilyRankRead])
+def get_product_family_rank(product_id: str, db: Session = Depends(get_db)):
+    """제품 설명 화면의 "비슷한 제품과 비교하면" — 이 제품이 사람이 직접 큐레이션한 성분 계열
+    비교 대상(scripts/backfill_product_family.py로 채운 product_family_member)에 속해 있으면,
+    같은 계열의 다른 큐레이션 제품들과 label_rank(전성분표 순위) 기준으로 비교한다.
+
+    비교 모수를 ingredient_family_member(성분명 키워드 매칭)만으로 잡으면 그 계열 성분이
+    조금이라도 들어간 DB 전체 제품까지 다 섞여 순위가 무의미해지므로, 실제 비교는
+    product_family_member에 등록된 제품끼리만 한다. ingredient_family_member는 그 안에서
+    "어떤 성분이 대표 성분인지"를 찾는 데만 쓴다.
+
+    한 제품이 여러 계열에 동시에 큐레이션될 수 있어(예: 더마토리 히알샷은 히알루론산 계열이자
+    B5 계열) 리스트로 응답한다 — 어떤 계열에도 속하지 않으면 빈 리스트(에러 아님, 프론트는
+    이 경우 섹션 자체를 숨긴다)."""
+    if db.get(Product, product_id) is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    family_ids = db.scalars(
+        select(ProductFamilyMember.family_id).where(ProductFamilyMember.product_id == product_id)
+    ).all()
+
+    return [_compute_family_rank(db, family_id, product_id) for family_id in family_ids]
 
 
 @router.put("/{product_id}/ingredients", status_code=204)

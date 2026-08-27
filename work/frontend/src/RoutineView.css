@@ -1,0 +1,150 @@
+/* =========================================================
+   내 화장품 조합(RoutineView) 전용 CSS.
+   토큰은 index.css 전역 변수를 그대로 쓴다. 상단 뒤로가기 바(.result-topbar/.result-back-btn),
+   제목/섹션(.mypage-title/.mypage-section 등), 분석 결과 텍스트(.result-headline/.result-section/
+   .result-caution-list 등)는 ResultView.css·MyPageView.css의 기존 클래스를 그대로 재사용한다
+   — 이 화면에서 정말 새로 필요한 건 "등록한 화장품" 목록 행과 검색 폼뿐이다.
+   ========================================================= */
+
+.routine-view {
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 5vw, 2.5rem) 1.25rem clamp(3.5rem, 9vw, 5.5rem);
+}
+
+.routine-item-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.routine-item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 2px 2px 0 0 var(--ink);
+  padding: 0.6rem 0.75rem;
+}
+
+.routine-item-category {
+  flex-shrink: 0;
+  padding: 0.15rem 0.5rem;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  font-family: var(--font-kr);
+  font-size: 0.6rem;
+  color: var(--ink-soft);
+  background: var(--sub);
+}
+
+.routine-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.routine-item-name {
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- 조합 분석 상단 "제품별 살펴보기" ---- */
+.routine-product-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.routine-product-note {
+  padding-top: 0.75rem;
+  border-top: 1.5px dashed rgba(31, 37, 23, 0.28);
+}
+.routine-product-note:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+.routine-product-note-name {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-noto);
+  font-weight: bold;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+.routine-product-note .result-explain {
+  margin-bottom: 0.5rem;
+}
+
+/* ---- 피부 타입 기준 성분 이름 — 커서를 올리면(또는 키보드 포커스) 왜 위험/궁합인지
+   이유가 툴팁으로 위에 뜬다. 항상 보이는 텍스트(.result-caution-reason)는 성분 자체 설명
+   (ing.description)이고, 이유(ing.reason)는 이 툴팁에만 넣는다. */
+.routine-ingredient-trigger {
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+  cursor: help;
+}
+.routine-ingredient-tooltip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 0.5rem);
+  width: max-content;
+  max-width: 260px;
+  background: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.65rem;
+  font-family: var(--font-noto);
+  font-weight: normal;
+  font-size: 0.7rem;
+  line-height: 1.55;
+  color: var(--bg);
+  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s;
+  z-index: 5;
+}
+.routine-ingredient-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 1rem;
+  border: 5px solid transparent;
+  border-top-color: var(--ink);
+}
+.routine-ingredient-trigger:hover .routine-ingredient-tooltip,
+.routine-ingredient-trigger:focus-visible .routine-ingredient-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.routine-search {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+.routine-search-input {
+  flex: 1;
+  min-width: 0;
+}
+/* .mypage-ghost-btn은 원래 블록 아래에 붙는 용도라 margin-top이 있다 — 검색바/목록 행
+   안에서는 옆으로 나란히 놓이니 그 여백을 지운다. */
+.routine-search .mypage-ghost-btn,
+.routine-item-row .mypage-ghost-btn {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.routine-search-results {
+  margin-top: 0.75rem;
+}

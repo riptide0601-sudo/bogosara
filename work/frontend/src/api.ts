@@ -4,7 +4,15 @@
  * 로컬 개발 기본값은 127.0.0.1:8000 — .env(VITE_API_BASE_URL)로 덮어쓸 수 있다.
  */
 import type { Product } from './data/mockProducts';
-import type { Ingredient, IngredientResult, IngredientResultRequest } from './data/ingredientResult';
+import type {
+  Ingredient,
+  IngredientResult,
+  IngredientResultKeyIngredient,
+  IngredientResultRequest,
+  MatchedFamily,
+  PurposeCount,
+  SkinTypeCount,
+} from './data/ingredientResult';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000';
 
@@ -75,11 +83,31 @@ interface ApiProduct {
   // app/schemas/product.py의 computed_field — 올리브영에 등록된 상품별 직접 링크(goodsNo)는
   // DB에 없어서, 제품명으로 올리브영 검색 결과 페이지를 가리키는 URL을 그때그때 만들어 준다.
   oliveyoung_url: string;
+  // app/static/images/products/{product_id}.* 를 가리키는 상대 경로(scripts/backfill_product_images.py로
+  // 채움). 백엔드가 이 origin(API_BASE_URL)에서 정적 파일로 서빙하므로 프론트에서 절대 URL로
+  // 붙여써야 한다(toAbsoluteImageUrl 참고) — Vite 개발 서버(5173) 기준 상대경로로 쓰면 404난다.
+  image_url: string | null;
 }
 
 interface ApiProductSimilarity {
   product: ApiProduct;
   score: number;
+}
+
+interface ApiMatchedFamilyIngredient {
+  ingredient_id: number;
+  name_kr: string | null;
+  label_rank: number | null;
+  dosage: string | null;
+  match_type: string;
+  is_key_ingredient: boolean;
+}
+
+interface ApiMatchedFamily {
+  family_id: number;
+  name: string;
+  from_product_name: boolean;
+  ingredients: ApiMatchedFamilyIngredient[];
 }
 
 export interface ApiProductDetail extends ApiProduct {
@@ -90,10 +118,52 @@ export interface ApiProductDetail extends ApiProduct {
   // app/similarity.py의 코사인 유사도 기준 유사 제품(최대 10개, score 내림차순). 백엔드가
   // 이미 상세 조회에 같이 내려주므로 추천 제품에 별도 API 호출을 쓰지 않는다.
   similar_products: ApiProductSimilarity[];
+  // app/marketing_families.py — 지정 상품 기준 마케팅 용어 ↔ 계열 묶음. 대상 밖 제품은 [].
+  // optional인 이유: generate_compare.py가 만드는 정적 eval/*.json은 이 필드가 생기기 전
+  // 스냅샷이라 아예 없을 수 있다 (toMatchedFamilies가 undefined를 []로 처리).
+  ingredient_families?: ApiMatchedFamily[];
+  // app/purpose_counts.py — 지정 상품 제한 없음. 위와 같은 이유로 optional.
+  purpose_counts?: PurposeCount[];
+  // app/skin_fit.py compute_skin_type_counts — 위와 같은 이유로 optional.
+  skin_type_counts?: SkinTypeCount[];
+}
+
+/** image_url은 백엔드가 상대 경로로 내려주므로, 이미지를 실제로 서빙하는 백엔드 origin을 붙여야 한다
+ * (프론트는 Vite 개발 서버(5173)에서 뜨고 API_BASE_URL(기본 8000)이 이미지도 같이 서빙함 — app/main.py 참고). */
+function toAbsoluteImageUrl(imageUrl: string | null): string | null {
+  return imageUrl ? `${API_BASE_URL}${imageUrl}` : null;
 }
 
 function toProduct(p: ApiProduct): Product {
-  return { id: p.product_id, name: p.product_name, brand: p.brand ?? '', summary: p.summary ?? '' };
+  return {
+    id: p.product_id,
+    name: p.product_name,
+    brand: p.brand ?? '',
+    summary: p.summary ?? '',
+    image_url: toAbsoluteImageUrl(p.image_url),
+  };
+}
+
+// app/schemas/skin_fit.py의 SkinRiskRead와 1:1.
+interface ApiSkinRiskIngredient {
+  ingredient_id: number;
+  name_kr: string | null;
+  risk_type: string | null;
+  reason: string | null;
+  source: string | null;
+}
+
+export interface ApiSkinRisk {
+  skin_type: string;
+  has_risk: boolean;
+  risk_ingredients: ApiSkinRiskIngredient[];
+  total_ingredient_count: number;
+}
+
+/** GET /products/{id}/skin-fit — skin_type 생략 시 4개 피부 타입 전부 반환. 로그인한 유저의
+ * skin_types와 대조해 개인화된 위험 성분을 보여주는 용도(ResultView.tsx 참고). */
+export async function fetchSkinFit(productId: string): Promise<ApiSkinRisk[]> {
+  return apiFetch<ApiSkinRisk[]>(`/products/${encodeURIComponent(productId)}/skin-fit`);
 }
 
 async function apiFetch<T>(path: string): Promise<T> {
@@ -146,6 +216,7 @@ function toIngredient(pi: ApiProductIngredient, starNames: Set<string>): Ingredi
   const llm = ing.llm_summary;
   const shortPurposeLabel = pickShortPurposeLabel(ing.purposes);
   return {
+    ingredient_id: ing.ingredient_id,
     name_kr: ing.name_kr ?? '',
     name_en: ing.name_en ?? '',
     // display_grade는 백엔드에 없는 개념이라, product.key_ingredients(core_ingredient_selector가
@@ -178,6 +249,39 @@ function toIngredient(pi: ApiProductIngredient, starNames: Set<string>): Ingredi
   };
 }
 
+function toMatchedFamilies(families: ApiMatchedFamily[] | undefined): MatchedFamily[] {
+  // generate_compare.py가 만드는 정적 eval/*.json은 이 기능보다 먼저 만들어진 스냅샷이라
+  // ingredient_families 필드 자체가 없을 수 있다 — 그때는 빈 배열(섹션 자체를 숨김)로 취급.
+  if (!families) return [];
+  return families.map((f) => ({
+    name: f.name,
+    from_product_name: f.from_product_name,
+    ingredients: f.ingredients.map((i) => ({
+      name_kr: i.name_kr ?? '',
+      label_rank: i.label_rank,
+      dosage: i.dosage,
+      match_type: i.match_type,
+      is_key_ingredient: i.is_key_ingredient,
+    })),
+  }));
+}
+
+/**
+ * "핵심 성분" 카드용 — product.key_ingredients(core_ingredient_selector 큐레이션, 정제수/
+ * 용제 등 제외)는 이름 문자열만 내려오므로, 이미 응답에 있는 전성분 전체(detail.ingredients)
+ * 에서 같은 이름을 찾아 배합목적을 붙인다. top_ingredients(label_rank 상위 5개, 정제수가
+ * 거의 항상 포함됨)를 쓰던 이전 방식과 달리 큐레이션된 이름·순서를 그대로 따른다.
+ * 전성분 목록에서 이름이 안 찾아지는 경우(데이터 불일치)는 조용히 건너뛴다.
+ */
+function toKeyIngredients(detail: ApiProductDetail): IngredientResultKeyIngredient[] {
+  const byName = new Map(detail.ingredients.map((pi) => [pi.ingredient.name_kr, pi]));
+  return detail.key_ingredients.flatMap((name) => {
+    const pi = byName.get(name);
+    if (!pi) return [];
+    return [{ name, purpose: pickShortPurposeLabel(pi.ingredient.purposes) }];
+  });
+}
+
 /**
  * ApiProductDetail(백엔드 응답, 또는 그와 동일한 모양의 정적 JSON) -> IngredientResult 변환.
  * 실시간 API 조회(fetchIngredientResult)와 모델 비교 화면(정적 eval/*.json 로딩) 둘 다 이 함수를
@@ -188,27 +292,61 @@ export function mapDetailToIngredientResult(detail: ApiProductDetail): Ingredien
 
   return {
     product: {
+      product_id: detail.product_id,
       product_name: detail.product_name,
       raw_ingredients: detail.ingredients.map((pi) => pi.matched_text).filter(Boolean).join(', '),
       // 한 줄 요약(product.summary)과 성분 구성 줄글(product.composition_text)은 DB에서도 별도
       // 컬럼이다 — 합쳐서 하나로 쓰지 않는다.
       summary: detail.summary ?? '', // Qwen 교체 지점
-      key_ingredients: detail.top_ingredients.map((pi) => ({
-        name: pi.ingredient.name_kr ?? '',
-        purpose: pickShortPurposeLabel(pi.ingredient.purposes),
-      })),
+      key_ingredients: toKeyIngredients(detail),
       ingredient_explanation: detail.composition_text ?? '', // Qwen 교체 지점
+      image_url: toAbsoluteImageUrl(detail.image_url),
       category_description: detail.category_description,
       oliveyoung_url: detail.oliveyoung_url,
       // 매칭 없으면 백엔드가 "..."를 내려준다 — 그건 "값 없음"과 같은 뜻이라 빈 문자열로 취급.
       skin_score_summary: detail.skin_score_summary === '...' ? '' : detail.skin_score_summary,
+      skin_type_counts: detail.skin_type_counts ?? [],
       // 배합 한도/금지 성분 데이터는 아직 백엔드에 없다.
       cautions: [],
+      ingredient_families: toMatchedFamilies(detail.ingredient_families),
+      // {label, count, total} 모양이 백엔드 응답과 1:1이라 별도 변환 없이 그대로 씀 (없으면 []).
+      purpose_counts: detail.purpose_counts ?? [],
       // similar_products는 이미 score 내림차순이므로 앞 3개가 곧 Top3.
       recommended_products: detail.similar_products.slice(0, 3).map((s) => toProduct(s.product)),
     },
     ingredients: detail.ingredients.map((pi) => toIngredient(pi, starNames)),
   };
+}
+
+// app/schemas/ingredient_family.py FamilyRankRead와 1:1.
+export interface FamilyRankInfo {
+  family_name: string;
+  // 큐레이션은 돼있지만(product_family_member) 실제 전성분표에서 이 계열 성분을 하나도
+  // 못 찾았을 때 false — 이땐 아래 필드가 전부 null/0이고, "없다"고 단정하는 대신
+  // "{family_name} 성분 비교 데이터가 없어요"로 완곡하게 안내한다(ResultSummaryPanel 참고).
+  has_data: boolean;
+  representative_ingredient: string | null;
+  // 라벨에 함량이 적혀있을 때만("2,400ppm", "0.2%" 등 원문 그대로) — 없으면 null.
+  representative_concentration: string | null;
+  label_rank: number | null;
+  rank: number | null;
+  total_count: number | null;
+  average_label_rank: number | null;
+  top_percentile: number | null;
+  // 계열 내 큐레이션 제품들의 대표 성분 함량을 %로 환산한 평균 — 함량 표시된 제품이 하나도
+  // 없으면 null.
+  average_concentration_percent: number | null;
+  // 위 평균이 몇 개 제품 값으로 계산됐는지(total_count 중 일부일 수 있음).
+  concentration_sample_count: number;
+}
+
+/** GET /products/{id}/family-rank — "비슷한 제품과 비교하면" 카드(ResultSummaryPanel).
+ * 한 제품이 여러 성분 계열에 동시에 큐레이션될 수 있어(예: 더마토리 히알샷 = 히알루론산 계열
+ * + B5 계열) 배열로 온다. 어떤 계열에도 속하지 않으면 빈 배열(에러 아님) — 호출부가 섹션을 숨긴다. */
+export async function fetchProductFamilyRank(productId: string): Promise<FamilyRankInfo[]> {
+  const res = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(productId)}/family-rank`);
+  if (!res.ok) throw new Error(`family-rank 조회 실패: HTTP ${res.status}`);
+  return res.json() as Promise<FamilyRankInfo[]>;
 }
 
 /** 성분 결과 화면 — GET /products/{id} 를 IngredientResult로 변환. */

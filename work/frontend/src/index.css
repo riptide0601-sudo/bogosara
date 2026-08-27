@@ -67,3 +67,21 @@ img,
 svg {
   display: block;
 }
+
+/* 버튼/텍스트 안에 인라인으로 들어가는 로딩 스피너 — LoginView·MyPageView의
+   "처리 중.../불러오는 중..." 표시가 공유해서 쓴다. */
+.spinner {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: -0.15em;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

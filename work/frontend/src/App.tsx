@@ -1,15 +1,16 @@
 import { useRef, useState } from 'react';
 import BackgroundSparkles from './components/BackgroundSparkles';
 import WalkingMascot from './components/WalkingMascot';
-import MenuButton from './components/MenuButton';
+import LandingHero from './components/LandingHero';
 import HamburgerButton from './components/HamburgerButton';
 import SearchOverlay from './components/SearchOverlay';
 import ScanOverlay from './components/ScanOverlay';
 import ResultsSection, { type SearchStatus } from './components/ResultsSection';
 import ResultView from './components/ResultView';
 import MyPageView from './components/MyPageView';
-import MagnifierIcon from './icons/MagnifierIcon';
-import ScannerIcon from './icons/ScannerIcon';
+import RoutineView from './components/RoutineView';
+import LoginView from './components/LoginView';
+import { useAuth } from './context/AuthContext';
 import CosmeticMascotIcon from './icons/CosmeticMascotIcon';
 import CreamJarIcon from './icons/CreamJarIcon';
 import CushionIcon from './icons/CushionIcon';
@@ -36,6 +37,7 @@ type OverlayKind = 'search' | 'scan' | null;
  * 오버레이가 뜬다 — 실제 검색·OCR 연동은 각 오버레이 컴포넌트의 TODO 지점에서 이어 붙이면 된다.
  */
 export default function App() {
+  const { user, initializing } = useAuth();
   const [activeOverlay, setActiveOverlay] = useState<OverlayKind>(null);
 
   // ---- 검색 결과 상태 (백엔드 미연동 — 목 데이터로 대체) ----
@@ -56,7 +58,25 @@ export default function App() {
   // 위함(아래 렌더 분기 참고).
   const [mypageOpen, setMypageOpen] = useState(false);
 
+  // ---- 내 화장품 조합 진입 상태 ----
+  // mypageOpen과 같은 패턴 — routineOpen이 켜져도 mypageOpen은 그대로 true로 남아있어서,
+  // 뒤로가기를 누르면 마이페이지가 남아있던 자리에 다시 나타난다.
+  const [routineOpen, setRoutineOpen] = useState(false);
+
   const closeOverlay = () => setActiveOverlay(null);
+
+  /** 랜딩의 "내 화장품 조합" 바로가기 — 로그인 상태면 곧장 RoutineView로, 아니면 로그인
+   * 화면으로 보낸다(RoutineView 자체는 인증 여부를 다시 확인하지 않으므로 여기서 가려야 함).
+   * mypageOpen도 같이 켜둬야 RoutineView의 "뒤로가기 → 마이페이지로" 동작이 그대로 맞는다
+   * (RoutineView.tsx 상단 주석 참고 — 뒤로가기는 항상 마이페이지로 돌아간다는 전제). */
+  const handleOpenRoutine = () => {
+    if (user) {
+      setMypageOpen(true);
+      setRoutineOpen(true);
+    } else {
+      setMypageOpen(true);
+    }
+  };
 
   /** 검색 실행 — GET /products?query=... 를 호출해 실제 DB 결과를 보여준다. */
   const runSearch = (query: string) => {
@@ -118,7 +138,20 @@ export default function App() {
     );
   }
 
-  // 마이페이지 진입 상태면 랜딩 대신 MyPageView로 전체 화면을 교체한다.
+  // 내 화장품 조합 화면 — 로그인 상태에서만 마이페이지의 "내 조합 확인하기"로 들어올 수
+  // 있으므로 여기서 다시 로그인 여부를 가릴 필요는 없다. 뒤로가기는 항상 마이페이지로.
+  if (routineOpen) {
+    return (
+      <>
+        <BackgroundSparkles />
+        <RoutineView onBack={() => setRoutineOpen(false)} />
+      </>
+    );
+  }
+
+  // 마이페이지 진입 상태면 랜딩 대신 MyPageView(로그인 상태) 또는 LoginView(비로그인)로
+  // 전체 화면을 교체한다. initializing 동안은(새로고침 직후 저장된 토큰으로 /users/me
+  // 조회 중) 로그인 여부를 아직 몰라서 둘 다 그리지 않고 잠깐 비워둔다.
   if (mypageOpen) {
     return (
       <>
@@ -126,7 +159,16 @@ export default function App() {
         {WALKING_MASCOTS.map((mascot, i) => (
           <WalkingMascot key={i} {...mascot} />
         ))}
-        <MyPageView onBack={() => setMypageOpen(false)} onSelectSavedResult={handleSelectSavedResult} />
+        {!initializing &&
+          (user ? (
+            <MyPageView
+              onBack={() => setMypageOpen(false)}
+              onSelectSavedResult={handleSelectSavedResult}
+              onOpenRoutine={() => setRoutineOpen(true)}
+            />
+          ) : (
+            <LoginView onBack={() => setMypageOpen(false)} onSuccess={() => {}} />
+          ))}
       </>
     );
   }
@@ -141,38 +183,21 @@ export default function App() {
         <WalkingMascot key={i} {...mascot} />
       ))}
 
-      {/* 왼쪽 상단 고정 — 마이페이지 진입점(≡) */}
+      {/* 왼쪽 상단 고정 — 마이페이지 진입점(≡), 그 아래 내 화장품 조합 바로가기 */}
       <HamburgerButton onClick={() => setMypageOpen(true)} />
+      <button
+        type="button"
+        className="hamburger-btn quick-routine-btn"
+        onClick={handleOpenRoutine}
+        aria-label="내 화장품 조합 바로가기"
+      >
+        <CreamJarIcon />
+      </button>
 
-      <div className="page">
-        <header className="hero">
-          <h1 className="logo">보고사라</h1>
-          <p className="tagline">화장품 성분 설명 시스템</p>
-        </header>
-
-        <main className="menu" aria-label="시작 메뉴">
-          <MenuButton
-            id="btn-search"
-            variant="search"
-            label="검색"
-            ariaControls="overlay-search"
-            icon={<MagnifierIcon />}
-            onClick={() => setActiveOverlay('search')}
-          />
-          <MenuButton
-            id="btn-scan"
-            variant="scan"
-            label="스캔"
-            ariaControls="overlay-scan"
-            icon={<ScannerIcon />}
-            onClick={() => setActiveOverlay('scan')}
-          />
-        </main>
-
-        <p className="hint">아이콘을 선택하세요 · SELECT AN ICON</p>
-
-        <footer>© BOGOSARA</footer>
-      </div>
+      <LandingHero
+        onSearchClick={() => setActiveOverlay('search')}
+        onScanClick={() => setActiveOverlay('scan')}
+      />
 
       {/* 검색 결과 / 제품 리스트 — 페이지 이동 없이 같은 페이지 아래쪽에 나타난다 */}
       <ResultsSection

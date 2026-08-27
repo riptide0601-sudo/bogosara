@@ -155,6 +155,18 @@ def _all_ingredient_sets(db: Session) -> dict[str, ProductIngredientSets]:
     return result
 
 
+# 특정 제품에 대해 알고리즘 계산 결과 대신 고정으로 보여줄 추천 목록(사람이 직접 정함).
+# 전체 유사도 공식(위 similarity_score)은 그대로 두고, 이 제품만 예외로 지정한 순서 그대로
+# 보여준다 — 더마토리 히알샷 클릭 시 "이런 제품은 어때요?"에 히알루론산 계열 제품 3개
+# (토리든/메디필/닥터지)가 뜨게 해달라는 요청으로 추가. 오어스가 원래 2순위였지만 사진이
+# 없어서 제외 — 그 다음 후보였던 성분에디터는 사진은 있지만 이름에 "히알"이 없는(성분표
+# 기준으로만 큐레이션된) 제품이라 다시 제외하고, 사진 있고 이름에도 "히알"이 들어간
+# 히알루론산 제품 중 점수가 가장 높은 메디필로 교체.
+MANUAL_SIMILAR_OVERRIDES: dict[str, list[str]] = {
+    "p-cb5c0bb61e60": ["p-d70a49bcc485", "p-00c65b3d85b6", "p-8d07a757af76"],
+}
+
+
 def find_similar_products(
     product_id: str,
     db: Session,
@@ -163,12 +175,22 @@ def find_similar_products(
 ) -> list[tuple[str, float]]:
     """product_id와 유사한 제품을 (product_id, score) 목록으로, 점수 내림차순 반환합니다.
 
-    min_score 미만인 제품은 결과에서 제외합니다.
+    min_score 미만인 제품은 결과에서 제외합니다. MANUAL_SIMILAR_OVERRIDES에 등록된
+    product_id는 알고리즘 대신 그 목록을 지정한 순서 그대로 반환한다(점수는 표시에는
+    안 쓰이지만 참고용으로 실제 유사도를 계산해 채운다).
     """
     all_sets = _all_ingredient_sets(db)
     target = all_sets.get(product_id)
     if target is None:
         return []
+
+    override = MANUAL_SIMILAR_OVERRIDES.get(product_id)
+    if override:
+        return [
+            (other_id, similarity_score(target, all_sets[other_id]))
+            for other_id in override
+            if other_id in all_sets
+        ][:limit]
 
     scored = [
         (other_id, similarity_score(target, other_sets))

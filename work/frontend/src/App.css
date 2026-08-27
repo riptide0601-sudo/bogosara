@@ -88,16 +88,6 @@
 /* =========================================================
    2. 레이아웃 뼈대
    ========================================================= */
-.page {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(2.5rem, 6vh, 5rem);
-  padding: clamp(1.5rem, 7vw, 3.5rem) 1.5rem 3.5rem;
-}
-
 /* ---- 햄버거 버튼(≡) — 왼쪽 상단 고정, 마이페이지 진입점 ---- */
 .hamburger-btn {
   position: fixed;
@@ -134,81 +124,15 @@
   color: var(--ink);
 }
 
-/* ---- 로고 / 태그라인 ---- */
-.hero {
-  text-align: center;
+/* ---- 내 화장품 조합 바로가기 — 햄버거 버튼 바로 아래 고정 ---- */
+.quick-routine-btn {
+  top: calc(clamp(0.9rem, 3vw, 1.25rem) + 42px + 10px);
 }
-
-.logo {
-  margin: 0;
-  font-size: clamp(3.2rem, 12vw, 6.4rem);
-  line-height: 1.1;
-  letter-spacing: 0.08em;
+.quick-routine-btn svg {
+  width: 20px;
+  height: 18px;
+  fill: currentColor;
   color: var(--ink);
-  text-shadow: 4px 4px 0 var(--accent);
-}
-
-.tagline {
-  margin: 1.1rem 0 0;
-  font-size: clamp(0.9rem, 3.2vw, 1.25rem);
-  letter-spacing: 0.14em;
-  color: var(--ink-soft);
-}
-
-.tagline::before,
-.tagline::after {
-  content: '· ';
-}
-
-/* ---- 메뉴 (돋보기 / 스캐너) ---- */
-.menu {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(2.8rem, 10vw, 7.5rem);
-  flex-wrap: wrap;
-}
-
-.menu-item {
-  appearance: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 0.5rem;
-  color: var(--ink);
-}
-
-
-.icon-frame {
-  position: relative;
-  width: clamp(130px, 28vw, 200px);
-  height: clamp(130px, 28vw, 200px);
-  background: var(--panel);
-  border: var(--border-w) solid var(--ink);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: clamp(18px, 4vw, 30px);
-  transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
-}
-
-/* 카트리지 표시등 느낌의 작은 포인트 (절제된 그린 사용) */
-.icon-frame::after {
-  content: '';
-  position: absolute;
-  top: -7px;
-  right: -7px;
-  width: 15px;
-  height: 15px;
-  background: var(--accent);
-  border: 2px solid var(--ink);
-  transition: background 0.12s;
 }
 
 .pixel-icon {
@@ -218,81 +142,6 @@
   color: var(--ink);
   fill: currentColor;
   transition: color 0.12s;
-}
-
-.menu-label {
-  position: relative; /* 커서(▶)를 absolute로 빼서, 숨어있을 때도 라벨 텍스트가 아이콘과 정확히 중앙 정렬되게 함 */
-  display: inline-flex;
-  align-items: center;
-  font-size: clamp(1rem, 3.6vw, 1.35rem);
-  letter-spacing: 0.06em;
-}
-
-.menu-label .cursor {
-  position: absolute;
-  right: 100%;
-  margin-right: 0.5rem;
-  display: inline-block;
-  color: var(--accent-dark);
-  opacity: 0;
-  transform: translateX(4px);
-  transition: opacity 0.12s, transform 0.12s;
-}
-
-/* ---- 호버 / 포커스 피드백 (게임 메뉴 선택 느낌) ---- */
-.menu-item:hover .icon-frame,
-.menu-item:focus-visible .icon-frame {
-  border-color: var(--accent-dark);
-  background: var(--accent-soft);
-  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--accent-dark);
-  animation: bounce 0.55s ease-in-out infinite;
-}
-.menu-item:hover .icon-frame::after,
-.menu-item:focus-visible .icon-frame::after {
-  background: var(--ink);
-}
-.menu-item:hover .pixel-icon,
-.menu-item:focus-visible .pixel-icon {
-  color: var(--accent-dark);
-}
-.menu-item:hover .menu-label .cursor,
-.menu-item:focus-visible .menu-label .cursor {
-  opacity: 1;
-  transform: translateX(0);
-  animation: blink 1s steps(1) infinite;
-}
-
-/* 눌림 상태: 그림자가 사라지며 버튼이 안으로 눌리는 느낌 */
-.menu-item:active .icon-frame {
-  transform: translate(var(--shadow-off), var(--shadow-off));
-  box-shadow: 0 0 0 0 var(--ink);
-  animation: none;
-}
-
-.menu-item:focus-visible {
-  outline: none;
-}
-.menu-item:focus-visible .icon-frame {
-  outline: 2px dashed var(--ink);
-  outline-offset: 4px;
-}
-
-/* ---- 안내 문구 ---- */
-.hint {
-  font-family: var(--font-en);
-  font-size: clamp(0.6rem, 2.4vw, 0.75rem);
-  letter-spacing: 0.05em;
-  color: var(--ink-soft);
-  animation: blink 1.4s steps(1) infinite;
-  text-align: center;
-}
-
-footer {
-  font-family: var(--font-en);
-  font-size: 0.6rem;
-  color: var(--ink-soft);
-  letter-spacing: 0.05em;
-  padding-bottom: 1rem;
 }
 
 /* =========================================================
@@ -770,6 +619,13 @@ footer {
   aspect-ratio: 1 / 1;
   border-bottom: var(--border-w) solid var(--ink);
   background-color: var(--sub);
+  overflow: hidden;
+}
+
+.product-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .product-thumb-mono {

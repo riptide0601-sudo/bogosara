@@ -96,7 +96,13 @@ function CompareSide({ productId, model }: { productId: string; model: string })
         </p>
       )}
       {state.status === 'done' && (
-        <ResultCard product={state.result.product} ingredients={state.result.ingredients} isScan={false} />
+        <ResultCard
+          product={state.result.product}
+          ingredients={state.result.ingredients}
+          isScan={false}
+          skinRisk={{ status: 'signed-out' }}
+          familyRank={{ status: 'idle' }}
+        />
       )}
     </div>
   );

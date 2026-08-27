@@ -2,7 +2,7 @@
 
 성분 하나를 화장품 성분 정보에 익숙하지 않은 사용자에게 설명하는 문구를 만든다.
 이 프롬프트가 만드는 값은 `llm_summary` 테이블의 `summary_text` / `benefit_text` /
-`usage_reason_text` / `combo_recommendation` / `caution_text` 다.
+`usage_reason_text` / `combo_recommendation` / `caution_text` / `caution_group_text` 다.
 
 ## 입력 (아래 JSON 그대로 프롬프트에 삽입됨 — `scripts/build_llm_input.py` 참고)
 
@@ -19,8 +19,10 @@
 - `ingredient.relations`: 이 성분과 다른 성분의 시너지/악화 조합 (사람이 미리 검수한 문장 `note`
   포함). `combo_recommendation`은 반드시 이 배열에 있는 내용만 근거로 쓴다 — 배열이 비어 있으면
   `combo_recommendation`도 반드시 빈 문자열.
-- `ingredient.skin_scores`: 피부타입별 적합도(화면엔 아직 안 나오는 데이터). 요약을 풍부하게 할
-  근거로만 쓰고, 화면에 없는 개념(피부타입별 점수 등)을 직접 언급하지는 않는다 — 자연스럽게 녹여서만.
+- `ingredient.skin_scores`: 피부타입별 위험/궁합 플래그(`is_risk`) + 위험유형(`function`) + 근거 설명
+  (`caution`). `is_risk: true`인 항목이 있을 때만 `caution_group_text`의 근거가 된다 — 그 외의
+  일반적인 요약(`summary_text`/`benefit_text`)에는 화면에 없는 개념(피부타입별 점수 등)을 직접
+  언급하지 말고 자연스럽게만 녹인다.
 - `ingredient.safety_level`: 값이 있을 때만 `caution_text`의 근거가 된다. null이면 `caution_text`는
   반드시 빈 문자열.
 
@@ -32,7 +34,8 @@
   "benefit_text": "",
   "usage_reason_text": "",
   "combo_recommendation": "",
-  "caution_text": ""
+  "caution_text": "",
+  "caution_group_text": ""
 }
 ```
 
@@ -43,6 +46,11 @@
 - `combo_recommendation`: `relations`가 있을 때만, 그 안의 `relation_type`/`related_ingredient`/
   `note`를 문장으로 다듬어 1~2문장. `relations`가 비어 있으면 반드시 `""`.
 - `caution_text`: `safety_level`이 있을 때만 그걸 근거로 1문장. null이면 반드시 `""`.
+- `caution_group_text`: `skin_scores`에 `is_risk: true`인 항목이 있을 때만, 그 항목들의
+  `skin_type`(어떤 피부 타입 그룹인지)과 `function`/`caution`(왜 주의해야 하는지)을 근거로
+  "○○ 피부는 주의가 필요해요" 형태의 짧은 라벨성 1문장. `is_risk: true` 항목이 하나도 없으면
+  반드시 `""`. `caution_text`(규제 근거)와는 다른 문장이어야 하며, 두 값을 억지로 채우려고
+  서로 베끼지 않는다.
 
 ## 규칙
 1. 톤: "~이에요/~해요" 체, 쉬운 말. 각 필드 1~2문장을 넘기지 않는다.

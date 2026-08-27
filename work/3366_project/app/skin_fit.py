@@ -126,6 +126,48 @@ _SUMMARY_SKIN_TYPE_ORDER["전체"] = len(SKIN_TYPES)
 _SUMMARY_POLARITY_LABEL = {False: "좋은", True: "유의해야할"}
 
 
+@dataclass
+class SkinTypeCount:
+    skin_type: str  # SKIN_TYPES 중 하나 또는 "전체"(피부타입 무관, 향료 알레르겐 등)
+    good_count: int  # is_risk=False로 등록된 성분 개수(궁합 좋음)
+    caution_count: int  # is_risk=True로 등록된 성분 개수(위험/유의)
+
+
+def compute_skin_type_counts(product_id: str, db: Session) -> list[SkinTypeCount]:
+    """"피부 타입별 참고" 막대바용 — 피부타입마다 좋은/유의 성분이 몇 개인지 구조화된
+    숫자로 반환한다(summarize_skin_score_matches의 문장 버전과 같은 근거, 형태만 다름).
+    매칭이 하나도 없는 피부타입은 목록에서 아예 빠진다(0/0을 굳이 안 보여줌).
+    """
+    rows = db.execute(
+        select(
+            IngredientSkinScore.skin_type,
+            IngredientSkinScore.is_risk,
+            func.count(func.distinct(ProductIngredient.ingredient_id)),
+        )
+        .join(
+            ProductIngredient,
+            ProductIngredient.ingredient_id == IngredientSkinScore.ingredient_id,
+        )
+        .where(ProductIngredient.product_id == product_id)
+        .group_by(IngredientSkinScore.skin_type, IngredientSkinScore.is_risk)
+    ).all()
+
+    by_skin_type: dict[str, dict[bool, int]] = defaultdict(dict)
+    for skin_type, is_risk, count in rows:
+        by_skin_type[skin_type][is_risk] = count
+
+    result = [
+        SkinTypeCount(
+            skin_type=skin_type,
+            good_count=counts.get(False, 0),
+            caution_count=counts.get(True, 0),
+        )
+        for skin_type, counts in by_skin_type.items()
+    ]
+    result.sort(key=lambda item: _SUMMARY_SKIN_TYPE_ORDER.get(item.skin_type, 99))
+    return result
+
+
 def summarize_skin_score_matches(product_ids: list[str], db: Session) -> dict[str, str]:
     """검색 결과 등 여러 제품을 한 번에 보여줄 때, 제품마다 ingredient_skin_score에
     매칭되는 성분이 있는지를 "지성에 좋은 성분 2개, 건성에 유의해야할 성분 1개

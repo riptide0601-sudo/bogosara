@@ -14,3 +14,9 @@ class SkinRiskRead(BaseModel):
     has_risk: bool
     risk_ingredients: list[RiskIngredientRead] = []
     total_ingredient_count: int
+
+
+class SkinTypeCountRead(BaseModel):
+    skin_type: str
+    good_count: int
+    caution_count: int
