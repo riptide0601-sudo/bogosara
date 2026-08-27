@@ -1,0 +1,334 @@
+/* =========================================================
+   검색(SearchOverlay) + 검색 결과 화면(SearchResultsView) — bogo1 디자인 이식.
+   클래스명은 전부 sres- 접두사를 붙였다 — 우리 앱에 이미 .results-grid/.results-empty
+   (다른 스타일의 기존 클래스, App.css)가 있어서 이름이 겹치면 안 된다.
+   ========================================================= */
+
+.sres-overlay,
+.sres-page {
+  --sres-bg: #f2efe0;
+  --sres-card: #fbf9ee;
+  --sres-ink: #15170e;
+  --sres-ink-soft: #5a5d47;
+  --sres-line: #d7d1b4;
+  --sres-lime: #c3e832;
+  --sres-lime-deep: #5b7a12;
+  --sres-lime-ink: #141a06;
+  --sres-r-md: 12px;
+  --sres-font-display: 'Big Shoulders Display', 'Noto Sans KR', system-ui, sans-serif;
+  --sres-font-body: 'Noto Sans KR', 'Malgun Gothic', system-ui, sans-serif;
+  --sres-font-mono: 'IBM Plex Mono', 'Noto Sans KR', ui-monospace, monospace;
+
+  font-family: var(--sres-font-body);
+  color: var(--sres-ink);
+}
+.sres-overlay *,
+.sres-page * {
+  box-sizing: border-box;
+}
+.sres-page a {
+  color: inherit;
+  text-decoration: none;
+}
+.sres-overlay button,
+.sres-page button {
+  appearance: none;
+  font-family: inherit;
+  color: inherit;
+}
+
+/* ---------------- 검색 오버레이 ---------------- */
+.sres-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  padding: 1.5rem;
+  background: var(--sres-bg);
+}
+.sres-overlay-close {
+  position: absolute;
+  top: clamp(1rem, 3vw, 1.6rem);
+  right: clamp(1.1rem, 4vw, 3rem);
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--sres-line);
+  background: var(--sres-card);
+  color: var(--sres-ink);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.sres-overlay-close:hover {
+  background: var(--sres-lime);
+  border-color: var(--sres-lime);
+}
+.sres-overlay-form {
+  width: min(100%, 640px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+.sres-overlay-input {
+  width: 100%;
+  border: none;
+  border-bottom: 2px solid var(--sres-ink);
+  background: transparent;
+  color: var(--sres-ink);
+  font-family: var(--sres-font-display);
+  font-weight: 700;
+  font-size: clamp(1.4rem, 5vw, 2.4rem);
+  padding: 0.3em 0.1em;
+  text-align: center;
+}
+.sres-overlay-input::placeholder {
+  color: var(--sres-ink-soft);
+  opacity: 0.6;
+}
+.sres-overlay-input:focus {
+  outline: none;
+  border-bottom-color: var(--sres-lime-deep);
+}
+.sres-overlay-hint {
+  font-family: var(--sres-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--sres-ink-soft);
+}
+
+/* ---------------- 검색 결과 화면 ---------------- */
+.sres-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+  background: var(--sres-bg);
+}
+.sres-topbar {
+  position: absolute;
+  top: clamp(1.4rem, 4vw, 2rem);
+  left: clamp(1.1rem, 4vw, 3rem);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+.sres-topbar-back {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--sres-font-mono);
+  font-weight: 600;
+  font-size: 0.82rem;
+  line-height: 1;
+  color: var(--sres-ink);
+}
+.sres-topbar-back:hover {
+  color: var(--sres-lime-deep);
+}
+.sres-topbar-mark {
+  font-family: var(--sres-font-mono);
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+}
+.sres-topbar-mypage {
+  font-family: var(--sres-font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  color: var(--sres-ink-soft);
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+}
+.sres-topbar-mypage:hover {
+  color: var(--sres-lime-deep);
+}
+
+.sres-body {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(4.6rem, 10vw, 5.6rem) clamp(1.1rem, 4vw, 3rem) clamp(2.4rem, 6vw, 3.5rem);
+}
+.sres-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.6rem;
+}
+.sres-meta {
+  font-size: 0.9rem;
+  color: var(--sres-ink-soft);
+}
+.sres-meta strong {
+  color: var(--sres-ink);
+}
+
+.sres-searchbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(52vw, 320px);
+  border: 1px solid var(--sres-line);
+  border-radius: 999px;
+  padding: 0.4rem 0.4rem 0.4rem 1rem;
+  background: var(--sres-card);
+}
+.sres-searchbar-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: var(--sres-ink);
+  font-family: var(--sres-font-body);
+  font-size: 0.9rem;
+}
+.sres-searchbar-input:focus {
+  outline: none;
+}
+.sres-searchbar-submit {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: none;
+  background: var(--sres-lime);
+  color: var(--sres-lime-ink);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.sres-searchbar-submit:hover {
+  background: var(--sres-lime-deep);
+}
+
+.sres-status {
+  font-size: 0.9rem;
+  color: var(--sres-ink-soft);
+  padding: 2rem 0;
+}
+
+.sres-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  row-gap: clamp(1rem, 2.5vw, 1.6rem);
+  column-gap: clamp(1.8rem, 4.5vw, 2.8rem);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.sres-card {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.sres-card-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.sres-card:hover .sres-card-thumb {
+  transform: scale(1.03);
+}
+.sres-card:hover .sres-card-name {
+  color: var(--sres-lime-deep);
+}
+.sres-card-thumb {
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: var(--sres-r-md);
+  background: var(--sres-lime);
+  object-fit: cover;
+  display: block;
+  transition: transform 0.15s ease;
+}
+.sres-card-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0;
+  padding-left: 0.5em;
+}
+.sres-card-brand {
+  font-size: 0.8rem;
+  color: var(--sres-ink-soft);
+  margin: 0;
+  padding-left: 0.5em;
+}
+
+.sres-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: clamp(2.4rem, 6vw, 3.2rem);
+}
+.sres-pagination-btn {
+  min-width: 2.2rem;
+  height: 2.2rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--sres-line);
+  border-radius: 999px;
+  background: none;
+  color: var(--sres-ink-soft);
+  font-family: var(--sres-font-mono);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sres-pagination-btn:hover {
+  border-color: var(--sres-lime-deep);
+  color: var(--sres-lime-deep);
+}
+.sres-pagination-btn[aria-current='page'] {
+  background: var(--sres-lime);
+  border-color: var(--sres-lime);
+  color: var(--sres-lime-ink);
+}
+
+.sres-empty {
+  max-width: 44ch;
+  padding: clamp(2rem, 6vw, 4rem) 0;
+}
+.sres-empty-title {
+  font-family: var(--sres-font-display);
+  font-weight: 700;
+  font-size: clamp(1.3rem, 3vw, 1.8rem);
+  margin: 0 0 0.6rem;
+}
+.sres-empty-desc {
+  font-size: 0.92rem;
+  color: var(--sres-ink-soft);
+  margin: 0 0 1.4rem;
+}
+.sres-empty-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-weight: 700;
+  font-size: 0.92rem;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 0.1em;
+  color: var(--sres-ink);
+}
+.sres-empty-cta:hover {
+  color: var(--sres-lime-deep);
+}

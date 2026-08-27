@@ -18,6 +18,26 @@
   margin: 0 auto;
   padding: clamp(1.25rem, 4vw, 1.5rem) 1.25rem clamp(1rem, 2vw, 1.5rem);
   overflow: hidden;
+  position: relative;
+  /* 이 페이지 안에서는 픽셀 폰트(--font-kr/--font-en) 대신 기본 가독성 폰트로 전부 통일한다 —
+     변수를 여기서만 덮어써서, font-family: var(--font-kr)을 직접 쓰는 규칙들은 하나하나 안
+     고쳐도 자동 적용된다. 다만 이건 var() 재평가에만 영향을 주고, 자체 font-family 선언이
+     없는 자손(예: .photo-reco-*)은 상속 특성상 body에서 이미 pixel 폰트로 확정된 계산값을
+     그대로 물려받으므로, 아래 font-family를 이 컨테이너에 직접 걸어 상속 시작점 자체를 바꾼다. */
+  --font-kr: var(--font-noto);
+  --font-en: var(--font-noto);
+  font-family: var(--font-noto);
+}
+
+/* .result-view 자체는 max-width로 가운데 정렬돼있어 배경을 직접 칠하면 그 폭만큼만 베이지가
+   되고 양옆은 body의 원래 배경(크림톤 + 스캔라인)이 그대로 비쳐 어색했다 — 뷰포트 전체를
+   덮는 fixed 배경판을 따로 깔아서 화면 전체가 자연스럽게 한 색으로 보이게 한다. */
+.result-view::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-color: #efede0;
+  z-index: -1;
 }
 
 /* ---- 상단 바: 뒤로가기 + 저장 버튼 ---- */
@@ -205,9 +225,7 @@
   flex-shrink: 0;
   width: 100%;
   aspect-ratio: 3 / 4;
-  border: var(--border-w) solid var(--ink);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
   object-fit: cover;
 }
 

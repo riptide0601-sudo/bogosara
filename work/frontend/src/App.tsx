@@ -1,18 +1,16 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import BackgroundSparkles from './components/BackgroundSparkles';
 import WalkingMascot from './components/WalkingMascot';
-import MenuButton from './components/MenuButton';
-import HamburgerButton from './components/HamburgerButton';
+import LandingView from './components/LandingView';
 import SearchOverlay from './components/SearchOverlay';
 import ScanOverlay from './components/ScanOverlay';
-import ResultsSection, { type SearchStatus } from './components/ResultsSection';
+import { type SearchStatus } from './components/ResultsSection';
+import SearchResultsView from './components/SearchResultsView';
 import ResultView from './components/ResultView';
 import MyPageView from './components/MyPageView';
 import RoutineView from './components/RoutineView';
 import LoginView from './components/LoginView';
 import { useAuth } from './context/AuthContext';
-import MagnifierIcon from './icons/MagnifierIcon';
-import ScannerIcon from './icons/ScannerIcon';
 import CosmeticMascotIcon from './icons/CosmeticMascotIcon';
 import CreamJarIcon from './icons/CreamJarIcon';
 import CushionIcon from './icons/CushionIcon';
@@ -46,7 +44,6 @@ export default function App() {
   const [searchStatus, setSearchStatus] = useState<SearchStatus>('idle');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
-  const resultsRef = useRef<HTMLElement>(null);
 
   // ---- 성분 결과 화면 진입 요청 (검색 리스트 클릭 / 스캔 OCR 성공) ----
   // null이면 랜딩 화면, 값이 있으면 ResultView로 전체 화면이 전환된다. 오버레이가 아니라 화면
@@ -76,11 +73,6 @@ export default function App() {
       .then((results) => {
         setSearchResults(results);
         setSearchStatus('done');
-
-        // 결과가 그려진 다음 프레임에 결과 섹션으로 부드럽게 스크롤
-        requestAnimationFrame(() => {
-          resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
       })
       .catch((err) => {
         console.error('[보고사라][검색] API 호출 실패', err);
@@ -162,57 +154,39 @@ export default function App() {
     );
   }
 
+  // 검색 실행 이후(로딩/완료/에러)에는 랜딩 대신 검색 결과 화면(SearchResultsView, bogo1
+  // SearchResultsPage 디자인 이식)으로 전체 화면을 교체한다. 뒤로가기를 누르면 searchStatus를
+  // 'idle'로 되돌려 랜딩으로 돌아간다.
+  if (searchStatus !== 'idle') {
+    return (
+      <>
+        <SearchResultsView
+          status={searchStatus}
+          query={searchQuery}
+          results={searchResults}
+          onSelectProduct={handleSelectProduct}
+          onSearch={runSearch}
+          onBack={() => setSearchStatus('idle')}
+          onOpenMyPage={() => setMypageOpen(true)}
+          onOpenScan={() => setActiveOverlay('scan')}
+        />
+        <SearchOverlay open={activeOverlay === 'search'} onClose={closeOverlay} onSearch={runSearch} />
+        <ScanOverlay open={activeOverlay === 'scan'} onClose={closeOverlay} onCaptured={handleScanCaptured} />
+      </>
+    );
+  }
+
   return (
     <>
-      {/* 배경 여백을 채우는 떠다니는 픽셀 반짝임(별/거품) — 순수 장식 */}
-      <BackgroundSparkles />
-
-      {/* 화면 맨 아래를 걸어다니는 화장품 캐릭터들 — 순수 장식 */}
-      {WALKING_MASCOTS.map((mascot, i) => (
-        <WalkingMascot key={i} {...mascot} />
-      ))}
-
-      {/* 왼쪽 상단 고정 — 마이페이지 진입점(≡) */}
-      <HamburgerButton onClick={() => setMypageOpen(true)} />
-
-      <div className="page">
-        <header className="hero">
-          <h1 className="logo">보고사라</h1>
-          <p className="tagline">화장품 성분 설명 시스템</p>
-        </header>
-
-        <main className="menu" aria-label="시작 메뉴">
-          <MenuButton
-            id="btn-search"
-            variant="search"
-            label="검색"
-            ariaControls="overlay-search"
-            icon={<MagnifierIcon />}
-            onClick={() => setActiveOverlay('search')}
-          />
-          <MenuButton
-            id="btn-scan"
-            variant="scan"
-            label="스캔"
-            ariaControls="overlay-scan"
-            icon={<ScannerIcon />}
-            onClick={() => setActiveOverlay('scan')}
-          />
-        </main>
-
-        <p className="hint">아이콘을 선택하세요 · SELECT AN ICON</p>
-
-        <footer>© BOGOSARA</footer>
-      </div>
-
-      {/* 검색 결과 / 제품 리스트 — 페이지 이동 없이 같은 페이지 아래쪽에 나타난다 */}
-      <ResultsSection
-        ref={resultsRef}
-        status={searchStatus}
-        query={searchQuery}
-        results={searchResults}
-        onSelectProduct={handleSelectProduct}
-        onSearch={runSearch}
+      {/* 랜딩 화면(첫 화면) — bogo1(BOGOSARA_landing.html)의 히어로만 옮긴 LandingView로 교체.
+          자체 배경/톤이 있어 픽셀 반짝임·걸어다니는 캐릭터(다른 화면들의 장식)는 여기서는
+          안 쓴다. 왼쪽 절반 클릭=검색, 오른쪽 절반 클릭=스캔 — LandingView 내부에서 실제
+          SearchOverlay/ScanOverlay를 여는 콜백으로 연결한다. 다른 화면(제품 상세 등)은
+          이 작업에서 전혀 안 건드렸다. */}
+      <LandingView
+        onOpenSearch={() => setActiveOverlay('search')}
+        onOpenScan={() => setActiveOverlay('scan')}
+        onOpenMyPage={() => setMypageOpen(true)}
       />
 
       {/* 돋보기(검색) 오버레이 — 페이지 이동 없이 떠오르는 검색바 */}
