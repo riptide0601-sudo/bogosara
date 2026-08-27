@@ -6,14 +6,20 @@ from sqlalchemy.engine import Engine
 from app.database import Base
 from app.models import (  # noqa: F401  (import registers tables on Base.metadata)
     Ingredient,
+    IngredientFamily,
+    IngredientFamilyMember,
     IngredientPurpose,
     IngredientRelation,
     IngredientSkinScore,
     LLMSummary,
     Product,
     ProductConcern,
+    ProductFamilyMember,
     ProductIngredient,
     Purpose,
+    RoutineItem,
+    SavedResult,
+    User,
 )
 
 # Parent tables before the join/child tables that reference them.
@@ -27,6 +33,13 @@ TABLE_ORDER = [
     IngredientRelation.__table__,
     ProductConcern.__table__,
     IngredientSkinScore.__table__,
+    # 이번 세션에 추가된 테이블들 — 부모(IngredientFamily/User)가 자식보다 앞에 오게.
+    IngredientFamily.__table__,
+    IngredientFamilyMember.__table__,  # FK: ingredient_family, ingredient
+    ProductFamilyMember.__table__,  # FK: ingredient_family, product
+    User.__table__,  # app_user
+    SavedResult.__table__,  # FK: app_user, product
+    RoutineItem.__table__,  # FK: app_user, product
 ]
 
 
