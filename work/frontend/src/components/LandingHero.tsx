@@ -1,27 +1,10 @@
 import { useEffect, useRef } from 'react';
-import MagnifierIcon from '../icons/MagnifierIcon';
-import ScannerIcon from '../icons/ScannerIcon';
 import '../LandingHero.css';
 
 interface LandingHeroProps {
   onSearchClick: () => void;
   onScanClick: () => void;
 }
-
-const BURST_WORDS: { text: string; className: string; on?: boolean }[] = [
-  { text: '정제수', className: 'w1' },
-  { text: '나이아신아마이드', className: 'w2', on: true },
-  { text: '부틸렌글라이콜', className: 'w3' },
-  { text: '에틸헥실글리세린', className: 'w4' },
-  { text: '소듐하이알루로네이트', className: 'w5', on: true },
-  { text: '다이소듐이디티에이', className: 'w6' },
-  { text: '아데노신', className: 'w7' },
-  { text: '글리세린', className: 'w8', on: true },
-  { text: '잔탄검', className: 'w9' },
-  { text: '하이드록시아세토페논', className: 'w10' },
-  { text: '다이프로필렌글라이콜', className: 'w11' },
-  { text: '하이알루로닉애씨드', className: 'w12' },
-];
 
 const SCAN_PAIRS = [
   '나이아신아마이드 → 톤 케어',
@@ -38,11 +21,6 @@ function HeroWordmark({ onSearchClick, onScanClick }: LandingHeroProps) {
     <div className="lh-hero-center">
       <div className="lh-burst" aria-hidden="true">
         <div className="lh-blob" />
-        {BURST_WORDS.map((w) => (
-          <span key={w.className} className={`lh-w lh-${w.className}${w.on ? ' lh-w-on' : ''}`}>
-            {w.text}
-          </span>
-        ))}
       </div>
       <h1 className="lh-wordmark" aria-label="BOGOSARA">
         <span className="lh-wm-line lh-wm-line--a" aria-hidden="true">
@@ -92,39 +70,6 @@ function HeroMiddle({ onSearchClick, onScanClick }: LandingHeroProps) {
   return (
     <div className="lh-hero-middle">
       <HeroWordmark onSearchClick={onSearchClick} onScanClick={onScanClick} />
-
-      {/* SEARCH/SCAN 진입 카드 — 커서 연출(파인 포인터 전용)과 별개로 모든 기기에서 항상 보여서
-          명확한 진입점을 제공한다. */}
-      <div className="lh-entry-row">
-        <button
-          type="button"
-          className="lh-entry-card"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSearchClick();
-          }}
-        >
-          <MagnifierIcon />
-          <span>
-            <span className="lh-entry-label">SEARCH</span>
-            <span className="lh-entry-sub">제품명으로 찾기</span>
-          </span>
-        </button>
-        <button
-          type="button"
-          className="lh-entry-card"
-          onClick={(e) => {
-            e.stopPropagation();
-            onScanClick();
-          }}
-        >
-          <ScannerIcon />
-          <span>
-            <span className="lh-entry-label">SCAN</span>
-            <span className="lh-entry-sub">전성분표 촬영하기</span>
-          </span>
-        </button>
-      </div>
     </div>
   );
 }
