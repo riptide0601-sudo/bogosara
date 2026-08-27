@@ -6,6 +6,21 @@ interface LandingHeroProps {
   onScanClick: () => void;
 }
 
+const BURST_WORDS: { text: string; className: string; on?: boolean }[] = [
+  { text: '정제수', className: 'w1' },
+  { text: '나이아신아마이드', className: 'w2', on: true },
+  { text: '부틸렌글라이콜', className: 'w3' },
+  { text: '에틸헥실글리세린', className: 'w4' },
+  { text: '소듐하이알루로네이트', className: 'w5', on: true },
+  { text: '다이소듐이디티에이', className: 'w6' },
+  { text: '아데노신', className: 'w7' },
+  { text: '글리세린', className: 'w8', on: true },
+  { text: '잔탄검', className: 'w9' },
+  { text: '하이드록시아세토페논', className: 'w10' },
+  { text: '다이프로필렌글라이콜', className: 'w11' },
+  { text: '하이알루로닉애씨드', className: 'w12' },
+];
+
 const SCAN_PAIRS = [
   '나이아신아마이드 → 톤 케어',
   '글리세린 → 보습',
@@ -21,6 +36,11 @@ function HeroWordmark({ onSearchClick, onScanClick }: LandingHeroProps) {
     <div className="lh-hero-center">
       <div className="lh-burst" aria-hidden="true">
         <div className="lh-blob" />
+        {BURST_WORDS.map((w) => (
+          <span key={w.className} className={`lh-w lh-${w.className}${w.on ? ' lh-w-on' : ''}`}>
+            {w.text}
+          </span>
+        ))}
       </div>
       <h1 className="lh-wordmark" aria-label="BOGOSARA">
         <span className="lh-wm-line lh-wm-line--a" aria-hidden="true">
@@ -30,11 +50,6 @@ function HeroWordmark({ onSearchClick, onScanClick }: LandingHeroProps) {
           SARA
         </span>
       </h1>
-      <p className="lh-tagline">
-        검색하거나 찍으면,
-        <br />
-        암호 같던 성분표가 읽힙니다.
-      </p>
       <p className="lh-instruction">
         <button
           type="button"
@@ -57,7 +72,9 @@ function HeroWordmark({ onSearchClick, onScanClick }: LandingHeroProps) {
         >
           오른쪽
         </button>
-        은 스캔이에요 — 커서를 옮겨보세요.
+        은 스캔이에요 —
+        <br />
+        커서를 옮겨보세요.
       </p>
     </div>
   );

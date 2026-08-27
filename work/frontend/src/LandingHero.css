@@ -1,10 +1,12 @@
 /* =========================================================
-   랜딩 히어로 — 배경/색은 앱 전역 토큰(index.css)을 그대로 쓰고,
-   워드마크·커서 연출에만 참고 랜딩페이지 서체(Big Shoulders Display / IBM Plex Mono)를 얹는다.
+   랜딩 히어로 — 배경/색은 앱 전역 토큰(index.css)을 그대로 쓴다.
+   워드마크(BOGOSARA, --lh-font-display)는 예전 길쭉한 서체를 그대로 유지하고, 그 주변
+   요소들(태그라인/안내문/edge-label/성분 단어/스캐너 라벨, --lh-font-mono)에는 픽셀 폰트를
+   입혀서 전체적으로 픽셀 느낌을 살린다.
    ========================================================= */
 .lh-hero {
   --lh-font-display: 'Big Shoulders Display', var(--font-en), sans-serif;
-  --lh-font-mono: 'IBM Plex Mono', var(--font-en), monospace;
+  --lh-font-mono: 'Galmuri11', 'NeoDunggeunmo', 'D2Coding', 'Consolas', monospace;
 
   position: relative;
   /* min-height가 아니라 고정 height — 내용이 넘치더라도 페이지 자체가 늘어나 스크롤이
@@ -29,7 +31,7 @@
 }
 
 .lh-mark {
-  align-self: flex-end;
+  align-self: flex-start;
   font-family: var(--lh-font-mono);
   font-weight: 600;
   font-size: 0.82rem;
@@ -125,18 +127,21 @@
   color: var(--ink);
   font-weight: 500;
 }
-.lh-w1 { left: 18%; top: 22%; transform: rotate(-9deg); }
-.lh-w2 { left: 62%; top: 16%; transform: rotate(6deg); font-size: 0.68rem; }
-.lh-w3 { left: 40%; top: 30%; transform: rotate(-3deg); }
-.lh-w4 { left: 68%; top: 34%; transform: rotate(11deg); }
-.lh-w5 { left: 24%; top: 44%; transform: rotate(4deg); }
-.lh-w6 { left: 52%; top: 48%; transform: rotate(-7deg); font-size: 0.7rem; }
-.lh-w7 { left: 33%; top: 58%; transform: rotate(8deg); }
-.lh-w8 { left: 66%; top: 60%; transform: rotate(-5deg); }
-.lh-w9 { left: 20%; top: 68%; transform: rotate(-11deg); font-size: 0.68rem; }
-.lh-w10 { left: 58%; top: 72%; transform: rotate(5deg); }
-.lh-w11 { left: 41%; top: 78%; transform: rotate(-2deg); }
-.lh-w12 { left: 76%; top: 50%; transform: rotate(-13deg); font-size: 0.66rem; }
+/* 중앙 블롭/워드마크에 겹치지 않도록, 배경 양옆(왼쪽 절반은 left, 오른쪽 절반은 right로
+   앵커링)에 세로로 흩어 놓는다 — right를 쓰는 건 단어 길이가 저마다 달라도 오른쪽 끝을
+   기준으로 안쪽으로 자라서 화면 밖으로 안 잘리게 하기 위함. */
+.lh-w1 { left: 13%; top: 10%; transform: rotate(-8deg); }
+.lh-w2 { left: 18%; top: 26%; transform: rotate(5deg); font-size: 0.68rem; }
+.lh-w3 { left: 12%; top: 42%; transform: rotate(-4deg); }
+.lh-w4 { left: 19%; top: 58%; transform: rotate(9deg); }
+.lh-w5 { left: 14%; top: 74%; transform: rotate(-6deg); }
+.lh-w6 { left: 20%; top: 90%; transform: rotate(3deg); font-size: 0.7rem; }
+.lh-w7 { right: 13%; top: 8%; transform: rotate(7deg); }
+.lh-w8 { right: 18%; top: 24%; transform: rotate(-5deg); }
+.lh-w9 { right: 12%; top: 40%; transform: rotate(10deg); font-size: 0.68rem; }
+.lh-w10 { right: 19%; top: 56%; transform: rotate(-8deg); }
+.lh-w11 { right: 14%; top: 72%; transform: rotate(4deg); }
+.lh-w12 { right: 20%; top: 88%; transform: rotate(-11deg); font-size: 0.66rem; }
 
 .lh-wordmark {
   position: relative;
@@ -178,7 +183,7 @@
 .lh-instruction {
   position: relative;
   z-index: 2;
-  margin: clamp(0.4rem, 1.2vh, 0.8rem) 0 0;
+  margin: clamp(3rem, 8vh, 5rem) 0 0;
   font-family: var(--lh-font-mono);
   font-weight: 600;
   font-size: clamp(0.82rem, min(1.7vw, 1.9vh), 1rem);

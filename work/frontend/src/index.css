@@ -1,4 +1,73 @@
 /* =========================================================
+   전역 폰트 — Pretendard(로컬, src/font/) 9단계 굵기 전부 등록. 아래 --font-kr/--font-en/
+   --font-noto 및 LandingHero.css의 --lh-font-display/--lh-font-mono가 전부 이 폰트를
+   최우선으로 쓰도록 바꿔서, 사이트 전체 글씨체를 Pretendard로 통일한다.
+   ========================================================= */
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./font/Pretendard-Thin.woff2') format('woff2');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./font/Pretendard-ExtraLight.woff2') format('woff2');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./font/Pretendard-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./font/Pretendard-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./font/Pretendard-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./font/Pretendard-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./font/Pretendard-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./font/Pretendard-ExtraBold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./font/Pretendard-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================================================
    전역 리셋 + 디자인 토큰
    ========================================================= */
 :root {
@@ -16,9 +85,9 @@
   --radius: 10px; /* 아이콘/제품 카드/사진 등 둥글게 처리하는 요소용 */
   --radius-sm: 6px; /* 카드 내부의 작은 박스(통계/뱃지/노트/행 등)용 축소 라운드 */
 
-  --font-kr: 'Galmuri11', 'NeoDunggeunmo', 'D2Coding', 'Consolas', monospace;
-  --font-en: 'Press Start 2P', 'Galmuri11', monospace;
-  --font-noto: 'Noto Sans KR', 'Noto Sans', sans-serif; /* 픽셀 느낌 대신 가독성 위주 (결과 카드 뒷면 등) */
+  --font-kr: 'Pretendard', 'Galmuri11', 'NeoDunggeunmo', 'D2Coding', 'Consolas', monospace;
+  --font-en: 'Pretendard', 'Press Start 2P', 'Galmuri11', monospace;
+  --font-noto: 'Pretendard', 'Noto Sans KR', 'Noto Sans', sans-serif; /* 픽셀 느낌 대신 가독성 위주 (결과 카드 뒷면 등) */
 }
 
 *,

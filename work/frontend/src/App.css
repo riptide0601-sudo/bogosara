@@ -442,6 +442,190 @@
   padding: 0 0.5rem;
 }
 
+/* =========================================================
+   전체화면 검색 오버레이 (SearchOverlay) — 입력창 하나만 있는 심플한 화면.
+   .scan-corner/.scan-line/@keyframes scan-sweep(위)는 그대로 재사용한다.
+   ========================================================= */
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  padding: 1.5rem;
+  background: var(--bg);
+}
+.search-overlay__close {
+  position: absolute;
+  top: clamp(1rem, 3vw, 1.6rem);
+  right: clamp(1.1rem, 4vw, 3rem);
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.search-overlay__close:hover,
+.search-overlay__close:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.search-overlay__form {
+  width: min(100%, 640px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+.search-overlay__input {
+  width: 100%;
+  border: none;
+  border-bottom: 2px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  /* 사이트 전체 통일 폰트(Pretendard)가 아니라 픽셀 폰트를 직접 지정 — var(--font-en)은
+     이제 Pretendard가 1순위라 여기서 쓰면 픽셀 느낌이 안 산다. */
+  font-family: 'Press Start 2P', 'Galmuri11', 'NeoDunggeunmo', monospace;
+  font-size: clamp(1.1rem, 4vw, 1.8rem);
+  padding: 0.3em 0.1em;
+  text-align: center;
+}
+.search-overlay__input::placeholder {
+  color: var(--ink-soft);
+  opacity: 0.6;
+}
+.search-overlay__input:focus {
+  outline: none;
+  border-bottom-color: var(--accent-dark);
+}
+.search-overlay__hint {
+  font-family: 'Galmuri11', 'NeoDunggeunmo', 'D2Coding', 'Consolas', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
+/* =========================================================
+   전체화면 스캔 오버레이 (ScanOverlay) — 웹캠 라이브 프리뷰.
+   ========================================================= */
+.scan-page {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  background: #0b0c07;
+  color: #f1eee0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scan-page__close {
+  position: absolute;
+  top: clamp(1rem, 3vw, 1.6rem);
+  right: clamp(1rem, 3vw, 1.6rem);
+  z-index: 5;
+  cursor: pointer;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(11, 12, 7, 0.55);
+  border: 1px solid rgba(241, 238, 224, 0.3);
+  color: #f1eee0;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.scan-page__close:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.scan-page__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scan-page__frame {
+  position: relative;
+  z-index: 2;
+  width: min(78vw, 420px);
+  aspect-ratio: 3 / 4;
+  border-radius: 18px;
+  overflow: hidden;
+}
+.scan-page__hint {
+  position: absolute;
+  z-index: 2;
+  bottom: clamp(6rem, 14vh, 8rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 86vw;
+  text-align: center;
+  font-size: 0.86rem;
+  color: #f1eee0;
+  background: rgba(11, 12, 7, 0.55);
+  padding: 0.5em 1em;
+  border-radius: 999px;
+}
+.scan-page__shutter {
+  position: absolute;
+  z-index: 2;
+  bottom: clamp(1.6rem, 5vh, 2.6rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4.4rem;
+  height: 4.4rem;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid rgba(241, 238, 224, 0.4);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.scan-page__shutter:hover {
+  transform: translateX(-50%) scale(1.05);
+}
+.scan-page__shutter:active {
+  transform: translateX(-50%) scale(0.92);
+}
+.scan-page__shutter:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.scan-page__status {
+  z-index: 2;
+  max-width: 34ch;
+  text-align: center;
+  font-size: 0.92rem;
+  color: rgba(241, 238, 224, 0.8);
+  line-height: 1.6;
+  padding: 0 2rem;
+}
+.scan-page__status--error {
+  color: #f1c9a8;
+}
+.scan-page__status button {
+  appearance: none;
+  cursor: pointer;
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
 .scan-actions {
   margin-top: 1.1rem;
   display: flex;
@@ -480,8 +664,9 @@
 .pinned-search-input {
   flex: 1;
   min-width: 0;
-  background: var(--bg);
+  background: var(--panel);
   border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
   padding: 0.5rem 0.6rem;
   font-family: var(--font-kr);
   font-size: 0.8rem;
@@ -501,6 +686,7 @@
   cursor: pointer;
   background: var(--accent);
   border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
   box-shadow: 3px 3px 0 0 var(--ink);
   padding: 0.5rem 0.8rem;
   font-family: var(--font-kr);
@@ -525,13 +711,14 @@
    ========================================================= */
 .results-section {
   width: 100%;
-  max-width: 960px;
+  max-width: 1300px;
   margin: 0 auto;
-  padding: clamp(2rem, 6vw, 3.5rem) 1.25rem clamp(3rem, 8vw, 5rem);
+  padding: clamp(1rem, 3vw, 1.75rem) 0.625rem clamp(1.5rem, 4vw, 2.5rem);
 }
 
 .results-inner {
   width: 100%;
+  max-width: 1300px;
 }
 
 /* 검색 결과 제목 줄 — results-grid와 같은 칼럼 트랙(auto-fill/minmax/gap)을 그대로 써서,
@@ -694,6 +881,13 @@
   color: var(--ink-soft);
 }
 
+/* 검색 결과 페이지네이션 — 버튼 자체(.mypage-chip)는 MyPageView.css에서 그대로 빌려 쓰고,
+   가운데 정렬만 여기서 얹는다. */
+.results-pagination {
+  justify-content: center;
+  margin-top: 1.6rem;
+}
+
 /* =========================================================
    8. 애니메이션
    ========================================================= */
@@ -767,4 +961,78 @@
   .walking-mascot-body {
     animation: none !important;
   }
+}
+
+/* =========================================================
+   9. 왼쪽 사이드바 (SiteSidebar 컴포넌트)
+   검색 결과 페이지(.results-section)와 결과 화면(.result-view) 양쪽에서 쓴다 —
+   BOGOSARA(홈) / 마이페이지 / 조합보기 3개 진입점을 세로로 쌓는다. 항상 떠있는 바가 아니라
+   왼쪽 위 토글 버튼(.site-sidebar-toggle)을 눌러야 열리고, 열리면 본문 위에 오버레이로
+   뜬다 — 본문 레이아웃은 밀어내지 않는다.
+   ========================================================= */
+.site-sidebar-toggle {
+  position: fixed;
+  top: clamp(0.9rem, 3vw, 1.25rem);
+  left: clamp(0.9rem, 3vw, 1.25rem);
+  z-index: 11;
+  appearance: none;
+  cursor: pointer;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 4px 4px 0 0 var(--ink);
+  font-size: 1.1rem;
+  color: var(--ink);
+  transition: background 0.12s, box-shadow 0.12s;
+}
+.site-sidebar-toggle:hover,
+.site-sidebar-toggle:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.site-sidebar-toggle:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+
+.site-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: clamp(9rem, 13vw, 11rem);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding-top: clamp(2rem, 6vw, 3rem);
+  background: var(--panel);
+  border-right: var(--border-w) solid var(--ink);
+  box-shadow: 6px 0 0 0 rgba(31, 37, 23, 0.12);
+}
+.site-sidebar__link {
+  font-family: var(--font-kr);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-decoration: none;
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+  transition: color 0.12s;
+}
+.site-sidebar__link:hover,
+.site-sidebar__link:focus-visible {
+  color: var(--accent-dark);
+  outline: none;
+}
+.site-sidebar__link--brand {
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
 }

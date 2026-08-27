@@ -1,6 +1,7 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import BackgroundSparkles from '../components/BackgroundSparkles';
 import ResultView from '../components/ResultView';
+import SiteSidebar from '../components/SiteSidebar';
 import type { Product } from '../data/mockProducts';
 
 interface ScanRouteState {
@@ -19,6 +20,7 @@ export default function ScanResultPage() {
   return (
     <>
       <BackgroundSparkles />
+      <SiteSidebar />
       <ResultView
         request={{ source: 'scan', imageDataUrl: image }}
         onBack={() => navigate(-1)}

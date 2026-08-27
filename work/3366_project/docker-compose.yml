@@ -20,7 +20,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg2://labellens:labellens@db:5432/labellens
+      DATABASE_URL: sqlite:///./data/labellens.db
       OLLAMA_URL: http://ollama:11434/api/generate
     volumes:
       - ./data:/app/data

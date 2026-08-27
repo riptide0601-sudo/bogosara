@@ -1,56 +1,51 @@
-import { useState, type FormEvent } from 'react';
-import Overlay from './Overlay';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface SearchOverlayProps {
-  open: boolean;
   onClose: () => void;
-  onSearch: (query: string) => void;
 }
 
 /**
- * 돋보기 클릭 → 뜨는 검색 오버레이 (첫 검색 진입점).
- *
- * [설계 메모] 검색을 제출하면 이 큰 오버레이는 닫고 결과 섹션으로 스크롤한다.
- * 이후 재검색은 상단에 고정되는 얇은 PinnedSearchBar로 처리한다 (App.tsx 참고).
+ * 히어로 왼쪽(SEARCH) 클릭 → 뜨는 전체화면 검색 오버레이 — 입력창 하나만 있는 심플한 화면.
+ * 제출하면 /search?q=...로 이동하고 오버레이는 닫는다 (재검색은 검색 결과 페이지 자체 검색창에서).
  */
-export default function SearchOverlay({ open, onClose, onSearch }: SearchOverlayProps) {
+export function SearchOverlay({ onClose }: SearchOverlayProps) {
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmed = query.trim();
-
-    if (!trimmed) {
-      setStatus('검색어를 입력해주세요.');
-      return;
-    }
-
-    setStatus('');
-    onSearch(trimmed);
-    onClose(); // 결과가 뜨는 즉시 큰 오버레이는 닫는다 (재검색은 상단 고정 바에서)
+    if (!trimmed) return;
+    navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+    onClose();
   };
 
   return (
-    <Overlay id="overlay-search" titleId="search-title" title="성분 검색" open={open} onClose={onClose}>
-      <form onSubmit={handleSubmit}>
-        <div className="search-row">
-          <input
-            type="text"
-            className="search-input"
-            placeholder="제품명을 입력하세요 (예: OO 선크림)"
-            autoComplete="off"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button type="submit" className="btn-primary">
-            검색
-          </button>
-        </div>
-        <p className="search-status" role="status">
-          {status}
-        </p>
+    <div className="search-overlay">
+      <button type="button" className="search-overlay__close" onClick={onClose} aria-label="닫기">
+        ×
+      </button>
+      <form className="search-overlay__form" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          className="search-overlay__input"
+          placeholder="제품명을 입력하세요"
+          autoComplete="off"
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <p className="search-overlay__hint">ENTER로 검색 · ESC로 닫기</p>
       </form>
-    </Overlay>
+    </div>
   );
 }

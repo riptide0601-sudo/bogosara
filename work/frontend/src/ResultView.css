@@ -12,12 +12,17 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 1120px;
+  max-width: 1300px;
   height: 100vh;
   box-sizing: border-box;
   margin: 0 auto;
-  padding: clamp(1.25rem, 4vw, 1.5rem) 1.25rem clamp(1rem, 2vw, 1.5rem);
+  padding: clamp(0.625rem, 2vw, 0.75rem) 0.625rem clamp(0.5rem, 1vw, 0.75rem);
   overflow: hidden;
+}
+/* 사이드바에 이미 "마이페이지" 링크가 있어서, 같은 자리에 겹치던 왼쪽 상단 햄버거 버튼은
+   이 화면에서 숨긴다. */
+.result-view .hamburger-btn {
+  display: none;
 }
 
 /* ---- 상단 바: 뒤로가기 + 저장 버튼 ---- */
