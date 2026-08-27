@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BackgroundSparkles from '../components/BackgroundSparkles';
-import LandingHero from '../components/LandingHero';
-import HamburgerButton from '../components/HamburgerButton';
+import LandingView from '../components/LandingView';
 import SearchOverlay from '../components/SearchOverlay';
 import ScanOverlay from '../components/ScanOverlay';
 import ResultsSection, { type SearchStatus } from '../components/ResultsSection';
@@ -77,8 +76,8 @@ export default function LandingPage() {
       {/* 배경 여백을 채우는 떠다니는 픽셀 반짝임(별/거품) — 순수 장식 */}
       <BackgroundSparkles />
 
-      {/* 왼쪽 상단 고정 — 마이페이지 진입점(≡), 그 아래 내 화장품 조합 바로가기 */}
-      <HamburgerButton onClick={() => navigate('/mypage')} />
+      {/* 마이페이지 진입점(≡)은 LandingView가 내부에서 직접 그린다 — 그 바로 아래
+          내 화장품 조합 바로가기만 여기서 얹는다(고정 위치라 DOM 트리 위치는 무관). */}
       <button
         type="button"
         className="hamburger-btn quick-routine-btn"
@@ -88,9 +87,10 @@ export default function LandingPage() {
         <CreamJarIcon />
       </button>
 
-      <LandingHero
-        onSearchClick={() => setActiveOverlay('search')}
-        onScanClick={() => setActiveOverlay('scan')}
+      <LandingView
+        onOpenSearch={() => setActiveOverlay('search')}
+        onOpenScan={() => setActiveOverlay('scan')}
+        onOpenMyPage={() => navigate('/mypage')}
       />
 
       {/* 검색 결과 / 제품 리스트 — 페이지 이동 없이 같은 페이지 아래쪽에 나타난다 */}
