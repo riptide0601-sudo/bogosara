@@ -99,6 +99,41 @@ def _get_paddleocr_reader(lang: str, gpu: bool):
     return _reader_cache[key]
 
 
+def _get_paddleocr_rec_only(lang: str, gpu: bool):
+    """검출(detection) 없이 인식(recognition)만 수행하는 PaddleOCR 예측기.
+
+    이미 한 단어/문구로 잘라낸 크롭 이미지(크롭 단위 벤치마크 등)에 전체
+    파이프라인(_get_paddleocr_reader)을 쓰면, 범용 검출기가 크롭을 다시 여러
+    조각으로 재분할해 결과가 줄바꿈으로 쪼개지는 오검출이 발생한다. 프로덕션
+    (predict_module.py)은 전체 사진을 다루므로 검출이 필요해 이 함수를 쓰지
+    않는다 — 크롭 단위 평가 스크립트 전용.
+    """
+    from paddleocr import TextRecognition
+
+    key = ("paddleocr_rec_only", lang, gpu)
+    if key not in _reader_cache:
+        kwargs = {}
+        if lang == "korean" and os.path.isdir(_FINETUNED_KOREAN_REC_DIR):
+            kwargs["model_name"] = _FINETUNED_KOREAN_REC_NAME
+            kwargs["model_dir"] = _FINETUNED_KOREAN_REC_DIR
+        else:
+            kwargs["model_name"] = _FINETUNED_KOREAN_REC_NAME
+        if gpu:
+            kwargs["device"] = "gpu:0"
+        else:
+            kwargs["enable_mkldnn"] = False
+        _reader_cache[key] = TextRecognition(**kwargs)
+    return _reader_cache[key]
+
+
+def _run_paddleocr_rec_only(image: Image.Image, language: str, gpu: bool) -> str:
+    model = _get_paddleocr_rec_only(_paddleocr_lang(language), gpu)
+    result = model.predict(np.array(image.convert("RGB")))
+    if not result:
+        return ""
+    return result[0].get("rec_text", "") or ""
+
+
 def _get_doctr_model(gpu: bool):
     from doctr.models import ocr_predictor
 
@@ -150,6 +185,9 @@ _RUNNERS = {
     "easyocr": _run_easyocr,
     "paddleocr": _run_paddleocr,
     "doctr": _run_doctr,
+    # 크롭 단위 평가 전용(검출 생략). ENGINE_NAMES에는 포함하지 않는다 -
+    # run_all_engines()의 기본 4엔진 비교(전체 사진 대상)엔 필요 없다.
+    "paddleocr_rec": _run_paddleocr_rec_only,
 }
 
 

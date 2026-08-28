@@ -71,7 +71,18 @@ def to_det_label(obj) -> str:
 
 
 def crop_polygon(image: np.ndarray, points):
-    """4점 폴리곤을 투시변환으로 반듯하게 잘라낸다 (기울어진 사각형 보정)."""
+    """4점 폴리곤을 투시변환으로 반듯하게 잘라낸다 (기울어진 사각형 보정).
+
+    PaddleOCR 본체의 get_rotate_crop_image(tools/infer/utility.py)와 동일하게
+    동작시킨다. 특히 세로로 긴 크롭을 반시계 90도 회전시키는 처리가 핵심인데,
+    화장품 용기는 성분표를 옆으로 눕혀 인쇄한 경우가 많아 이 데이터셋 크롭의
+    약 44%가 세로로 길다. 인식 모델은 크롭을 48x320(가로로 긴 형태)에 맞춰
+    리사이즈하므로, 눕힌 채로 넣으면 글자가 뭉개져 인식이 무너진다.
+    (실측: 회전 미적용 85.9% -> 적용 95.6%)
+
+    추론 파이프라인(PaddleOCR)은 이미 이 회전을 하고 들어오므로, 학습 데이터도
+    같은 규칙으로 만들어야 학습/추론 입력이 일치한다.
+    """
     pts = np.array(points, dtype=np.float32)
     w = int(max(np.linalg.norm(pts[0] - pts[1]), np.linalg.norm(pts[2] - pts[3])))
     h = int(max(np.linalg.norm(pts[1] - pts[2]), np.linalg.norm(pts[3] - pts[0])))
@@ -79,8 +90,17 @@ def crop_polygon(image: np.ndarray, points):
         return None
     dst = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype=np.float32)
     matrix = cv2.getPerspectiveTransform(pts, dst)
-    crop = cv2.warpPerspective(image, matrix, (w, h))
-    return crop
+    crop = cv2.warpPerspective(
+        image,
+        matrix,
+        (w, h),
+        borderMode=cv2.BORDER_REPLICATE,
+        flags=cv2.INTER_CUBIC,
+    )
+    crop_h, crop_w = crop.shape[:2]
+    if crop_h * 1.0 / crop_w >= 1.5:
+        crop = np.rot90(crop)
+    return np.ascontiguousarray(crop)
 
 
 def build_rec_crops(obj, img_bgr, rec_lines: list, crop_counter: list):
