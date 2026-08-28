@@ -12,11 +12,11 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 1300px;
+  max-width: 1200px;
   height: 100vh;
   box-sizing: border-box;
   margin: 0 auto;
-  padding: clamp(0.625rem, 2vw, 0.75rem) 0.625rem clamp(0.5rem, 1vw, 0.75rem);
+  padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 3vw, 2rem);
   overflow: hidden;
 }
 /* 사이드바에 이미 "마이페이지" 링크가 있어서, 같은 자리에 겹치던 왼쪽 상단 햄버거 버튼은
@@ -55,7 +55,8 @@
      버튼 내부 padding/line-height 차이로 1px 안팎 어긋날 수 있어 높이를 직접 고정했다.
      margin-top으로 살짝 더 위로 올렸다. */
   height: 38px;
-  margin-top: -2px;
+  margin-top: 1.2rem;
+  margin-bottom: 0.8rem;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -66,8 +67,9 @@
   box-shadow: 3px 3px 0 0 var(--ink);
   padding: 0 0.9rem;
   font-family: var(--font-kr);
-  font-size: 0.8rem;
+  font-size: 0.92rem;
   color: var(--ink);
+  text-decoration: none;
   transition: background 0.12s;
 }
 .result-back-btn:hover,

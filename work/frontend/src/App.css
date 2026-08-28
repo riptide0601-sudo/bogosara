@@ -657,6 +657,7 @@
   grid-column: -3 / -1;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.6rem;
 }
 
@@ -664,12 +665,14 @@
 .pinned-search-input {
   flex: 1;
   min-width: 0;
+  max-width: 260px;
   background: var(--panel);
   border: 2px solid var(--ink);
   border-radius: var(--radius-sm);
+  box-shadow: 3px 3px 0 0 var(--ink);
   padding: 0.5rem 0.6rem;
   font-family: var(--font-kr);
-  font-size: 0.8rem;
+  font-size: 0.925rem;
   color: var(--ink);
 }
 .pinned-search-input:focus {
@@ -689,8 +692,8 @@
   border-radius: var(--radius-sm);
   box-shadow: 3px 3px 0 0 var(--ink);
   padding: 0.5rem 0.8rem;
-  font-family: var(--font-kr);
-  font-size: 0.8rem;
+  font-family: 'Galmuri11', 'NeoDunggeunmo', 'D2Coding', 'Consolas', monospace;
+  font-size: 0.925rem;
   color: var(--ink);
   white-space: nowrap;
   flex-shrink: 0;
@@ -711,14 +714,14 @@
    ========================================================= */
 .results-section {
   width: 100%;
-  max-width: 1300px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: clamp(1rem, 3vw, 1.75rem) 0.625rem clamp(1.5rem, 4vw, 2.5rem);
+  padding: clamp(1rem, 3vw, 1.75rem) clamp(2rem, 6vw, 4rem) clamp(1.5rem, 4vw, 2.5rem);
 }
 
 .results-inner {
   width: 100%;
-  max-width: 1300px;
+  max-width: 1200px;
 }
 
 /* 검색 결과 제목 줄 — results-grid와 같은 칼럼 트랙(auto-fill/minmax/gap)을 그대로 써서,
@@ -726,7 +729,7 @@
    그 왼쪽 박스)에 정확히 맞춰 정렬된다. */
 .results-heading {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: clamp(1rem, 3vw, 1.6rem);
   align-items: center;
   margin: 0 0 1.4rem;
@@ -739,6 +742,8 @@
   gap: 0.6rem;
   min-width: 0;
   margin: 0;
+  /* var(--font-kr)은 이제 Pretendard가 1순위라 여기서 픽셀 폰트를 직접 지정한다. */
+  font-family: 'Galmuri11', 'NeoDunggeunmo', 'D2Coding', 'Consolas', monospace;
   font-size: clamp(1.1rem, 3.6vw, 1.5rem);
   letter-spacing: 0.06em;
 }
@@ -746,13 +751,13 @@
   color: var(--accent-dark);
 }
 .results-query {
-  font-size: 0.7rem;
+  font-size: 0.825rem;
   font-weight: normal;
   color: var(--ink-soft);
 }
 
 .results-status {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--ink-soft);
   animation: blink 1s steps(1) infinite;
   margin: 0 0 1.2rem;
@@ -760,7 +765,8 @@
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  /* auto-fill 대신 한 행에 고정 4개로 자른다. */
+  grid-template-columns: repeat(4, 1fr);
   gap: clamp(1rem, 3vw, 1.6rem);
 }
 
@@ -776,7 +782,8 @@
   border: var(--border-w) solid var(--ink);
   border-radius: var(--radius);
   overflow: hidden; /* 둥근 카드 모서리 밖으로 사각 썸네일이 삐져나오지 않게 클립 */
-  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  /* var(--shadow-off, 6px)보다 조금 얇게 — 카드 개수가 많아서(4열) 두꺼운 그림자가 부담스럽다. */
+  box-shadow: 4px 4px 0 0 var(--ink);
   padding: 0;
   text-align: left;
   color: var(--ink);
@@ -787,13 +794,13 @@
 .product-card:hover,
 .product-card:focus-visible {
   border-color: var(--accent-dark);
-  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--accent-dark);
+  box-shadow: 4px 4px 0 0 var(--accent-dark);
   animation: bounce 0.5s ease-in-out infinite;
   outline: none;
 }
 
 .product-card:active {
-  transform: translate(var(--shadow-off), var(--shadow-off));
+  transform: translate(4px, 4px);
   box-shadow: 0 0 0 0 var(--ink);
   animation: none;
 }
@@ -816,7 +823,7 @@
 }
 
 .product-thumb-mono {
-  font-size: 1.8rem;
+  font-size: 1.925rem;
   color: var(--ink);
   opacity: 0.55;
 }
@@ -829,18 +836,18 @@
 }
 
 .product-brand {
-  font-size: 0.6rem;
+  font-size: 0.725rem;
   letter-spacing: 0.06em;
   color: var(--ink-soft);
 }
 
 .product-name {
-  font-size: 0.85rem;
+  font-size: 0.975rem;
   line-height: 1.4;
 }
 
 .product-summary {
-  font-size: 0.62rem;
+  font-size: 0.745rem;
   color: var(--ink-soft);
   margin-top: 0.15rem;
 }
@@ -873,11 +880,11 @@
 }
 .results-empty p {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.975rem;
 }
 .results-empty p.results-empty-sub {
   margin-top: 0.5rem;
-  font-size: 0.65rem;
+  font-size: 0.775rem;
   color: var(--ink-soft);
 }
 
@@ -982,22 +989,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--panel);
-  border: var(--border-w) solid var(--ink);
+  background: none;
+  border: none;
   border-radius: var(--radius-sm);
-  box-shadow: 4px 4px 0 0 var(--ink);
   font-size: 1.1rem;
   color: var(--ink);
-  transition: background 0.12s, box-shadow 0.12s;
+  transition: color 0.12s;
 }
 .site-sidebar-toggle:hover,
 .site-sidebar-toggle:focus-visible {
-  background: var(--accent-soft);
+  color: var(--accent-dark);
   outline: none;
 }
-.site-sidebar-toggle:active {
-  transform: translate(4px, 4px);
-  box-shadow: 0 0 0 0 var(--ink);
+
+/* 사이드바가 열려있는 동안(body.site-sidebar-open)은 상자 크기/margin은 그대로 두고,
+   전체를 사이드바 폭의 절반만큼만 오른쪽으로 밀어낸다 — width/margin을 직접 건드리면
+   오른쪽 끝이 고정돼버려서(over-constrained) 밀리지 않았다. transform은 박스 모델과
+   무관하게 그냥 화면에서 이동만 시키므로 양쪽 다 자연스럽게 여유가 생긴다. */
+body.site-sidebar-open .result-view,
+body.site-sidebar-open .results-section {
+  transform: translateX(calc(clamp(9rem, 13vw, 11rem) / 2));
+  transition: transform 0.18s ease;
 }
 
 .site-sidebar {
@@ -1014,11 +1026,10 @@
   padding-top: clamp(2rem, 6vw, 3rem);
   background: var(--panel);
   border-right: var(--border-w) solid var(--ink);
-  box-shadow: 6px 0 0 0 rgba(31, 37, 23, 0.12);
 }
 .site-sidebar__link {
   font-family: var(--font-kr);
-  font-size: 0.78rem;
+  font-size: 0.905rem;
   letter-spacing: 0.04em;
   text-align: center;
   text-decoration: none;
@@ -1032,7 +1043,11 @@
   outline: none;
 }
 .site-sidebar__link--brand {
+  /* 왼쪽 위 토글 버튼(.site-sidebar-toggle)과 같은 자리에서 시작해 겹치므로, 그 아래로
+     내려서 안 가리게 한다. */
+  margin-top: clamp(1.5rem, 4vw, 2.5rem);
+  font-family: 'Galmuri11', 'NeoDunggeunmo', 'D2Coding', 'Consolas', monospace;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.975rem;
   letter-spacing: 0.06em;
 }

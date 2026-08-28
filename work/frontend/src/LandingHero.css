@@ -30,13 +30,49 @@
   padding: clamp(1rem, 3.5vh, 2rem) clamp(1.1rem, 4vw, 3rem) clamp(1rem, 3vh, 1.8rem);
 }
 
+/* BOGOSARA(왼쪽) + LOGIN(오른쪽) 한 줄 — .lh-mark 하나였던 자리를 가로로 벌린다. */
+.lh-topbar {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2;
+}
 .lh-mark {
-  align-self: flex-start;
   font-family: var(--lh-font-mono);
   font-weight: 600;
   font-size: 0.82rem;
   letter-spacing: 0.14em;
   color: var(--ink);
+}
+.lh-login-link {
+  font-family: var(--lh-font-mono);
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+  text-decoration: none;
+  transition: color 0.15s ease;
+  /* .lh-hero.lh-has-cursor-fx가 cursor:none을 걸어서 렌즈/스캐너로 가리는데, 그 위에서는
+     클릭 위치를 가늠하기 어려우니 이 링크 근처에서는 원래 커서(포인터)로 되돌린다.
+     padding으로 커서 판정 영역 자체를 넓히고, 그만큼 margin을 음수로 줘서 글자 위치·주변
+     레이아웃은 그대로 유지한다. */
+  cursor: pointer;
+  padding: 2.4rem;
+  margin: -2.4rem;
+  position: relative;
+  z-index: 5;
+}
+/* 이 확장된 영역에 커서가 들어오면, 렌즈/스캐너 커스텀 커서 그래픽 자체를 꺼서 진짜 커서만
+   보이게 한다 — 스캔 레이아웃이 겹쳐서 위치를 못 잡던 문제. */
+.lh-hero:has(.lh-login-link:hover) .lh-lens,
+.lh-hero:has(.lh-login-link:hover) .lh-scanner {
+  opacity: 0 !important;
+}
+.lh-login-link:hover,
+.lh-login-link:focus-visible {
+  color: var(--accent-dark);
+  outline: none;
 }
 
 /* ---- 좌우 끝 SEARCH/SCAN 라벨 — 커서가 해당 절반에 있으면 accent-dark로 켜진다 ---- */

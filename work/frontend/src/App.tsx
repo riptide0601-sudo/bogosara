@@ -5,6 +5,7 @@ import ProductResultPage from './pages/ProductResultPage';
 import ScanResultPage from './pages/ScanResultPage';
 import MyPagePage from './pages/MyPagePage';
 import RoutinePage from './pages/RoutinePage';
+import LoginPage from './pages/LoginPage';
 import './App.css';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/scan-result" element={<ScanResultPage />} />
       <Route path="/mypage" element={<MyPagePage />} />
       <Route path="/routine" element={<RoutinePage />} />
+      <Route path="/login" element={<LoginPage />} />
     </Routes>
   );
 }

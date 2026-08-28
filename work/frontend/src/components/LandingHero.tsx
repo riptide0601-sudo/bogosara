@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import '../LandingHero.css';
 
 interface LandingHeroProps {
@@ -28,6 +29,19 @@ const SCAN_PAIRS = [
   '소듐하이알루로네이트 → 수분 보습',
   '잔탄검 → 점도 조절',
 ];
+
+/** 왼쪽 위 BOGOSARA 마크 + 오른쪽 LOGIN 링크. 실제 레이어와 돋보기 확대 레이어(lh-hero-zoom)
+ * 양쪽에 똑같이 쓰여서, 렌즈로 이 영역을 확대해도 글자가 그대로 보인다. */
+function HeroMark() {
+  return (
+    <div className="lh-topbar">
+      <span className="lh-mark">BOGOSARA</span>
+      <Link className="lh-login-link" to="/login" onClick={(e) => e.stopPropagation()}>
+        LOGIN
+      </Link>
+    </div>
+  );
+}
 
 /** 워드마크 + 성분 단어 burst + 카피 + 안내문 — 참고 디자인처럼 블롭(초록 원) 안쪽에
  * 워드마크 → 카피 → 안내문 순서로 겹쳐서 들어간다. */
@@ -206,19 +220,27 @@ export default function LandingHero({ onSearchClick, onScanClick }: LandingHeroP
 
   return (
     <section className="lh-hero" id="lhHero" ref={heroRef} onClick={handleHeroClick}>
-      <span className="lh-edge-label lh-edge-label--left" aria-hidden="true">
-        SEARCH
-      </span>
-      <span className="lh-edge-label lh-edge-label--right" aria-hidden="true">
-        SCAN
-      </span>
-
       <div className="lh-hero-inner">
-        <span className="lh-mark">BOGOSARA</span>
+        <span className="lh-edge-label lh-edge-label--left" aria-hidden="true">
+          SEARCH
+        </span>
+        <span className="lh-edge-label lh-edge-label--right" aria-hidden="true">
+          SCAN
+        </span>
+        <HeroMark />
         <HeroMiddle onSearchClick={onSearchClick} onScanClick={onScanClick} />
       </div>
 
+      {/* 돋보기 확대 레이어 — 실제 레이어와 똑같은 내용을 한 번 더 그려서, 렌즈로 확대해도
+          BOGOSARA/LOGIN/SEARCH·SCAN 라벨까지 전부 확대되어 보이게 한다. */}
       <div className="lh-hero-inner lh-hero-zoom" ref={zoomLayerRef} aria-hidden="true" inert={true}>
+        <span className="lh-edge-label lh-edge-label--left" aria-hidden="true">
+          SEARCH
+        </span>
+        <span className="lh-edge-label lh-edge-label--right" aria-hidden="true">
+          SCAN
+        </span>
+        <HeroMark />
         <HeroMiddle onSearchClick={onSearchClick} onScanClick={onScanClick} />
       </div>
 
