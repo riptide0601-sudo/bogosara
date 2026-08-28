@@ -40,7 +40,7 @@ export default function MyPagePage() {
       {!initializing &&
         (user ? (
           <MyPageView
-            onBack={() => navigate('/')}
+            onBack={() => navigate(-1)}
             onSelectSavedResult={handleSelectSavedResult}
             onOpenRoutine={() => navigate('/routine')}
             onOpenRoutineHistory={handleOpenRoutineHistory}

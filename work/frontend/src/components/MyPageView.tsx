@@ -267,7 +267,7 @@ export default function MyPageView({
     <div className="mypage-view">
       <header className="result-topbar">
         <button type="button" className="result-back-btn" onClick={onBack}>
-          <span className="cursor">◀</span>홈으로
+          <span className="cursor">◀</span>뒤로가기
         </button>
       </header>
 

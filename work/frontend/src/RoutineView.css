@@ -13,6 +13,18 @@
   padding: clamp(1.5rem, 5vw, 2.5rem) 1.25rem clamp(3.5rem, 9vw, 5.5rem);
 }
 
+/* "이 조합 저장하기" 버튼 — 저장 중엔 글자 옆에 스피너가 돌고, 성공하면 그 자리가
+   체크 표시로 바뀐다(별도 텍스트로 안 바꾸고 아이콘만 전환 — 버튼 라벨은 항상 그대로 유지). */
+.routine-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.routine-save-btn-icon--check {
+  font-weight: bold;
+  color: var(--accent-dark);
+}
+
 .routine-item-list {
   list-style: none;
   margin: 0 0 1rem;

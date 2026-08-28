@@ -137,6 +137,8 @@ export default function RoutineView({
       // 추가하고 나면 검색 결과 목록은 접어둔다 — 검색창에 단어가 남아있는 채로 다시
       // 포커스하면(handleSearchInputFocus) 곧바로 다시 펼쳐진다.
       setShowSearchResults(false);
+      // 조합 구성이 바뀌었으니 이전 "저장됨" 상태는 풀어서 다시 저장할 수 있게 한다.
+      setSaveSuccess(false);
     } catch (err) {
       console.error('[보고사라][내 조합] 추가 실패', err);
     } finally {
@@ -150,6 +152,7 @@ export default function RoutineView({
     try {
       await removeFromRoutine(productId);
       loadAnalysis();
+      setSaveSuccess(false);
     } catch (err) {
       setItems(prev);
       console.error('[보고사라][내 조합] 삭제 실패', err);
@@ -164,6 +167,7 @@ export default function RoutineView({
     try {
       await clearRoutine(prev.map((i) => i.product_id));
       loadAnalysis();
+      setSaveSuccess(false);
     } catch (err) {
       setItems(prev);
       console.error('[보고사라][내 조합] 초기화 실패', err);
@@ -551,7 +555,6 @@ export default function RoutineView({
                     </div>
                   </div>
                 )}
-                <p className="result-explain">→ {displayAnalysis.hydration_note}</p>
               </div>
             )}
 
@@ -609,12 +612,20 @@ export default function RoutineView({
 
         {!showingHistory && analysisStatus === 'done' && analysis && analysis.product_count > 0 && (
           <div className="routine-save-history">
-            <button type="button" className="mypage-ghost-btn" onClick={handleSaveHistory} disabled={savingHistory}>
-              {savingHistory ? <span className="spinner" aria-hidden="true" /> : '이 조합 저장하기'}
+            <button
+              type="button"
+              className="mypage-ghost-btn routine-save-btn"
+              onClick={handleSaveHistory}
+              disabled={savingHistory || saveSuccess}
+            >
+              이 조합 저장하기
+              {savingHistory && <span className="spinner routine-save-btn-icon" aria-hidden="true" />}
+              {!savingHistory && saveSuccess && !saveError && (
+                <span className="routine-save-btn-icon routine-save-btn-icon--check" aria-hidden="true">
+                  ✓
+                </span>
+              )}
             </button>
-            {saveSuccess && !saveError && (
-              <p className="results-empty-sub">저장했어요 — 마이페이지에서 확인할 수 있어요.</p>
-            )}
             {saveError && (
               <p className="results-empty-sub" role="alert">
                 {saveError}
