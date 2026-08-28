@@ -8,6 +8,9 @@ export interface UserRead {
   notify_alerts: boolean;
   age: number | null;
   gender: string | null;
+  /** 마이페이지 하단을 걸어다니는 캐릭터 3종(WalkingMascot) 중 고른 프로필 사진 — 'cosmetic' |
+   * 'cream' | 'cushion', 아직 안 골랐으면 null. */
+  profile_icon: string | null;
 }
 
 export interface TokenRead {
@@ -58,12 +61,24 @@ export interface RoutineSkinTypeNote {
   good_ingredients: RoutineIngredientNote[];
 }
 
-/** 서로 다른 제품에 걸쳐 있는 성분 조합 중 ingredient_relation에 등록된 시너지/악화 쌍. */
+export interface RoutineRelationProduct {
+  product_id: string;
+  product_name: string;
+  brand: string | null;
+}
+
+/** 서로 다른 제품에 걸쳐 있는 성분 조합 중 ingredient_relation에 등록된 시너지/악화 쌍.
+ * product_a/b는 루틴에서 실제로 그 성분을 담고 있는 제품(대표 1개씩) — "악화"일 때만
+ * alternatives_a/b(같은 카테고리 + 문제 성분 없는 대체 후보, 최대 2개씩)도 같이 온다. */
 export interface RoutineRelationNote {
   relation_type: string; // "시너지" | "악화"
   ingredient_a: string;
   ingredient_b: string;
   message: string | null;
+  product_a: RoutineRelationProduct | null;
+  product_b: RoutineRelationProduct | null;
+  alternatives_a: RoutineRelationProduct[];
+  alternatives_b: RoutineRelationProduct[];
 }
 
 /** app/routine_analysis.py의 분석 결과 — 루틴 전체 전성분 기준 수분/보습 판정 +

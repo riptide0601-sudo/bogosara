@@ -29,6 +29,7 @@ class User(Base):
     notify_alerts: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     gender: Mapped[str | None] = mapped_column(String, nullable=True)
+    profile_icon: Mapped[str | None] = mapped_column(String, nullable=True)
     skin_types: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     watched_ingredients: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 

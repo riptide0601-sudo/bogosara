@@ -1,6 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { searchProducts } from '../api';
-import { addToRoutine, getRoutineAnalysis, listRoutine, removeFromRoutine, saveRoutineHistory } from '../api/routine';
+import {
+  addToRoutine,
+  clearRoutine,
+  getRoutineAnalysis,
+  listRoutine,
+  removeFromRoutine,
+  saveRoutineHistory,
+} from '../api/routine';
 import { ApiError } from '../api/client';
 import type { RoutineAnalysis, RoutineHistoryProduct, RoutineHistoryRead, RoutineItemRead } from '../api/types';
 import type { Product } from '../data/mockProducts';
@@ -57,8 +64,12 @@ export default function RoutineView({
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
+  // 검색 결과는 "추가" 후 목록만 접어두고(searchResults는 그대로 둔다) — 검색창에 단어가
+  // 남아있는 채로 다시 포커스하면 방금 그 결과를 다시 펼쳐서 보여준다.
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const [searching, setSearching] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
+  const [clearingItems, setClearingItems] = useState(false);
 
   const [savingHistory, setSavingHistory] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -103,6 +114,7 @@ export default function RoutineView({
     searchProducts(trimmed)
       .then((results) => {
         setSearchResults(results);
+        setShowSearchResults(true);
         setSearching(false);
       })
       .catch((err) => {
@@ -112,12 +124,19 @@ export default function RoutineView({
       });
   };
 
+  const handleSearchInputFocus = () => {
+    if (query.trim() && searchResults.length > 0) setShowSearchResults(true);
+  };
+
   const handleAdd = async (product: Product) => {
     setAddingId(product.id);
     try {
       await addToRoutine(product.id);
       loadItems();
       loadAnalysis();
+      // 추가하고 나면 검색 결과 목록은 접어둔다 — 검색창에 단어가 남아있는 채로 다시
+      // 포커스하면(handleSearchInputFocus) 곧바로 다시 펼쳐진다.
+      setShowSearchResults(false);
     } catch (err) {
       console.error('[보고사라][내 조합] 추가 실패', err);
     } finally {
@@ -134,6 +153,22 @@ export default function RoutineView({
     } catch (err) {
       setItems(prev);
       console.error('[보고사라][내 조합] 삭제 실패', err);
+    }
+  };
+
+  const handleClearItems = async () => {
+    if (clearingItems || items.length === 0) return;
+    const prev = items;
+    setClearingItems(true);
+    setItems([]);
+    try {
+      await clearRoutine(prev.map((i) => i.product_id));
+      loadAnalysis();
+    } catch (err) {
+      setItems(prev);
+      console.error('[보고사라][내 조합] 초기화 실패', err);
+    } finally {
+      setClearingItems(false);
     }
   };
 
@@ -172,10 +207,24 @@ export default function RoutineView({
 
       {/* ---- 등록한 화장품 ---- */}
       <section className="mypage-section" aria-labelledby="routine-items-heading">
-        <h2 className="mypage-section-title" id="routine-items-heading">
-          등록한 화장품
-          {itemsStatus === 'done' && <span className="mypage-section-count">{items.length}개</span>}
-        </h2>
+        <div className="mypage-section-title-row">
+          <h2 className="mypage-section-title" id="routine-items-heading">
+            등록한 화장품
+            {itemsStatus === 'done' && <span className="mypage-section-count">{items.length}개</span>}
+          </h2>
+          {itemsStatus === 'done' && items.length > 0 && (
+            <button
+              type="button"
+              className="mypage-icon-btn routine-clear-btn"
+              onClick={handleClearItems}
+              disabled={clearingItems}
+              aria-label="등록한 화장품 초기화"
+              title="초기화"
+            >
+              {clearingItems ? <span className="spinner" aria-hidden="true" /> : '↺'}
+            </button>
+          )}
+        </div>
 
         {itemsStatus === 'loading' && (
           <p className="results-status">
@@ -230,6 +279,7 @@ export default function RoutineView({
             placeholder="제품명으로 검색해서 추가"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={handleSearchInputFocus}
             autoComplete="off"
           />
           <button type="submit" className="mypage-ghost-btn" disabled={searching}>
@@ -237,7 +287,7 @@ export default function RoutineView({
           </button>
         </form>
 
-        {searchResults.length > 0 && (
+        {showSearchResults && searchResults.length > 0 && (
           <ul className="routine-item-list routine-search-results">
             {searchResults.map((product) => {
               const already = routineProductIds.has(product.id);
@@ -377,10 +427,55 @@ export default function RoutineView({
                   {displayAnalysis.relations.map((rel, i) => (
                     <li className="result-caution-item" key={i}>
                       <p className="result-caution-name">
-                        {rel.relation_type === '악화' && '⚠ '}
-                        {rel.ingredient_a} + {rel.ingredient_b} · {rel.relation_type}
+                        {rel.ingredient_a} + {rel.ingredient_b} ·{' '}
+                        <span
+                          className={`routine-relation-type routine-relation-type--${
+                            rel.relation_type === '시너지' ? 'good' : 'risk'
+                          }`}
+                        >
+                          {rel.relation_type === '시너지' ? '↑' : '↓'} {rel.relation_type}
+                        </span>
                       </p>
                       {rel.message && <p className="result-caution-reason">{rel.message}</p>}
+                      {rel.relation_type === '악화' &&
+                        (rel.alternatives_a.length > 0 || rel.alternatives_b.length > 0) && (
+                          <div className="routine-relation-alternatives">
+                            {rel.product_a && rel.alternatives_a.length > 0 && (
+                              <p className="routine-relation-alt-row">
+                                <span className="routine-relation-alt-label">
+                                  {rel.product_a.product_name} 대신 이런 제품은 어때요?
+                                </span>
+                                {rel.alternatives_a.map((alt) => (
+                                  <button
+                                    key={alt.product_id}
+                                    type="button"
+                                    className="routine-relation-alt-chip"
+                                    onClick={() => onSelectProduct(alt.product_id)}
+                                  >
+                                    {alt.product_name}
+                                  </button>
+                                ))}
+                              </p>
+                            )}
+                            {rel.product_b && rel.alternatives_b.length > 0 && (
+                              <p className="routine-relation-alt-row">
+                                <span className="routine-relation-alt-label">
+                                  {rel.product_b.product_name} 대신 이런 제품은 어때요?
+                                </span>
+                                {rel.alternatives_b.map((alt) => (
+                                  <button
+                                    key={alt.product_id}
+                                    type="button"
+                                    className="routine-relation-alt-chip"
+                                    onClick={() => onSelectProduct(alt.product_id)}
+                                  >
+                                    {alt.product_name}
+                                  </button>
+                                ))}
+                              </p>
+                            )}
+                          </div>
+                        )}
                     </li>
                   ))}
                 </ul>

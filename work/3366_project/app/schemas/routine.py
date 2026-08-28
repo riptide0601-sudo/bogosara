@@ -39,17 +39,23 @@ class RoutineSkinTypeNoteRead(BaseModel):
     good_ingredients: list[RoutineIngredientNoteRead] = []
 
 
+class RoutineHistoryProductRead(BaseModel):
+    product_id: str
+    product_name: str
+    brand: str | None = None
+
+
 class RoutineRelationNoteRead(BaseModel):
     relation_type: str  # "시너지" | "악화"
     ingredient_a: str
     ingredient_b: str
     message: str | None = None
-
-
-class RoutineHistoryProductRead(BaseModel):
-    product_id: str
-    product_name: str
-    brand: str | None = None
+    # 루틴에서 실제로 ingredient_a/b를 담고 있는 제품(대표 1개씩). "악화"일 때만
+    # alternatives_a/b(대체 후보)도 같이 온다 — "시너지"는 대체가 필요 없어 비어 있다.
+    product_a: RoutineHistoryProductRead | None = None
+    product_b: RoutineHistoryProductRead | None = None
+    alternatives_a: list[RoutineHistoryProductRead] = []
+    alternatives_b: list[RoutineHistoryProductRead] = []
 
 
 class RoutineHistoryRead(BaseModel):

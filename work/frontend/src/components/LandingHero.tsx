@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import '../LandingHero.css';
 
 interface LandingHeroProps {
@@ -30,15 +31,23 @@ const SCAN_PAIRS = [
   '잔탄검 → 점도 조절',
 ];
 
-/** 왼쪽 위 BOGOSARA 마크 + 오른쪽 LOGIN 링크. 실제 레이어와 돋보기 확대 레이어(lh-hero-zoom)
- * 양쪽에 똑같이 쓰여서, 렌즈로 이 영역을 확대해도 글자가 그대로 보인다. */
+/** 왼쪽 위 BOGOSARA 마크 + 오른쪽 LOGIN/MY PAGE 링크. 실제 레이어와 돋보기 확대 레이어(lh-hero-zoom)
+ * 양쪽에 똑같이 쓰여서, 렌즈로 이 영역을 확대해도 글자가 그대로 보인다. 로그인 상태면 /login 대신
+ * /mypage로 가는 "MY PAGE" 링크를 보여준다. */
 function HeroMark() {
+  const { user } = useAuth();
   return (
     <div className="lh-topbar">
       <span className="lh-mark">BOGOSARA</span>
-      <Link className="lh-login-link" to="/login" onClick={(e) => e.stopPropagation()}>
-        LOGIN
-      </Link>
+      {user ? (
+        <Link className="lh-login-link" to="/mypage" onClick={(e) => e.stopPropagation()}>
+          MY PAGE
+        </Link>
+      ) : (
+        <Link className="lh-login-link" to="/login" onClick={(e) => e.stopPropagation()}>
+          LOGIN
+        </Link>
+      )}
     </div>
   );
 }

@@ -6,7 +6,13 @@ export function getMe(): Promise<UserRead> {
 }
 
 export function updateMe(
-  patch: { nickname?: string; notify_alerts?: boolean; age?: number | null; gender?: string | null },
+  patch: {
+    nickname?: string;
+    notify_alerts?: boolean;
+    age?: number | null;
+    gender?: string | null;
+    profile_icon?: string | null;
+  },
 ): Promise<UserRead> {
   return apiFetch<UserRead>('/users/me', { method: 'PATCH', body: JSON.stringify(patch) });
 }

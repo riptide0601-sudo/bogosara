@@ -24,6 +24,7 @@ class UserRead(BaseModel):
     notify_alerts: bool
     age: int | None = None
     gender: str | None = None
+    profile_icon: str | None = None
 
 
 class UserUpdate(BaseModel):
@@ -31,6 +32,7 @@ class UserUpdate(BaseModel):
     notify_alerts: bool | None = None
     age: int | None = None
     gender: str | None = None
+    profile_icon: str | None = None
 
 
 class TokenRead(BaseModel):

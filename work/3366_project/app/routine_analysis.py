@@ -31,6 +31,7 @@ from app.models.product import Product
 from app.models.product_ingredient import ProductIngredient
 from app.models.purpose import Purpose
 from app.product_category import get_info as get_category_info
+from app.similarity import find_similar_products
 
 HYDRATION_PURPOSES = {"보습", "보습제", "피부보습제", "피부컨디셔닝제(보습제)"}
 OCCLUSION_PURPOSES = {
@@ -61,11 +62,24 @@ class RoutineSkinTypeNote:
 
 
 @dataclass
+class RoutineRelationProduct:
+    product_id: str
+    product_name: str
+    brand: str | None
+
+
+@dataclass
 class RoutineRelationNote:
     relation_type: str  # "시너지" | "악화"
     ingredient_a: str
     ingredient_b: str
     message: str | None  # ingredient_relation.user_message
+    # 루틴에서 실제로 ingredient_a/b를 담고 있는 제품(대표 1개씩) — "악화"일 때 이 제품을
+    # 대체할 만한 후보(alternatives_*)를 같이 계산한다. "시너지"는 대체가 필요 없어 비워둔다.
+    product_a: RoutineRelationProduct | None = None
+    product_b: RoutineRelationProduct | None = None
+    alternatives_a: list[RoutineRelationProduct] = field(default_factory=list)
+    alternatives_b: list[RoutineRelationProduct] = field(default_factory=list)
 
 
 @dataclass
@@ -204,6 +218,47 @@ def analyze_routine(product_ids: list[str], skin_types: list[str], db: Session) 
     # 경우) ingredient_relation에 등록된 관계가 있는지 확인한다. products_by_ingredient의
     # 합집합이 제품 1개뿐이면 "그 제품 안에서만 같이 있는 조합"이라 이미 그 제품 배합
     # 자체이지 여러 제품을 합쳐서 생긴 새로운 정보가 아니므로 건너뛴다.
+    product_by_id = {p.product_id: p for p in products}
+
+    def _to_relation_product(product_id: str | None) -> RoutineRelationProduct | None:
+        p = product_by_id.get(product_id) if product_id else None
+        if not p:
+            return None
+        return RoutineRelationProduct(product_id=p.product_id, product_name=p.product_name, brand=p.brand)
+
+    def _find_alternatives(
+        source_product_id: str | None, exclude_ingredient_id: int, limit: int = 2
+    ) -> list[RoutineRelationProduct]:
+        """source_product_id와 유사한 제품(app/similarity.py의 주요 성분·배합목적 기반
+        유사도 — 제품 상세 "이런 제품은 어때요?"와 같은 로직) 중, exclude_ingredient_id를
+        안 쓰고 지금 루틴에도 없는 것만 골라 최대 limit개 — "악화" 조합에서 한쪽 제품을
+        뺄 때 대신 넣을 만한 후보. 카테고리만 보는 대신 실제 유사도 순위를 쓰므로 하는
+        일이 완전히 다른 제품이 섞일 가능성이 적다."""
+        if not source_product_id:
+            return []
+        containing = set(
+            db.scalars(
+                select(ProductIngredient.product_id).where(
+                    ProductIngredient.ingredient_id == exclude_ingredient_id
+                )
+            ).all()
+        )
+        # 제외 대상이 있어도 limit개는 채우도록 유사도 후보를 넉넉히 가져온다.
+        scored = find_similar_products(source_product_id, db, min_score=0.3, limit=20)
+        candidate_ids = [
+            pid for pid, _ in scored if pid not in containing and pid not in product_ids
+        ][:limit]
+        if not candidate_ids:
+            return []
+        rows = db.scalars(select(Product).where(Product.product_id.in_(candidate_ids))).all()
+        by_id = {p.product_id: p for p in rows}
+        # candidate_ids는 이미 유사도 내림차순 — 그 순서를 그대로 유지한다.
+        return [
+            RoutineRelationProduct(product_id=pid, product_name=by_id[pid].product_name, brand=by_id[pid].brand)
+            for pid in candidate_ids
+            if pid in by_id
+        ]
+
     relations: list[RoutineRelationNote] = []
     if len(ingredient_ids) >= 2:
         relation_rows = db.execute(
@@ -213,15 +268,35 @@ def analyze_routine(product_ids: list[str], skin_types: list[str], db: Session) 
             )
         ).scalars().all()
         for rel in relation_rows:
-            union_products = products_by_ingredient[rel.ingredient_a_id] | products_by_ingredient[rel.ingredient_b_id]
+            a_product_ids = products_by_ingredient[rel.ingredient_a_id]
+            b_product_ids = products_by_ingredient[rel.ingredient_b_id]
+            union_products = a_product_ids | b_product_ids
             if len(union_products) < 2:
                 continue
+
+            product_a_id = next(iter(a_product_ids), None)
+            product_b_id = next(iter(b_product_ids), None)
+            product_a = _to_relation_product(product_a_id)
+            product_b = _to_relation_product(product_b_id)
+
+            alternatives_a: list[RoutineRelationProduct] = []
+            alternatives_b: list[RoutineRelationProduct] = []
+            if rel.relation_type == "악화":
+                if product_a:
+                    alternatives_a = _find_alternatives(product_a_id, rel.ingredient_a_id)
+                if product_b:
+                    alternatives_b = _find_alternatives(product_b_id, rel.ingredient_b_id)
+
             relations.append(
                 RoutineRelationNote(
                     relation_type=rel.relation_type,
                     ingredient_a=rel.ingredient_a.name_kr or "",
                     ingredient_b=rel.ingredient_b.name_kr or "",
                     message=rel.user_message,
+                    product_a=product_a,
+                    product_b=product_b,
+                    alternatives_a=alternatives_a,
+                    alternatives_b=alternatives_b,
                 )
             )
 

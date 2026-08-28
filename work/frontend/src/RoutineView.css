@@ -123,6 +123,58 @@
 .routine-ingredient-status--risk {
   color: #a53a3a;
 }
+
+/* "성분 조합"의 시너지/악화 표시 — 위 "잘 맞아요"/"주의"와 같은 색 톤(초록/빨강)에
+   ↑/↓ 화살표를 더해서 한눈에 좋은 조합인지 피해야 할 조합인지 구분한다. */
+.routine-relation-type {
+  font-weight: bold;
+}
+.routine-relation-type--good {
+  color: var(--accent-dark);
+}
+.routine-relation-type--risk {
+  color: #a53a3a;
+}
+
+/* "악화" 조합에서 한쪽 제품 대신 넣어볼 만한 대체 제품 후보(같은 카테고리 + 문제 성분 없음,
+   app/routine_analysis.py의 _find_alternatives) — 성분 조합 카드 안, 이유 문장 아래에 붙는다. */
+.routine-relation-alternatives {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--ink-soft);
+}
+.routine-relation-alt-row {
+  margin: 0.5rem 0 0;
+}
+.routine-relation-alt-row:first-child {
+  margin-top: 0;
+}
+.routine-relation-alt-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-family: var(--font-noto);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+.routine-relation-alt-chip {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.6rem;
+  margin: 0 0.4rem 0.4rem 0;
+  font-family: var(--font-kr);
+  font-size: 0.7rem;
+  color: var(--ink);
+}
+.routine-relation-alt-chip:hover,
+.routine-relation-alt-chip:focus-visible {
+  border-color: var(--accent-dark);
+  outline: none;
+}
 .routine-ingredient-tooltip {
   position: absolute;
   left: 0;

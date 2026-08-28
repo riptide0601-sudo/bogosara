@@ -5,6 +5,9 @@ import { getSkinProfile, listSavedResults, unsaveResult, updateMe, updateSkinPro
 import { deleteRoutineHistory, listRoutineHistory } from '../api/routine';
 import type { RoutineHistoryRead, SkinProfile } from '../api/types';
 import { SKIN_TYPE_OPTIONS, toSavedResult, type SavedResult } from '../data/myPage';
+import CosmeticMascotIcon from '../icons/CosmeticMascotIcon';
+import CreamJarIcon from '../icons/CreamJarIcon';
+import CushionIcon from '../icons/CushionIcon';
 import '../MyPageView.css';
 
 interface MyPageViewProps {
@@ -24,6 +27,14 @@ const GRADE_LABEL: Record<NonNullable<SavedResult['grade']>, string> = {
 };
 
 const GENDER_OPTIONS = ['여성', '남성'];
+
+/** 화면 아래를 걸어다니는 캐릭터 3종(MyPagePage.tsx의 WALKING_MASCOTS)과 같은 아이콘 —
+ * 회원정보에서 이 중 하나를 프로필 사진으로 고를 수 있다. */
+const PROFILE_ICON_OPTIONS: { key: string; label: string; Icon: typeof CosmeticMascotIcon }[] = [
+  { key: 'cosmetic', label: '화장품 캐릭터', Icon: CosmeticMascotIcon },
+  { key: 'cream', label: '크림통 캐릭터', Icon: CreamJarIcon },
+  { key: 'cushion', label: '쿠션 캐릭터', Icon: CushionIcon },
+];
 
 function errorMessage(err: unknown): string {
   if (err instanceof ApiError) return err.message;
@@ -69,6 +80,7 @@ export default function MyPageView({
   const [nicknameDraft, setNicknameDraft] = useState(user?.nickname ?? '');
   const [ageDraft, setAgeDraft] = useState(user?.age != null ? String(user.age) : '');
   const [genderDraft, setGenderDraft] = useState<string | null>(user?.gender ?? null);
+  const [profileIconDraft, setProfileIconDraft] = useState<string | null>(user?.profile_icon ?? null);
   const [savingNickname, setSavingNickname] = useState(false);
   const [nicknameError, setNicknameError] = useState<string | null>(null);
 
@@ -124,6 +136,7 @@ export default function MyPageView({
     setNicknameDraft(user.nickname);
     setAgeDraft(user.age != null ? String(user.age) : '');
     setGenderDraft(user.gender ?? null);
+    setProfileIconDraft(user.profile_icon ?? null);
     setNicknameError(null);
     setEditingNickname(true);
   };
@@ -140,7 +153,7 @@ export default function MyPageView({
     setSavingNickname(true);
     setNicknameError(null);
     try {
-      const updated = await updateMe({ nickname: value, age, gender: genderDraft });
+      const updated = await updateMe({ nickname: value, age, gender: genderDraft, profile_icon: profileIconDraft });
       setUser(updated);
       setEditingNickname(false);
     } catch (err) {
@@ -264,104 +277,139 @@ export default function MyPageView({
 
       {/* ---- 회원정보 ---- */}
       <section className="mypage-section" aria-labelledby="mypage-account-heading">
-        <h2 className="mypage-section-title" id="mypage-account-heading">
-          회원정보
-        </h2>
-        <div className="mypage-account-card">
-          <div className="mypage-account-row">
-            <span className="mypage-account-label">닉네임</span>
-            {editingNickname ? (
-              <input
-                type="text"
-                className="search-input login-input"
-                value={nicknameDraft}
-                onChange={(e) => setNicknameDraft(e.target.value)}
-                aria-label="닉네임 수정"
-                autoFocus
-              />
-            ) : (
-              <span className="mypage-account-value">{user.nickname}</span>
-            )}
-          </div>
-          <div className="mypage-account-row">
-            <span className="mypage-account-label">나이</span>
-            {editingNickname ? (
-              <input
-                type="number"
-                className="search-input login-input mypage-account-age-input"
-                value={ageDraft}
-                onChange={(e) => setAgeDraft(e.target.value)}
-                min={0}
-                max={120}
-                placeholder="선택 입력"
-                aria-label="나이 수정"
-              />
-            ) : (
-              <span className="mypage-account-value">{user.age != null ? `${user.age}세` : '입력 안 함'}</span>
-            )}
-          </div>
-          <div className="mypage-account-row">
-            <span className="mypage-account-label">성별</span>
-            {editingNickname ? (
-              <div className="mypage-chip-row">
-                {GENDER_OPTIONS.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={`mypage-chip${genderDraft === option ? ' is-active' : ''}`}
-                    aria-pressed={genderDraft === option}
-                    onClick={() => setGenderDraft(genderDraft === option ? null : option)}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <span className="mypage-account-value">{user.gender ?? '입력 안 함'}</span>
-            )}
-          </div>
-          <div className="mypage-account-row">
-            <span className="mypage-account-label">이메일</span>
-            <span className="mypage-account-value">{user.email}</span>
-          </div>
-          <div className="mypage-account-row">
-            <span className="mypage-account-label">가입일</span>
-            <span className="mypage-account-value">{user.joined_at.slice(0, 10)}</span>
-          </div>
-
-          {nicknameError && <p className="login-error">{nicknameError}</p>}
-
+        <div className="mypage-section-title-row">
+          <h2 className="mypage-section-title" id="mypage-account-heading">
+            회원정보
+          </h2>
           {editingNickname ? (
-            <div className="mypage-ingredient-add">
+            <div className="mypage-title-actions">
               <button
                 type="button"
-                className="mypage-ghost-btn"
+                className="mypage-icon-btn mypage-icon-btn--save"
                 onClick={saveNickname}
                 disabled={savingNickname}
+                aria-label="저장"
+                title="저장"
               >
-                {savingNickname ? (
-                  <>
-                    <span className="spinner" aria-hidden="true" /> 저장 중...
-                  </>
-                ) : (
-                  '저장'
-                )}
+                {savingNickname ? <span className="spinner" aria-hidden="true" /> : '✓'}
               </button>
               <button
                 type="button"
-                className="mypage-ghost-btn"
+                className="mypage-icon-btn mypage-icon-btn--cancel"
                 onClick={() => setEditingNickname(false)}
                 disabled={savingNickname}
+                aria-label="취소"
+                title="취소"
               >
-                취소
+                ✕
               </button>
             </div>
           ) : (
-            <button type="button" className="mypage-ghost-btn" onClick={startEditNickname}>
-              회원정보 수정
+            <button
+              type="button"
+              className="mypage-icon-btn mypage-icon-btn--add"
+              onClick={startEditNickname}
+              aria-label="회원정보 수정"
+              title="회원정보 수정"
+            >
+              +
             </button>
           )}
         </div>
+        <div className="mypage-account-card">
+          <div className="mypage-account-body">
+            <div className="mypage-account-photo-box">
+              {editingNickname ? (
+                <div className="mypage-avatar-option-col">
+                  {PROFILE_ICON_OPTIONS.map(({ key, label, Icon }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`mypage-avatar-option${profileIconDraft === key ? ' is-active' : ''}`}
+                      aria-pressed={profileIconDraft === key}
+                      aria-label={label}
+                      title={label}
+                      onClick={() => setProfileIconDraft(profileIconDraft === key ? null : key)}
+                    >
+                      <Icon />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <span className="mypage-avatar-display" aria-hidden={!user.profile_icon}>
+                  {(() => {
+                    const selected = PROFILE_ICON_OPTIONS.find((opt) => opt.key === user.profile_icon);
+                    return selected ? <selected.Icon /> : <span className="mypage-avatar-placeholder">?</span>;
+                  })()}
+                </span>
+              )}
+            </div>
+            <div className="mypage-account-rows">
+              <div className="mypage-account-row">
+                <span className="mypage-account-label">닉네임</span>
+                {editingNickname ? (
+                  <input
+                    type="text"
+                    className="search-input login-input"
+                    value={nicknameDraft}
+                    onChange={(e) => setNicknameDraft(e.target.value)}
+                    aria-label="닉네임 수정"
+                    autoFocus
+                  />
+                ) : (
+                  <span className="mypage-account-value">{user.nickname}</span>
+                )}
+              </div>
+              <div className="mypage-account-row">
+                <span className="mypage-account-label">나이</span>
+                {editingNickname ? (
+                  <input
+                    type="number"
+                    className="search-input login-input mypage-account-age-input"
+                    value={ageDraft}
+                    onChange={(e) => setAgeDraft(e.target.value)}
+                    min={0}
+                    max={120}
+                    placeholder="선택 입력"
+                    aria-label="나이 수정"
+                  />
+                ) : (
+                  <span className="mypage-account-value">{user.age != null ? `${user.age}세` : '입력 안 함'}</span>
+                )}
+              </div>
+              <div className="mypage-account-row">
+                <span className="mypage-account-label">성별</span>
+                {editingNickname ? (
+                  <div className="mypage-chip-row">
+                    {GENDER_OPTIONS.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        className={`mypage-chip${genderDraft === option ? ' is-active' : ''}`}
+                        aria-pressed={genderDraft === option}
+                        onClick={() => setGenderDraft(genderDraft === option ? null : option)}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="mypage-account-value">{user.gender ?? '입력 안 함'}</span>
+                )}
+              </div>
+              <div className="mypage-account-row">
+                <span className="mypage-account-label">이메일</span>
+                <span className="mypage-account-value">{user.email}</span>
+              </div>
+              <div className="mypage-account-row">
+                <span className="mypage-account-label">가입일</span>
+                <span className="mypage-account-value">{user.joined_at.slice(0, 10)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {nicknameError && <p className="login-error">{nicknameError}</p>}
       </section>
 
       {/* ---- 저장한 결과 ---- */}

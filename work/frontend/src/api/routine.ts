@@ -16,6 +16,12 @@ export function removeFromRoutine(productId: string): Promise<void> {
   return apiFetch<void>(`/users/me/routine/${encodeURIComponent(productId)}`, { method: 'DELETE' });
 }
 
+/** "초기화" — 등록한 화장품을 한꺼번에 지운다. 별도 벌크 삭제 엔드포인트가 없어서
+ * 개별 삭제(removeFromRoutine)를 병렬로 호출한다. */
+export function clearRoutine(productIds: string[]): Promise<void[]> {
+  return Promise.all(productIds.map((id) => removeFromRoutine(id)));
+}
+
 export function getRoutineAnalysis(): Promise<RoutineAnalysis> {
   return apiFetch<RoutineAnalysis>('/users/me/routine/analysis');
 }

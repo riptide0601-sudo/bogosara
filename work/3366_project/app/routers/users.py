@@ -16,6 +16,7 @@ from app.schemas.routine import (
     RoutineHistoryRead,
     RoutineItemCreate,
     RoutineItemRead,
+    RoutineRelationNoteRead,
 )
 from app.schemas.user import (
     SavedResultCreate,
@@ -176,6 +177,12 @@ def remove_from_routine(
     db.commit()
 
 
+def _to_relation_product_read(product) -> RoutineHistoryProductRead | None:
+    if product is None:
+        return None
+    return RoutineHistoryProductRead(product_id=product.product_id, product_name=product.product_name, brand=product.brand)
+
+
 def _to_analysis_read(result) -> RoutineAnalysisRead:
     return RoutineAnalysisRead(
         product_count=result.product_count,
@@ -195,7 +202,19 @@ def _to_analysis_read(result) -> RoutineAnalysisRead:
             }
             for note in result.skin_type_notes
         ],
-        relations=[vars(r) for r in result.relations],
+        relations=[
+            RoutineRelationNoteRead(
+                relation_type=r.relation_type,
+                ingredient_a=r.ingredient_a,
+                ingredient_b=r.ingredient_b,
+                message=r.message,
+                product_a=_to_relation_product_read(r.product_a),
+                product_b=_to_relation_product_read(r.product_b),
+                alternatives_a=[_to_relation_product_read(p) for p in r.alternatives_a],
+                alternatives_b=[_to_relation_product_read(p) for p in r.alternatives_b],
+            )
+            for r in result.relations
+        ],
     )
 
 
