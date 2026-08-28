@@ -53,6 +53,28 @@
   color: var(--ink-soft);
 }
 
+/* "내 화장품 조합" 설명 문장 바로 아래, 저장한 조합 기록(RoutineHistory)을 RoutineView
+   "조합 기록" 섹션과 똑같은 카드(.mypage-saved-card)로 보여주되, 세로 그리드 대신
+   가로로 옆으로 넘겨보는 한 줄 스크롤로 배치한다 — 마이페이지는 요약 훑어보기 자리라
+   세로 공간을 많이 차지하면 안 된다. 클래스 두 개를 합친 선택자로 명시도를 올려서,
+   .mypage-saved-grid(파일 뒤쪽의 display:grid)보다 소스 순서와 무관하게 항상 이긴다. */
+.mypage-saved-grid.mypage-saved-grid--scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 1rem;
+  /* overflow-x:auto를 주면 overflow-y도 자동으로 auto가 돼서, 삭제(✕) 버튼의
+     top:-10px 돌출분이 위쪽에서 그대로 잘린다 — padding-top으로 그 돌출분만큼
+     여유를 주고, margin-top을 그만큼 덜 당겨서 바깥에서 보이는 위치는 그대로 유지한다. */
+  margin: -0.4rem 0 0.9rem;
+  padding: 12px 4px 0.4rem;
+  scroll-snap-type: x proximity;
+}
+.mypage-saved-grid--scroll .mypage-saved-card {
+  flex: 0 0 auto;
+  width: 210px;
+  scroll-snap-align: start;
+}
+
 /* =========================================================
    회원정보
    ========================================================= */
@@ -86,6 +108,13 @@
 .mypage-account-value {
   color: var(--ink);
   word-break: break-all;
+}
+/* 나이 입력칸은 닉네임 입력칸(.login-input, width:100%)처럼 행 전체로 늘어나면 숫자 하나
+   치고는 과하게 넓어져서, 짧은 고정폭으로 줄인다. 클래스 두 개를 합친 선택자로 명시도를
+   올려서 .login-input의 width:100%보다 소스 순서와 무관하게 항상 이긴다. */
+.login-input.mypage-account-age-input {
+  width: 6rem;
+  flex: 0 0 auto;
 }
 
 /* 섹션 데이터 조회 자체가 실패했을 때(저장한 결과/피부 프로필) — 부분 저장 실패 시 쓰는

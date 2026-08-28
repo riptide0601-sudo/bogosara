@@ -22,11 +22,15 @@ class UserRead(BaseModel):
     email: str
     joined_at: datetime
     notify_alerts: bool
+    age: int | None = None
+    gender: str | None = None
 
 
 class UserUpdate(BaseModel):
     nickname: str | None = None
     notify_alerts: bool | None = None
+    age: int | None = None
+    gender: str | None = None
 
 
 class TokenRead(BaseModel):

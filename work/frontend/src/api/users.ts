@@ -5,7 +5,9 @@ export function getMe(): Promise<UserRead> {
   return apiFetch<UserRead>('/users/me');
 }
 
-export function updateMe(patch: { nickname?: string; notify_alerts?: boolean }): Promise<UserRead> {
+export function updateMe(
+  patch: { nickname?: string; notify_alerts?: boolean; age?: number | null; gender?: string | null },
+): Promise<UserRead> {
   return apiFetch<UserRead>('/users/me', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 

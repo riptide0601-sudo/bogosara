@@ -80,8 +80,8 @@
   --ink-soft: rgba(31, 37, 23, 0.55);
   --sub: #dce4c9; /* 보조 톤 — 제품 썸네일 플레이스홀더 등에 쓰는 세이지 톤 1개 */
 
-  --border-w: 4px;
-  --shadow-off: 6px;
+  --border-w: 2px;
+  --shadow-off: 3px;
   --radius: 10px; /* 아이콘/제품 카드/사진 등 둥글게 처리하는 요소용 */
   --radius-sm: 6px; /* 카드 내부의 작은 박스(통계/뱃지/노트/행 등)용 축소 라운드 */
 

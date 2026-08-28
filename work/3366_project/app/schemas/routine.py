@@ -46,6 +46,22 @@ class RoutineRelationNoteRead(BaseModel):
     message: str | None = None
 
 
+class RoutineHistoryProductRead(BaseModel):
+    product_id: str
+    product_name: str
+    brand: str | None = None
+
+
+class RoutineHistoryRead(BaseModel):
+    history_id: str
+    headline: str
+    # 저장 당시 담겨 있던 제품 개수 — 이후 제품이 DB에서 지워져도 이 값은 안 바뀐다
+    # (products 리스트는 지워진 제품만큼 줄어들 수 있음).
+    product_count: int
+    products: list[RoutineHistoryProductRead] = []
+    saved_at: datetime
+
+
 class RoutineAnalysisRead(BaseModel):
     product_count: int
     ingredient_count: int
@@ -53,6 +69,10 @@ class RoutineAnalysisRead(BaseModel):
     # 루틴 전체 제품들의 key_purposes를 모아 만든, 조합 전체에 대한 한 단락 설명.
     overall_description: str
     hydration_note: str
+    hydration_count: int = 0
+    occlusion_count: int = 0
+    hydration_ingredients: list[str] = []
+    occlusion_ingredients: list[str] = []
     skin_type_notes: list[RoutineSkinTypeNoteRead] = []
     # 서로 다른 제품에 걸쳐 있는 성분 조합 중 ingredient_relation에 등록된 시너지/악화 쌍.
     relations: list[RoutineRelationNoteRead] = []

@@ -8,6 +8,7 @@ import CosmeticMascotIcon from '../icons/CosmeticMascotIcon';
 import CreamJarIcon from '../icons/CreamJarIcon';
 import CushionIcon from '../icons/CushionIcon';
 import type { SavedResult } from '../data/myPage';
+import type { RoutineHistoryRead } from '../api/types';
 
 /** 걸어다니는 캐릭터 행렬 — 화장품 병(리더) 뒤로 수분크림통·쿠션이 쫄래쫄래 따라간다. */
 const WALKING_MASCOTS = [
@@ -26,6 +27,10 @@ export default function MyPagePage() {
     navigate(`/product/${result.id}`);
   };
 
+  const handleOpenRoutineHistory = (entry: RoutineHistoryRead) => {
+    navigate('/routine', { state: { historyEntry: entry } });
+  };
+
   return (
     <>
       <BackgroundSparkles />
@@ -38,6 +43,7 @@ export default function MyPagePage() {
             onBack={() => navigate('/')}
             onSelectSavedResult={handleSelectSavedResult}
             onOpenRoutine={() => navigate('/routine')}
+            onOpenRoutineHistory={handleOpenRoutineHistory}
           />
         ) : (
           <LoginView onBack={() => navigate('/')} onSuccess={() => {}} />

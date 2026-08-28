@@ -2,7 +2,8 @@ import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
 import { getSkinProfile, listSavedResults, unsaveResult, updateMe, updateSkinProfile } from '../api/users';
-import type { SkinProfile } from '../api/types';
+import { deleteRoutineHistory, listRoutineHistory } from '../api/routine';
+import type { RoutineHistoryRead, SkinProfile } from '../api/types';
 import { SKIN_TYPE_OPTIONS, toSavedResult, type SavedResult } from '../data/myPage';
 import '../MyPageView.css';
 
@@ -12,6 +13,8 @@ interface MyPageViewProps {
   onSelectSavedResult: (result: SavedResult) => void;
   /** "내 화장품 조합" 진입점 클릭 → App.tsx가 RoutineView로 전체 화면을 교체한다. */
   onOpenRoutine: () => void;
+  /** "조합 기록" 카드 클릭 → App가 그 기록의 조합 분석을 보여주는 RoutineView로 이동한다. */
+  onOpenRoutineHistory: (entry: RoutineHistoryRead) => void;
 }
 
 const GRADE_LABEL: Record<NonNullable<SavedResult['grade']>, string> = {
@@ -19,6 +22,8 @@ const GRADE_LABEL: Record<NonNullable<SavedResult['grade']>, string> = {
   good: '순한 편',
   base: '주의 필요',
 };
+
+const GENDER_OPTIONS = ['여성', '남성'];
 
 function errorMessage(err: unknown): string {
   if (err instanceof ApiError) return err.message;
@@ -36,13 +41,21 @@ type FetchStatus = 'loading' | 'done' | 'error';
  * 없고, 피부 프로필·저장한 결과만 이 화면에서 따로 불러온다. 각 섹션은 실패해도 서로에게
  * 영향을 주지 않도록 로딩/에러 상태를 독립적으로 관리한다.
  */
-export default function MyPageView({ onBack, onSelectSavedResult, onOpenRoutine }: MyPageViewProps) {
+export default function MyPageView({
+  onBack,
+  onSelectSavedResult,
+  onOpenRoutine,
+  onOpenRoutineHistory,
+}: MyPageViewProps) {
   const { user, setUser, logout } = useAuth();
 
   // ---- 저장한 결과 ----
   const [savedStatus, setSavedStatus] = useState<FetchStatus>('loading');
   const [savedResults, setSavedResults] = useState<SavedResult[]>([]);
   const [savedError, setSavedError] = useState<string | null>(null);
+
+  // ---- 조합 기록 (한 줄 요약용 — 최근 저장 개수/날짜만 필요) ----
+  const [routineHistory, setRoutineHistory] = useState<RoutineHistoryRead[]>([]);
 
   // ---- 피부 프로필 ----
   const [skinStatus, setSkinStatus] = useState<FetchStatus>('loading');
@@ -51,9 +64,11 @@ export default function MyPageView({ onBack, onSelectSavedResult, onOpenRoutine 
   const [skinSaveError, setSkinSaveError] = useState<string | null>(null);
   const [ingredientInput, setIngredientInput] = useState('');
 
-  // ---- 회원정보 수정 ----
+  // ---- 회원정보 수정 (닉네임/나이/성별을 한 번에 수정) ----
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState(user?.nickname ?? '');
+  const [ageDraft, setAgeDraft] = useState(user?.age != null ? String(user.age) : '');
+  const [genderDraft, setGenderDraft] = useState<string | null>(user?.gender ?? null);
   const [savingNickname, setSavingNickname] = useState(false);
   const [nicknameError, setNicknameError] = useState<string | null>(null);
 
@@ -88,6 +103,15 @@ export default function MyPageView({ onBack, onSelectSavedResult, onOpenRoutine 
         setSkinStatus('error');
       });
 
+    // 한 줄 요약(개수·최근 날짜)만 보여줄 거라 로딩/에러는 따로 안 다룬다 — 실패해도
+    // 그냥 안 보이면 그만이라, 조합 화면(RoutineView)만큼 신경 쓸 정보가 아니다.
+    listRoutineHistory()
+      .then((results) => {
+        if (cancelled) return;
+        setRoutineHistory(results);
+      })
+      .catch(() => {});
+
     return () => {
       cancelled = true;
     };
@@ -98,6 +122,8 @@ export default function MyPageView({ onBack, onSelectSavedResult, onOpenRoutine 
   // ---- 회원정보 수정 ----
   const startEditNickname = () => {
     setNicknameDraft(user.nickname);
+    setAgeDraft(user.age != null ? String(user.age) : '');
+    setGenderDraft(user.gender ?? null);
     setNicknameError(null);
     setEditingNickname(true);
   };
@@ -105,10 +131,16 @@ export default function MyPageView({ onBack, onSelectSavedResult, onOpenRoutine 
   const saveNickname = async () => {
     const value = nicknameDraft.trim();
     if (!value || savingNickname) return;
+    const trimmedAge = ageDraft.trim();
+    const age = trimmedAge ? Number(trimmedAge) : null;
+    if (trimmedAge && (!Number.isInteger(age) || age! < 0 || age! > 120)) {
+      setNicknameError('나이는 0~120 사이 숫자로 입력해주세요.');
+      return;
+    }
     setSavingNickname(true);
     setNicknameError(null);
     try {
-      const updated = await updateMe({ nickname: value });
+      const updated = await updateMe({ nickname: value, age, gender: genderDraft });
       setUser(updated);
       setEditingNickname(false);
     } catch (err) {
@@ -128,6 +160,18 @@ export default function MyPageView({ onBack, onSelectSavedResult, onOpenRoutine 
     } catch (err) {
       setSavedResults(prev);
       setSavedError(errorMessage(err));
+    }
+  };
+
+  // ---- 조합 기록 ----
+  const deleteRoutineHistoryCard = async (historyId: string) => {
+    const prev = routineHistory;
+    setRoutineHistory((list) => list.filter((h) => h.history_id !== historyId));
+    try {
+      await deleteRoutineHistory(historyId);
+    } catch (err) {
+      setRoutineHistory(prev);
+      console.error('[보고사라][마이페이지] 조합 기록 삭제 실패', err);
     }
   };
 
@@ -237,6 +281,43 @@ export default function MyPageView({ onBack, onSelectSavedResult, onOpenRoutine 
               />
             ) : (
               <span className="mypage-account-value">{user.nickname}</span>
+            )}
+          </div>
+          <div className="mypage-account-row">
+            <span className="mypage-account-label">나이</span>
+            {editingNickname ? (
+              <input
+                type="number"
+                className="search-input login-input mypage-account-age-input"
+                value={ageDraft}
+                onChange={(e) => setAgeDraft(e.target.value)}
+                min={0}
+                max={120}
+                placeholder="선택 입력"
+                aria-label="나이 수정"
+              />
+            ) : (
+              <span className="mypage-account-value">{user.age != null ? `${user.age}세` : '입력 안 함'}</span>
+            )}
+          </div>
+          <div className="mypage-account-row">
+            <span className="mypage-account-label">성별</span>
+            {editingNickname ? (
+              <div className="mypage-chip-row">
+                {GENDER_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={`mypage-chip${genderDraft === option ? ' is-active' : ''}`}
+                    aria-pressed={genderDraft === option}
+                    onClick={() => setGenderDraft(genderDraft === option ? null : option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="mypage-account-value">{user.gender ?? '입력 안 함'}</span>
             )}
           </div>
           <div className="mypage-account-row">
@@ -354,6 +435,46 @@ export default function MyPageView({ onBack, onSelectSavedResult, onOpenRoutine 
         <p className="mypage-section-desc">
           쓰는 화장품을 등록하면 전성분을 합쳐서 수분·보습 밸런스와 내 피부 타입 기준 궁합을 분석해드려요.
         </p>
+        {routineHistory.length > 0 && (
+          <div className="mypage-saved-grid mypage-saved-grid--scroll">
+            {routineHistory.map((entry) => (
+              <div className="mypage-saved-card" key={entry.history_id}>
+                <button
+                  type="button"
+                  className="mypage-saved-card-remove"
+                  onClick={() => deleteRoutineHistoryCard(entry.history_id)}
+                  aria-label="조합 기록 삭제"
+                  title="삭제"
+                >
+                  ✕
+                </button>
+                <button
+                  type="button"
+                  className="mypage-saved-card-main"
+                  onClick={() => onOpenRoutineHistory(entry)}
+                >
+                  <span className="mypage-saved-brand">
+                    {new Date(entry.saved_at).toLocaleDateString('ko-KR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </span>
+                  <span className="mypage-saved-meta">{entry.product_count}개 제품</span>
+                  {entry.products.length > 0 && (
+                    <div className="mypage-chip-row">
+                      {entry.products.map((p) => (
+                        <span className="mypage-chip mypage-chip--tag" key={p.product_id}>
+                          {p.product_name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <button type="button" className="mypage-ghost-btn" onClick={onOpenRoutine}>
           내 조합 확인하기
         </button>

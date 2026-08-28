@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, String
+from sqlalchemy import JSON, Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -27,6 +27,8 @@ class User(Base):
         DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
     )
     notify_alerts: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gender: Mapped[str | None] = mapped_column(String, nullable=True)
     skin_types: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     watched_ingredients: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 
@@ -34,5 +36,8 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     routine_items: Mapped[list["RoutineItem"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    routine_history_entries: Mapped[list["RoutineHistory"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

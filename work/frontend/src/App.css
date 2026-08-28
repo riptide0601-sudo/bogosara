@@ -874,6 +874,7 @@
 .results-empty {
   background: var(--panel);
   border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
   box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
   padding: 1.6rem 1.2rem;
   text-align: center;

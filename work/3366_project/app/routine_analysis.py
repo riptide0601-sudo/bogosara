@@ -75,8 +75,14 @@ class RoutineAnalysis:
     headline: str
     overall_description: str
     hydration_note: str
+    # 수분(휴멕턴트)/보습(옥클루시브·에몰리언트) 각각에 해당하는 배합목적을 가진 성분 개수 —
+    # 프론트가 막대바(수분 N / 보습 N)로 시각화한다(SkinTypeCountBars와 같은 표현 방식).
+    hydration_count: int
+    occlusion_count: int
     skin_type_notes: list[RoutineSkinTypeNote]
     relations: list[RoutineRelationNote] = field(default_factory=list)
+    hydration_ingredients: list[str] = field(default_factory=list)
+    occlusion_ingredients: list[str] = field(default_factory=list)
 
 
 def parse_json_list(raw: str | None) -> list[str]:
@@ -98,7 +104,7 @@ def build_item_description(product: Product) -> str:
 
 def _build_headline(products: list[Product], ingredient_count: int) -> str:
     if not products:
-        return "등록된 화장품이 없어요."
+        return "아직 등록한 화장품이 없어요."
 
     counts: dict[str, int] = defaultdict(int)
     for p in products:
@@ -147,6 +153,8 @@ def analyze_routine(product_ids: list[str], skin_types: list[str], db: Session) 
             headline=_build_headline([], 0),
             overall_description="",
             hydration_note="화장품을 추가하면 여기서 조합을 분석해드려요.",
+            hydration_count=0,
+            occlusion_count=0,
             skin_type_notes=[],
         )
 
@@ -161,8 +169,11 @@ def analyze_routine(product_ids: list[str], skin_types: list[str], db: Session) 
     # "완전히 같은 제품 안에서만 같이 있는 조합"(그 제품 자체의 배합이라 새로운 정보가
     # 아님)을 걸러내는 데 쓴다. ingredient_ids는 여기서 중복 없이 뽑는다.
     products_by_ingredient: dict[int, set[str]] = defaultdict(set)
-    for product_id, ingredient_id, _name_kr in ingredient_rows:
+    name_by_ingredient: dict[int, str] = {}
+    for product_id, ingredient_id, name_kr in ingredient_rows:
         products_by_ingredient[ingredient_id].add(product_id)
+        if name_kr:
+            name_by_ingredient[ingredient_id] = name_kr
     ingredient_ids = list(products_by_ingredient.keys())
 
     purpose_rows = db.execute(
@@ -174,12 +185,20 @@ def analyze_routine(product_ids: list[str], skin_types: list[str], db: Session) 
     for ingredient_id, purpose_name in purpose_rows:
         purposes_by_ingredient[ingredient_id].add(purpose_name)
 
-    hydration_present = any(
-        purposes_by_ingredient[iid] & HYDRATION_PURPOSES for iid in ingredient_ids
-    )
-    occlusion_present = any(
-        purposes_by_ingredient[iid] & OCCLUSION_PURPOSES for iid in ingredient_ids
-    )
+    hydration_ingredients = [
+        name_by_ingredient[iid]
+        for iid in ingredient_ids
+        if purposes_by_ingredient[iid] & HYDRATION_PURPOSES and iid in name_by_ingredient
+    ]
+    occlusion_ingredients = [
+        name_by_ingredient[iid]
+        for iid in ingredient_ids
+        if purposes_by_ingredient[iid] & OCCLUSION_PURPOSES and iid in name_by_ingredient
+    ]
+    hydration_count = len(hydration_ingredients)
+    occlusion_count = len(occlusion_ingredients)
+    hydration_present = hydration_count > 0
+    occlusion_present = occlusion_count > 0
 
     # 성분 간 시너지/악화 조합 — 루틴에 있는 성분끼리(양쪽 다 ingredient_ids 안에 있는
     # 경우) ingredient_relation에 등록된 관계가 있는지 확인한다. products_by_ingredient의
@@ -243,6 +262,10 @@ def analyze_routine(product_ids: list[str], skin_types: list[str], db: Session) 
         headline=_build_headline(products, len(ingredient_ids)),
         overall_description=_build_overall_description(products),
         hydration_note=_build_hydration_note(hydration_present, occlusion_present),
+        hydration_count=hydration_count,
+        occlusion_count=occlusion_count,
+        hydration_ingredients=hydration_ingredients,
+        occlusion_ingredients=occlusion_ingredients,
         skin_type_notes=skin_type_notes,
         relations=relations,
     )

@@ -10,6 +10,7 @@ from app.models.product_concern import ProductConcern
 from app.models.product_family_member import ProductFamilyMember
 from app.models.product_ingredient import ProductIngredient
 from app.models.purpose import Purpose
+from app.models.routine_history import RoutineHistory
 from app.models.routine_item import RoutineItem
 from app.models.saved_result import SavedResult
 from app.models.user import User
@@ -27,6 +28,7 @@ __all__ = [
     "ProductFamilyMember",
     "ProductIngredient",
     "Purpose",
+    "RoutineHistory",
     "RoutineItem",
     "SavedResult",
     "User",

@@ -6,6 +6,8 @@ export interface UserRead {
   email: string;
   joined_at: string;
   notify_alerts: boolean;
+  age: number | null;
+  gender: string | null;
 }
 
 export interface TokenRead {
@@ -73,6 +75,28 @@ export interface RoutineAnalysis {
   /** 루틴 전체 제품들의 key_purposes를 모아 만든, 조합 전체에 대한 한 단락 설명. */
   overall_description: string;
   hydration_note: string;
+  /** 수분(휴멕턴트)/보습(옥클루시브·에몰리언트) 목적을 가진 성분 개수 — 막대바 시각화용. */
+  hydration_count: number;
+  occlusion_count: number;
+  /** 각 개수에 실제로 잡힌 성분 이름들 — 막대 아래 어떤 성분들인지 보여줄 때 쓴다. */
+  hydration_ingredients: string[];
+  occlusion_ingredients: string[];
   skin_type_notes: RoutineSkinTypeNote[];
   relations: RoutineRelationNote[];
+}
+
+export interface RoutineHistoryProduct {
+  product_id: string;
+  product_name: string;
+  brand: string | null;
+}
+
+/** "이 조합 저장하기"로 남긴 조합 스냅샷 한 건 — 이후 제품이 지워져도 headline/product_count는
+ * 저장 당시 값 그대로 유지된다(app/models/routine_history.py 참고). */
+export interface RoutineHistoryRead {
+  history_id: string;
+  headline: string;
+  product_count: number;
+  products: RoutineHistoryProduct[];
+  saved_at: string;
 }

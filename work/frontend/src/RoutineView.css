@@ -75,11 +75,33 @@
   border-top: none;
 }
 .routine-product-note-name {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   margin: 0 0 0.35rem;
+  padding: 0;
+  background: none;
+  border: none;
   font-family: var(--font-noto);
   font-weight: bold;
   font-size: 0.85rem;
   color: var(--ink);
+  text-align: left;
+}
+.routine-product-note-name:hover,
+.routine-product-note-name:focus-visible {
+  color: var(--accent-dark);
+  outline: none;
+}
+.routine-product-note-arrow {
+  font-weight: normal;
+  transition: transform 0.12s;
+}
+.routine-product-note-name:hover .routine-product-note-arrow,
+.routine-product-note-name:focus-visible .routine-product-note-arrow {
+  transform: translateX(3px);
 }
 .routine-product-note .result-explain {
   margin-bottom: 0.5rem;
@@ -93,6 +115,13 @@
   display: inline-block;
   width: fit-content;
   cursor: help;
+}
+/* "잘 맞아요"/"주의" 문구만 색으로 구분한다 — 성분명(ing.name_kr)은 그대로 기본 색 유지. */
+.routine-ingredient-status--good {
+  color: var(--accent-dark);
+}
+.routine-ingredient-status--risk {
+  color: #a53a3a;
 }
 .routine-ingredient-tooltip {
   position: absolute;
@@ -147,4 +176,64 @@
 
 .routine-search-results {
   margin-top: 0.75rem;
+}
+
+/* ---- "이 조합 저장하기" ---- */
+.routine-save-history .results-empty-sub {
+  margin-top: 0.4rem;
+}
+.routine-save-history .results-empty-sub[role='alert'] {
+  color: #a53a3a;
+}
+
+/* ---- 수분 · 보습 밸런스 — "수분 5/14"처럼 분모까지 보여줘서 "좋음 5"류 짧은 라벨보다
+   기니, 공용 .skin-type-bar-item-label(SkinTypeCountBars와 공유)의 고정폭 3.6rem을
+   여기서만 넓힌다. 클래스 두 개를 합친 선택자로 명시도를 올려서 소스 순서와 무관하게
+   항상 이기게 한다. */
+.skin-type-bar-item-label.skin-type-bar-item-label--wide {
+  width: 4.6rem;
+}
+
+/* "수분·보습에 해당하는 성분이 뭔가요?" — 누르기 전엔 성분 목록을 숨겨서 막대 바로
+   아래가 텍스트로 복잡해지지 않게 한다. */
+/* 수분/보습 그래프 위아래(토글 버튼·설명 문장)와 간격을 넉넉하게 띄운다 —
+   공용 .skin-type-bar-list(SkinTypeCountBars와 공유)는 margin이 없어서 여기서만 준다. */
+.routine-balance-bars {
+  margin: 1rem 0;
+}
+
+.routine-balance-toggle {
+  appearance: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: bold;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.routine-balance-toggle:hover,
+.routine-balance-toggle:focus-visible {
+  color: var(--accent-dark);
+  outline: none;
+}
+
+/* 수분/보습 막대 각각에 실제로 잡힌 성분 이름 나열 — 문장(.result-explain)보다 작고
+   옅게, 참고 정보로만 보이게 한다. */
+.routine-balance-ingredients {
+  margin: 0.5rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+.routine-balance-ingredients-label {
+  font-weight: bold;
+  color: var(--ink);
 }
