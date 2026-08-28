@@ -61,17 +61,25 @@ def compute_purpose_counts(product: Product, db: Session, *, limit: int = 6) -> 
         return []
 
     rows = db.execute(
-        select(IngredientPurpose.ingredient_id, Purpose.purpose_name)
+        select(IngredientPurpose.ingredient_id, Purpose.purpose_name, Purpose.description)
         .join(Purpose, IngredientPurpose.purpose_id == Purpose.purpose_id)
         .where(IngredientPurpose.ingredient_id.in_(ingredient_ids))
     ).all()
 
     ingredients_by_label: dict[str, set[int]] = defaultdict(set)
-    for ingredient_id, purpose_name in rows:
+    # 라벨 하나에 원본 purpose_name이 여러 개 모일 수 있어(예: "피부컨디셔닝제"와
+    # "피부컨디셔닝제(기타)" 둘 다 -> "피부컨디셔닝제") description도 후보가 여럿일 수 있다.
+    # 라벨과 이름이 정확히 같은 행을 우선하고, 없으면 설명이 있는 첫 번째 행을 쓴다.
+    descriptions_by_label: dict[str, str] = {}
+    for ingredient_id, purpose_name, description in rows:
         label = extract_purpose_label(purpose_name)
         if label in _EXCLUDED_LABELS:
             continue
         ingredients_by_label[label].add(ingredient_id)
+        if not description:
+            continue
+        if label not in descriptions_by_label or purpose_name == label:
+            descriptions_by_label[label] = description
 
     if not ingredients_by_label:
         return []
@@ -84,4 +92,7 @@ def compute_purpose_counts(product: Product, db: Session, *, limit: int = 6) -> 
     counts = Counter({label: len(ids) for label, ids in ingredients_by_label.items()})
     ordered = sorted(counts.items(), key=lambda item: (not is_priority(item[0]), -item[1]))
 
-    return [PurposeCount(label=label, count=count, total=total) for label, count in ordered[:limit]]
+    return [
+        PurposeCount(label=label, count=count, total=total, description=descriptions_by_label.get(label))
+        for label, count in ordered[:limit]
+    ]

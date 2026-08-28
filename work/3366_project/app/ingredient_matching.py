@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.ingredient import Ingredient
 from app.routers.ingredients import search_ingredient_ids
 
-_MIN_EMBEDDED_NAME_LEN = 4
+_MIN_EMBEDDED_NAME_LEN = 3
 _MAX_EMBEDDED_MATCHES = 5
 
 

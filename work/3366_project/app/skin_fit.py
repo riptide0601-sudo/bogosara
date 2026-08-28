@@ -45,6 +45,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.ingredient import Ingredient
 from app.models.ingredient_skin_score import SKIN_TYPES, IngredientSkinScore
 from app.models.product_ingredient import ProductIngredient
 
@@ -131,38 +132,54 @@ class SkinTypeCount:
     skin_type: str  # SKIN_TYPES 중 하나 또는 "전체"(피부타입 무관, 향료 알레르겐 등)
     good_count: int  # is_risk=False로 등록된 성분 개수(궁합 좋음)
     caution_count: int  # is_risk=True로 등록된 성분 개수(위험/유의)
+    # 막대를 클릭했을 때 바로 보여줄 실제 성분명 목록 — good_count/caution_count와 같은
+    # 근거(ingredient_skin_score)에서 뽑은, 실제로 이 제품 전성분에 들어있는 성분 이름.
+    good_ingredients: list[str] = field(default_factory=list)
+    caution_ingredients: list[str] = field(default_factory=list)
 
 
 def compute_skin_type_counts(product_id: str, db: Session) -> list[SkinTypeCount]:
-    """"피부 타입별 참고" 막대바용 — 피부타입마다 좋은/유의 성분이 몇 개인지 구조화된
-    숫자로 반환한다(summarize_skin_score_matches의 문장 버전과 같은 근거, 형태만 다름).
+    """"피부 타입별 참고" 막대바용 — 피부타입마다 좋은/유의 성분이 몇 개(와 어떤 성분인지)를
+    구조화된 형태로 반환한다(summarize_skin_score_matches의 문장 버전과 같은 근거, 형태만 다름).
     매칭이 하나도 없는 피부타입은 목록에서 아예 빠진다(0/0을 굳이 안 보여줌).
+    "전체"(피부타입 무관, 향료 알레르겐 등)는 이 막대바에서는 제외한다 — 4개 피부타입별
+    비교가 목적이라 "전체" 항목이 섞이면 오히려 헷갈린다는 피드백으로 뺐다.
     """
     rows = db.execute(
         select(
             IngredientSkinScore.skin_type,
             IngredientSkinScore.is_risk,
-            func.count(func.distinct(ProductIngredient.ingredient_id)),
+            ProductIngredient.ingredient_id,
+            Ingredient.name_kr,
         )
         .join(
             ProductIngredient,
             ProductIngredient.ingredient_id == IngredientSkinScore.ingredient_id,
         )
+        .join(Ingredient, Ingredient.ingredient_id == IngredientSkinScore.ingredient_id)
         .where(ProductIngredient.product_id == product_id)
-        .group_by(IngredientSkinScore.skin_type, IngredientSkinScore.is_risk)
+        .distinct()
     ).all()
 
-    by_skin_type: dict[str, dict[bool, int]] = defaultdict(dict)
-    for skin_type, is_risk, count in rows:
-        by_skin_type[skin_type][is_risk] = count
+    # (skin_type, is_risk) -> {ingredient_id: name} — distinct()가 (skin_type, is_risk,
+    # ingredient_id, name) 조합 기준이라, 같은 성분이 이 조합 안에서 두 번 잡히진 않는다.
+    by_skin_type: dict[str, dict[bool, dict[int, str | None]]] = defaultdict(lambda: defaultdict(dict))
+    for skin_type, is_risk, ingredient_id, name_kr in rows:
+        by_skin_type[skin_type][is_risk][ingredient_id] = name_kr
+
+    def names(ingredients: dict[int, str | None]) -> list[str]:
+        return sorted(name for name in ingredients.values() if name)
 
     result = [
         SkinTypeCount(
             skin_type=skin_type,
-            good_count=counts.get(False, 0),
-            caution_count=counts.get(True, 0),
+            good_count=len(by_type.get(False, {})),
+            caution_count=len(by_type.get(True, {})),
+            good_ingredients=names(by_type.get(False, {})),
+            caution_ingredients=names(by_type.get(True, {})),
         )
-        for skin_type, counts in by_skin_type.items()
+        for skin_type, by_type in by_skin_type.items()
+        if skin_type != "전체"
     ]
     result.sort(key=lambda item: _SUMMARY_SKIN_TYPE_ORDER.get(item.skin_type, 99))
     return result

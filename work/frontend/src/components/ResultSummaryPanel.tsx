@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { FamilyRankInfo } from '../api';
 import type { IngredientResultProduct } from '../data/ingredientResult';
 import type { FamilyRankState, SkinRiskInfo } from './ResultView';
@@ -127,6 +127,42 @@ function renderBoldText(text: string): ReactNode[] {
   });
 }
 
+/** 상품명 안에서, 실제로 전성분에 들어있는 것으로 확인된 마케팅 용어(들)만 형광펜(<mark>)으로
+ * 표시한다 — "상품명 성분, 진짜 들어있나요?" 섹션의 계열 이름과 같은 스타일(.term-highlight)을
+ * 써서, 상품명 → 실제 계열이 시각적으로 이어지게 한다. terms가 비어 있으면 그냥 원문 그대로.
+ * onTermClick이 있으면 용어를 눌러서 화살표 모션을 띄울 수 있게 클릭 가능한 <mark>로 만든다. */
+function renderHighlightedName(
+  name: string,
+  terms: string[],
+  onTermClick?: (term: string, e: React.SyntheticEvent<HTMLElement>) => void,
+): ReactNode[] {
+  const uniqueTerms = [...new Set(terms)].filter(Boolean);
+  if (uniqueTerms.length === 0) return [name];
+  const escaped = uniqueTerms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const pattern = new RegExp(`(${escaped.join('|')})`, 'g');
+  return name.split(pattern).map((part, i) => {
+    if (!uniqueTerms.includes(part)) return part;
+    if (!onTermClick) return <mark key={i} className="term-highlight">{part}</mark>;
+    return (
+      <mark
+        key={i}
+        className="term-highlight term-highlight--clickable"
+        role="button"
+        tabIndex={0}
+        onClick={(e) => onTermClick(part, e)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onTermClick(part, e);
+          }
+        }}
+      >
+        {part}
+      </mark>
+    );
+  });
+}
+
 interface ResultSummaryPanelProps {
   product: IngredientResultProduct;
   /** 우측 상단 "카드를 눌러 전성분 N개 보기" 표기에 쓰는 전체 성분 개수 (카드 뒷면과 동일한 ingredients.length). */
@@ -198,6 +234,11 @@ export default function ResultSummaryPanel({
   } = product;
   const displayName = isScan ? '스캔한 제품' : product.product_name;
   const headline = stripProductNameLead(summary, product.product_name);
+  // "상품명 성분, 진짜 들어있나요?" 섹션에서 상품명 유래로 확인된 계열들의 원문 용어 —
+  // 상품명 헤더에서 그 부분만 형광펜 표시해 "이름 -> 실제 계열"로 이어짐을 보여준다.
+  const matchedTerms = ingredient_families
+    .filter((f) => f.from_product_name && f.matched_term)
+    .map((f) => f.matched_term as string);
 
   const chipsSizeClass =
     key_ingredients.length === 1
@@ -206,11 +247,56 @@ export default function ResultSummaryPanel({
         ? 'result-ing-chips--few'
         : 'result-ing-chips--many';
 
+  // 상품명의 형광펜 용어 -> 해당 성분 계열 박스로 이어지는 점선 화살표 (handleTermClick 참고).
+  const summaryRef = useRef<HTMLElement | null>(null);
+  const [termArrow, setTermArrow] = useState<{
+    key: number;
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+  } | null>(null);
+  const arrowTimerRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    return () => {
+      if (arrowTimerRef.current) window.clearTimeout(arrowTimerRef.current);
+    };
+  }, []);
+
+  function handleTermClick(term: string, e: React.SyntheticEvent<HTMLElement>) {
+    // 카드 앞면 전체가 아니라 "카드를 눌러 전성분 보기" 버튼만 뒤집기를 담당하지만, 다른
+    // 인터랙티브 요소들과 같은 이유로 방어적으로 막아둔다.
+    e.stopPropagation();
+    const wrapper = summaryRef.current;
+    if (!wrapper) return;
+    let targetEl: HTMLElement | null = null;
+    wrapper.querySelectorAll<HTMLElement>('[data-matched-term]').forEach((el) => {
+      if (el.dataset.matchedTerm === term) targetEl = el;
+    });
+    if (!targetEl) return;
+
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const sourceRect = e.currentTarget.getBoundingClientRect();
+    const targetRect = (targetEl as HTMLElement).getBoundingClientRect();
+
+    const from = {
+      x: sourceRect.left + sourceRect.width / 2 - wrapperRect.left,
+      y: sourceRect.bottom - wrapperRect.top,
+    };
+    const to = {
+      x: targetRect.left + 24 - wrapperRect.left,
+      y: targetRect.top - wrapperRect.top,
+    };
+
+    if (arrowTimerRef.current) window.clearTimeout(arrowTimerRef.current);
+    setTermArrow({ key: Date.now(), from, to });
+    arrowTimerRef.current = window.setTimeout(() => setTermArrow(null), 1900);
+  }
+
   return (
-    <section className="result-summary" aria-labelledby="result-summary-title">
+    <section className="result-summary" aria-labelledby="result-summary-title" ref={summaryRef}>
       <div className="result-summary-header">
         <p className="result-product-name" id="result-summary-title">
-          📄 {displayName}
+          📄 {isScan ? displayName : renderHighlightedName(displayName, matchedTerms, handleTermClick)}
         </p>
         <button type="button" className="result-flip-hint" aria-expanded={isFlipped} onClick={onFlip}>
           <span className="cursor">▶</span>카드를 눌러 전성분 {totalCount}개 보기
@@ -218,29 +304,45 @@ export default function ResultSummaryPanel({
       </div>
 
       {/* 1. 한 문장 요약 — 이 카드에서 가장 먼저, 가장 크게 읽혀야 하는 자리.
-          따옴표로 감싸서 "LLM이 이 제품을 한 문장으로 인용해준다"는 느낌을 준다. */}
+          따옴표로 감싸서 "LLM이 이 제품을 한 문장으로 인용해준다"는 느낌을 준다.
+          스캔은 실시간 요약이 오기 전까지 "확인하고 있어요"(진행형) 템플릿 문구가 이
+          문장 자리에 그대로 보인다 — 로딩 중이라는 걸 별도 문구 없이 문장 자체로 표현한다
+          (api.ts mapOcrResultToIngredientResult 참고). */}
       <p className="result-headline">“{headline}”</p>
 
       {/* 올리브영 검색 결과 페이지 링크 — 상품별 직접 링크(goodsNo)는 DB에 없어서
-          백엔드가 제품명으로 만든 검색 페이지 URL이다(app/schemas/product.py computed_field). */}
-      <a
-        className="result-oliveyoung-link"
-        href={oliveyoung_url}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <span className="cursor">▶</span>올리브영에서 찾아보기 ↗
-      </a>
+          백엔드가 제품명으로 만든 검색 페이지 URL이다(app/schemas/product.py computed_field).
+          스캔은 실제 제품명이 없어 이 URL 자체가 없다(api.ts mapOcrResultToIngredientResult
+          참고) — isScan으로 숨긴다. */}
+      {!isScan && (
+        <a
+          className="result-oliveyoung-link"
+          href={oliveyoung_url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span className="cursor">▶</span>올리브영에서 찾아보기 ↗
+        </a>
+      )}
 
       {/* 1-1. 상품명 성분, 진짜 들어있나요? — 마케팅 용어 ↔ 계열 묶음 (지정 상품만, 근거 없으면 숨김) */}
       <MarketingFamilySection families={ingredient_families} />
 
-      {/* 2. 핵심 성분 */}
+      {/* 2. 핵심 성분 — 선정 기준(app/core_ingredient_selector.py) 두 단계를 그대로 설명한다:
+          1) 필터 — "피부에 실제로 무엇을 하는가"가 핵심 원칙이라, 용제·점증제·방부제 같은
+             순수 기술적 역할(피부 효능 없음)만 먼저 제외한다.
+          2) 정렬 — 남은 후보는 오직 전성분표에 적힌 순서(=배합량 순, 코드 주석
+             "순위 계산은 오직 order_index 기준")로 최대 5개를 뽑는다.
+          둘 다 이 알고리즘에서 실제로 판단 기준으로 쓰는 핵심 포인트라 같이 적었다. */}
       {key_ingredients.length > 0 && (
         <div className="result-section">
           <h3 className="result-section-title">
             <span className="cursor">▶</span>핵심 성분
           </h3>
+          <p className="result-key-ing-desc">
+            용제·점증제 같은 순수 기술 성분은 제외하고, 피부에 실제 효능이 있는 성분 중
+            전성분표에 먼저 적힌(=많이 들어있는) 순서를 고려하여 주요성분을 선정했습니다.
+          </p>
           <ul className={`result-ing-chips ${chipsSizeClass}`}>
             {key_ingredients.map((item) => (
               <li key={item.name} className="result-ing-chip">
@@ -282,6 +384,9 @@ export default function ResultSummaryPanel({
           <h3 className="result-section-title">
             <span className="cursor">▶</span>비슷한 제품과 비교하면
           </h3>
+          <p className="result-section-desc">
+            같은 성분 계열을 쓰는 다른 제품들과 비교해서 이 제품의 함량 순위를 보여드려요.
+          </p>
           <FamilyRankSection items={familyRank.data} />
         </div>
       )}
@@ -293,6 +398,9 @@ export default function ResultSummaryPanel({
           <h3 className="result-section-title">
             <span className="cursor">▶</span>피부 타입별 참고
           </h3>
+          <p className="skin-type-section-desc">
+            피부 타입별로 이 제품에 좋은 성분과 유의할 성분이 몇 개인지 보여드려요.
+          </p>
           <SkinTypeCountBars skinTypeCounts={skin_type_counts} />
         </div>
       )}
@@ -306,17 +414,21 @@ export default function ResultSummaryPanel({
             <span className="cursor">▶</span>내 피부 타입 기준
           </h3>
           {skinRisk.status === 'signed-out' && (
-            <p className="result-explain">로그인하면 내 피부 타입 기준 위험 성분을 알려드려요.</p>
+            <p className="result-section-desc">로그인하면 내 피부 타입 기준 위험 성분을 알려드려요.</p>
           )}
           {skinRisk.status === 'no-skin-type' && (
-            <p className="result-explain">마이페이지에서 피부 타입을 등록하면 여기에 표시돼요.</p>
+            <p className="result-section-desc">마이페이지에서 피부 타입을 등록하면 여기에 표시돼요.</p>
           )}
           {skinRisk.status === 'loading' && <p className="results-status">불러오는 중...</p>}
           {skinRisk.status === 'ok' && skinRisk.risks.length === 0 && (
-            <p className="result-explain">등록하신 피부 타입 기준으로 주의할 성분이 없어요.</p>
+            <p className="result-section-desc">등록하신 피부 타입 기준으로 주의할 성분이 없어요.</p>
           )}
           {skinRisk.status === 'ok' && skinRisk.risks.length > 0 && (
-            <ul className="result-caution-list">
+            <>
+              <p className="result-section-desc">
+                로그인한 회원님이 등록한 피부 타입 기준으로 주의할 성분이에요.
+              </p>
+              <ul className="result-caution-list">
               {skinRisk.risks.map((risk) => (
                 <li key={risk.skinType} className="result-caution-item">
                   <p className="result-caution-name">{risk.skinType}</p>
@@ -327,7 +439,8 @@ export default function ResultSummaryPanel({
                   ))}
                 </li>
               ))}
-            </ul>
+              </ul>
+            </>
           )}
         </div>
       )}
@@ -338,6 +451,9 @@ export default function ResultSummaryPanel({
           <h3 className="result-section-title">
             <span className="cursor">▶</span>사용 전 확인해 주세요
           </h3>
+          <p className="result-section-desc">
+            전성분표 기준으로 사용량 제한이나 주의가 필요한 성분이에요.
+          </p>
           <ul className="result-caution-list">
             {cautions.map((caution) => (
               <li key={caution.name} className="result-caution-item">
@@ -347,6 +463,25 @@ export default function ResultSummaryPanel({
             ))}
           </ul>
         </div>
+      )}
+
+      {/* 상품명 형광펜 용어를 누르면 해당 성분 계열 박스로 이어지는 점선 화살표 —
+          한 번 그려졌다가 ~1.9초 뒤 스스로 사라진다(handleTermClick 참고). */}
+      {termArrow && (
+        <svg key={termArrow.key} className="term-arrow-overlay" aria-hidden="true">
+          <defs>
+            <marker id="term-arrow-head" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+              <path className="term-arrow-head-fill" d="M0,0 L8,4 L0,8 Z" />
+            </marker>
+          </defs>
+          <path
+            className="term-arrow-path"
+            d={`M ${termArrow.from.x} ${termArrow.from.y} Q ${(termArrow.from.x + termArrow.to.x) / 2} ${
+              (termArrow.from.y + termArrow.to.y) / 2 + 36
+            } ${termArrow.to.x} ${termArrow.to.y}`}
+            markerEnd="url(#term-arrow-head)"
+          />
+        </svg>
       )}
     </section>
   );

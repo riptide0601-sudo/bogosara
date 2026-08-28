@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { loadIngredientResult, type IngredientResult, type IngredientResultRequest } from '../data/ingredientResult';
 import type { Product } from '../data/mockProducts';
-import { fetchProductFamilyRank, fetchSkinFit, type FamilyRankInfo } from '../api';
+import { fetchProductFamilyRank, fetchScanSummary, fetchSkinFit, type FamilyRankInfo } from '../api';
 import { ApiError } from '../api/client';
 import { getSkinProfile, saveResult } from '../api/users';
 import { useAuth } from '../context/AuthContext';
@@ -9,7 +9,6 @@ import PhotoPanel from './PhotoPanel';
 import ResultCard from './ResultCard';
 import HamburgerButton from './HamburgerButton';
 import Overlay from './Overlay';
-import SaveIcon from '../icons/SaveIcon';
 import '../ResultView.css';
 
 interface ResultViewProps {
@@ -69,6 +68,16 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
   const [saveError, setSaveError] = useState<string | null>(null);
   const [skinRisk, setSkinRisk] = useState<SkinRiskInfo>({ status: 'signed-out' });
   const [familyRank, setFamilyRank] = useState<FamilyRankState>({ status: 'idle' });
+  // 스캔 결과의 한줄요약/성분구성 설명 — 검색 흐름과 달리 미리 캐싱된 값이 없어(등록된
+  // Product가 없음) 결과 화면에 이미 들어온 "다음"에 비동기로 LLM을 호출해 채운다
+  // (fetchScanSummary). 로딩 중엔 ResultSummaryPanel이 기존 템플릿 문구("확인하고
+  // 있어요" 진행형, api.ts 참고)를 그대로 보여주고, 완료되면 data.product.summary/
+  // ingredient_explanation을 실제 생성문으로 갈아끼운다. 이 요청을 딱 한 번만 보내면
+  // 되므로 상태값 대신 ref로 "이미 시작했는지"만 추적한다 — 예전에 useState로 추적하며
+  // 그 상태를 effect 의존성에 넣었더니, 상태 변화 자체가 effect를 다시 트리거하고
+  // React가 재실행 전 "이전" effect의 cleanup(cancelled=true)부터 부르는 바람에 방금
+  // 시작한 진짜 요청의 완료 콜백까지 취소돼버리는 버그가 있었다.
+  const scanSummaryRequestedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +85,7 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
     setData(null);
     setSaved(false);
     setSaveError(null);
+    scanSummaryRequestedRef.current = false;
 
     loadIngredientResult(request)
       .then((result) => {
@@ -93,6 +103,41 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
       cancelled = true;
     };
   }, [request]);
+
+  // 스캔 결과 화면이 뜬 다음(status==='done') OCR raw_ingredients로 요약을 비동기 생성한다.
+  // data를 의존성에 넣지 않는다 — 이 effect 자신이 setData로 summary를 채워 넣는데, data를
+  // 넣으면 그 갱신이 자기 자신을 다시 트리거해서 무한 호출로 이어진다.
+  useEffect(() => {
+    if (request.source !== 'scan' || status !== 'done' || scanSummaryRequestedRef.current) return;
+    scanSummaryRequestedRef.current = true;
+
+    let cancelled = false;
+
+    fetchScanSummary(request.ocr.raw_ingredients)
+      .then((summary) => {
+        if (cancelled || !summary) return;
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                product: {
+                  ...prev.product,
+                  summary: summary.one_liner || prev.product.summary,
+                  ingredient_explanation: summary.composition_text,
+                },
+              }
+            : prev,
+        );
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('[보고사라][결과 화면] 스캔 요약 생성 실패', err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [request, status]);
 
   // 로그인한 유저의 마이페이지 피부 타입 기준 개인화된 위험 성분 — search 진입(실제 product_id가
   // 있는 경우)에만 의미가 있다. skin-fit은 skin_type을 생략하면 4개 타입 전부 내려주므로,
@@ -201,26 +246,7 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
           <span className="cursor">◀</span>
           {isScan ? '다시 스캔하기' : '검색으로 돌아가기'}
         </button>
-        {/* 사진 상자 오른쪽 선에 맞춰 정렬되는 정사각형 저장 버튼 (아래 result-layout과 같은
-            칼럼 트랙을 쓰는 그리드라 자연히 맞춰진다 — ResultView.css 참고). 로그인 상태면
-            바로 저장하고 .is-saved 톤으로 바뀌고, 비로그인이면 로그인 팝업을 띄운다. */}
-        <button
-          type="button"
-          className={`result-save-btn${saved ? ' is-saved' : ''}`}
-          onClick={handleSaveClick}
-          disabled={saving}
-          aria-pressed={saved}
-          aria-label={saved ? '저장됨' : '결과 저장하기'}
-        >
-          <SaveIcon />
-        </button>
       </header>
-
-      {saveError && (
-        <p className="result-save-error" role="alert">
-          {saveError}
-        </p>
-      )}
 
       <Overlay
         id="overlay-save-login"
@@ -274,6 +300,10 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
             productImageUrl={data.product.image_url}
             recommendedProducts={data.product.recommended_products}
             onSelectProduct={onSelectProduct}
+            saved={saved}
+            saving={saving}
+            saveError={saveError}
+            onSaveClick={handleSaveClick}
           />
           <ResultCard
             product={data.product}

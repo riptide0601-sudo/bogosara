@@ -25,14 +25,9 @@
   display: none;
 }
 
-/* ---- 상단 바: 뒤로가기 + 저장 버튼 ---- */
-/* result-layout과 같은 칼럼 트랙(왼쪽 280px 칼럼)을 그대로 써서, 저장 버튼이 사진 상자의
-   오른쪽 선에 정확히 맞춰지도록 한다. 뒤로가기·저장 버튼 둘 다 칼럼 1 안에서
-   justify-self로 양 끝에 붙인다. */
+/* ---- 상단 바: 뒤로가기 ---- */
 .result-topbar {
-  display: grid;
-  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
-  gap: clamp(1.25rem, 3vw, 2rem);
+  display: flex;
   align-items: center;
   margin-bottom: 0.5rem;
   flex-shrink: 0;
@@ -46,17 +41,9 @@
 }
 
 .result-back-btn {
-  grid-column: 1;
-  grid-row: 1;
-  justify-self: start;
   appearance: none;
   cursor: pointer;
-  /* 오른쪽 저장 버튼(38px 정사각형)과 높이를 정확히 맞춘다 — align-items:center만으로는
-     버튼 내부 padding/line-height 차이로 1px 안팎 어긋날 수 있어 높이를 직접 고정했다.
-     margin-top으로 살짝 더 위로 올렸다. */
   height: 38px;
-  margin-top: 1.2rem;
-  margin-bottom: 0.8rem;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -67,7 +54,7 @@
   box-shadow: 3px 3px 0 0 var(--ink);
   padding: 0 0.9rem;
   font-family: var(--font-kr);
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   color: var(--ink);
   text-decoration: none;
   transition: background 0.12s;
@@ -82,61 +69,10 @@
   box-shadow: 0 0 0 0 var(--ink);
 }
 
-/* 정사각형 저장 버튼 — 사진 상자 오른쪽 선에 맞춰 칼럼 1의 오른쪽 끝에 붙는다. */
-.result-save-btn {
-  grid-column: 1;
-  grid-row: 1;
-  justify-self: end;
-  margin-top: 1px;
-  appearance: none;
-  cursor: pointer;
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  background: var(--panel);
-  border: 2px solid var(--ink);
-  border-radius: var(--radius-sm);
-  box-shadow: 3px 3px 0 0 var(--ink);
-  color: var(--ink);
-  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
-}
-.result-save-btn:hover,
-.result-save-btn:focus-visible {
-  background: var(--accent-soft);
-  border-color: var(--accent-dark);
-  box-shadow: 3px 3px 0 0 var(--accent-dark);
-  outline: none;
-}
-.result-save-btn:active {
-  transform: translate(3px, 3px);
-  box-shadow: 0 0 0 0 var(--ink);
-}
-.result-save-btn.is-saved {
-  background: var(--accent);
-  border-color: var(--ink);
-}
-.result-save-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-/* 저장 실패/저장 불가 안내 — result-topbar 바로 아래에 붙는다. */
-.result-save-error {
-  margin: 0.4rem 0 0.5rem;
-  text-align: right;
-  font-size: 0.72rem;
-  line-height: 1.5;
-  color: #a53a3a;
-}
-
 /* 저장 버튼을 눌렀을 때 뜨는 "로그인이 필요해요" 팝업(Overlay 재사용) 안의 안내 문구. */
 .overlay-message {
   margin: 0 0 1rem;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   line-height: 1.7;
   color: var(--ink);
 }
@@ -152,7 +88,7 @@
 }
 .result-loading-text {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--ink-soft);
   animation: blink 1s steps(1) infinite;
 }
@@ -178,11 +114,11 @@
 }
 .result-error-title {
   margin: 0 0 0.6rem;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 .result-error-body {
   margin: 0 0 1.2rem;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   line-height: 1.6;
   color: var(--ink-soft);
 }
@@ -224,10 +160,88 @@
   justify-content: center;
   background-color: var(--sub);
 }
+/* 스캔 사진만 이 래퍼로 감싼다 — OCR 형광펜 레이어(.photo-panel-highlight-layer)를 사진
+   위에 절대 위치로 얹으려면 position:relative 기준점이 필요해서다. 검색 진입 썸네일/
+   플레이스홀더는 그럴 필요가 없어 지금처럼 .photo-panel-img를 그대로 쓴다. */
+.photo-panel-img-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+}
+.photo-panel-img-wrap .photo-panel-img {
+  height: 100%;
+}
+.photo-panel-highlight-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--radius); /* 사진 모서리 둥글기 밖으로 하이라이트가 안 삐져나오게 */
+  pointer-events: none;
+}
+/* 형광펜 박스 — mix-blend-mode:multiply로 사진 위에 실제 형광펜처럼 겹쳐 보이게 한다
+   (불투명하게 칠하면 그 밑 글자가 안 보여서 "여기서 읽었다"는 확인이 안 됨). */
+.photo-panel-highlight {
+  position: absolute;
+  background: rgba(141, 198, 63, 0.45);
+  border: 1px solid rgba(107, 163, 46, 0.9);
+  border-radius: 2px;
+  mix-blend-mode: multiply;
+}
 .photo-panel-mono {
   font-size: clamp(2.4rem, 8vw, 3.4rem);
   color: var(--ink);
   opacity: 0.55;
+}
+
+/* ---- 사진 바로 아래 저장 버튼 — 사진 상자 너비에 맞춘 가로 전체 버튼 ---- */
+.photo-save-btn {
+  appearance: none;
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 3px 3px 0 0 var(--ink);
+  font-family: var(--font-kr);
+  font-size: 0.83rem;
+  color: var(--ink);
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.photo-save-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.photo-save-btn:hover,
+.photo-save-btn:focus-visible {
+  background: var(--accent-soft);
+  border-color: var(--accent-dark);
+  box-shadow: 3px 3px 0 0 var(--accent-dark);
+  outline: none;
+}
+.photo-save-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+.photo-save-btn.is-saved {
+  background: var(--accent);
+  border-color: var(--ink);
+}
+.photo-save-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.photo-save-error {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #a53a3a;
 }
 
 /* ---- 사진 밑 추천 제품 칸 — 뒤집기 없이 항상 보이는 정적인 목록 ---- */
@@ -242,7 +256,7 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   letter-spacing: 0.04em;
 }
 .photo-reco-title .cursor {
@@ -274,7 +288,7 @@
   border-radius: var(--radius-sm);
   box-shadow: 2px 2px 0 0 var(--ink);
   font-family: inherit;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   line-height: 1.3;
   text-align: left;
   overflow: hidden;
@@ -294,7 +308,7 @@
 .photo-reco-brand {
   flex-shrink: 0;
   margin: 2px 0;
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   letter-spacing: 0.04em;
   color: rgba(31, 37, 23, 0.75); /* --ink-soft(0.55)보다 진하게 */
 }
@@ -377,7 +391,7 @@
   padding: 0.3875rem 0.7875rem;
   margin-bottom: 1.1rem;
   font-family: var(--font-noto);
-  font-size: 0.8125rem;
+  font-size: 0.863rem;
   color: var(--ink);
   transition: background 0.12s;
 }
@@ -402,6 +416,7 @@
    안전했지만) 지금처럼 섹션이 여러 개로 늘어난 내용은 강제로 눌려 다음 형제와 겹쳐 보인다.
    대신 카드 높이를 넘는 만큼은 .flip-card-face의 overflow-y:auto가 통째로 스크롤 처리한다. */
 .result-summary {
+  position: relative; /* .term-arrow-overlay가 이 박스 기준 좌표로 절대 위치한다 */
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -422,8 +437,68 @@
 }
 .result-product-name {
   margin: 0;
-  font-size: 0.845rem;
+  font-size: 0.895rem;
   color: var(--ink-soft);
+}
+/* 형광펜 — 상품명 헤더의 마케팅 용어와 "상품명 성분, 진짜 들어있나요?" 계열 이름에
+   똑같이 써서 "상품명의 이 단어 -> 실제 이 계열"이 시각적으로 이어져 보이게 한다.
+   노란 형광펜 대신 우리 디자인의 accent 톤을 진하게 써서(계열 박스 배경인 --accent-soft
+   보다 훨씬 진함) 어느 배경 위에서도 튀게 하고, 굵게+테두리까지 줘서 "그냥 초록"이 아니라
+   "표시해둔 자리"라는 게 분명히 보이게 한다. */
+.term-highlight {
+  background: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
+  padding: 0 0.2em;
+  border: 1.5px solid var(--accent-dark);
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+/* 상품명의 형광펜 용어를 누르면(ResultSummaryPanel handleTermClick) 계열 박스로 이어지는
+   점선 화살표가 잠깐 나타났다 사라진다 — "이 단어 -> 이 계열"이라는 연결을 순간적으로만
+   보여주면 되므로 계속 남겨두지 않는다. */
+.term-highlight--clickable {
+  cursor: pointer;
+}
+.term-arrow-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 6;
+  animation:
+    term-arrow-fade-in 0.15s ease forwards,
+    term-arrow-fade-out 0.35s ease 1.55s forwards;
+}
+.term-arrow-path {
+  fill: none;
+  stroke: var(--accent-dark);
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  stroke-dasharray: 6 7;
+  animation: term-arrow-flow 0.7s linear infinite;
+}
+.term-arrow-head-fill {
+  fill: var(--accent-dark);
+}
+@keyframes term-arrow-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes term-arrow-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes term-arrow-flow {
+  to {
+    stroke-dashoffset: -26;
+  }
 }
 /* 예전엔 카드 앞면 전체가 클릭 영역이었지만, 지금은 이 버튼만 눌러야 카드가 뒤집힌다
    (ResultSummaryPanel의 onFlip 참고) — 그래서 <p>가 아니라 <button>이고, 버튼 기본
@@ -440,7 +515,7 @@
   align-items: center;
   gap: 0.3rem;
   font-family: inherit;
-  font-size: 0.743rem;
+  font-size: 0.793rem;
   color: var(--ink-soft);
   text-align: right;
   transition: color 0.12s;
@@ -456,19 +531,18 @@
   animation: blink 1.2s steps(1) infinite;
 }
 
-/* ---- 1. 한 문장 요약 ----
+/* ---- 1. 한 문장 요약 (히어로) ----
    이 카드에서 가장 먼저·가장 크게 읽혀야 하는 유일한 문장이다 — 성분명 나열도, 태그도
-   여기서는 만들지 않는다(그 역할은 핵심 성분·성분 구성 설명이 나눠 맡는다). 아래 다른
-   텍스트(핵심 성분 칸의 성분명 1.15rem, 성분 구성 설명 0.8rem)보다 뚜렷하게 커야 "제일 먼저
-   읽어야 하는 자리"라는 게 느껴진다. margin-top은 제품명 줄과 살짝 붙이고, margin-bottom도
-   줄여서 핵심 성분 카드가 카드 앞면 안에서 스크롤 없이 다 보이도록 전체를 위로 당긴다. */
+   여기서는 만들지 않는다(그 역할은 핵심 성분·성분 구성 설명이 나눠 맡는다). 리디자인하면서
+   아래 섹션(배합목적 카운트)을 접이식으로 바꿔 생긴 여유를 여기로 몰아, 카드 안에서 정말
+   "히어로"로 보이도록 한 번 더 키웠다 — 다른 어떤 텍스트보다 뚜렷하게 커야 한다. */
 .result-headline {
-  margin: 0.1125rem 0 0.2625rem;
+  margin: 0.2rem 0 0.4rem;
   padding: 2px 0;
   font-family: var(--font-noto); /* 카드 뒷면 본문과 같은 가독성 폰트 — 픽셀 폰트보다 긴 문장이 편하게 읽힌다 */
-  font-size: clamp(1.175rem, 4vw, 1.475rem);
-  font-weight: bold;
-  line-height: 1.5;
+  font-size: clamp(1.5rem, 5.4vw, 2.05rem);
+  font-weight: 800;
+  line-height: 1.4;
   color: var(--ink);
 }
 
@@ -479,7 +553,7 @@
   gap: 0.3rem;
   margin: 0 0 0.3rem;
   font-family: var(--font-kr);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   letter-spacing: 0.02em;
   color: var(--ink-soft);
   text-decoration: none;
@@ -512,15 +586,28 @@
 .result-section-title {
   margin: 0 0 0.6rem;
   font-family: var(--font-kr);
-  font-size: 0.813rem;
+  font-size: 1.05rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--ink-soft);
+  color: var(--ink);
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
 .result-section-title .cursor {
   color: var(--accent-dark);
+}
+/* 섹션 제목 바로 밑에 붙는 한 줄 설명 — "핵심 성분"(.result-key-ing-desc)/"피부 타입별
+   참고"(.skin-type-section-desc)처럼 이미 자기 클래스가 있는 섹션 말고, 새로 설명을 붙인
+   섹션(상품명 성분/배합목적 카운트/비슷한 제품과 비교하면/내 피부 타입 기준/사용 전
+   확인해 주세요)이 공통으로 쓰는 클래스. "성분 구성을 살펴보면"은 본문(.result-explain)
+   자체가 이미 설명이라 제외. */
+.result-section-desc {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-noto);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
 }
 
 /* ---- 2. 핵심 성분 ----
@@ -536,6 +623,13 @@
    - justify-content: center — 마지막 줄에 개수가 덜 차도 그 줄 안에서 가운데 정렬된다.
    - flex: 1 1 4.2rem + max-width — 개수가 적을 때 상자가 살짝 커지면서 빈 공간을 채우고,
      개수가 많아지면 기본 크기(4.2rem)에 가깝게 줄어든다. */
+.result-key-ing-desc {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-noto);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
 .result-ing-chips {
   list-style: none;
   margin: 0;
@@ -583,13 +677,28 @@
 .result-ing-chip-name {
   font-family: var(--font-noto); /* 한 문장 요약과 같은 가독성 폰트 — 성분명이 픽셀 폰트보다 또렷하게 읽힌다 */
   font-weight: 700;
-  font-size: 0.923rem;
+  font-size: 0.973rem;
   line-height: 1.25;
   color: #fff;
+  /* 랜딩 워드마크(BOGOSARA)와 같은 흰 글씨 + 진한 테두리 조합 — 카드 배경(accent-dark)
+     위에서 글씨 윤곽이 또렷하게 잡힌다. text-shadow는 -webkit-text-stroke을 지원하지
+     않는 브라우저용 폴백이라 @supports로 나눠서 두 효과가 겹쳐 두꺼워지지 않게 한다. */
+  text-shadow:
+    -1px -1px 0 var(--ink),
+    1px -1px 0 var(--ink),
+    -1px 1px 0 var(--ink),
+    1px 1px 0 var(--ink);
+}
+@supports (-webkit-text-stroke: 1px black) {
+  .result-ing-chip-name {
+    -webkit-text-stroke: 1px var(--ink);
+    paint-order: stroke fill;
+    text-shadow: none;
+  }
 }
 .result-ing-chip-purpose {
   font-weight: 500;
-  font-size: 0.643rem;
+  font-size: 0.693rem;
   line-height: 1.4;
   color: #fff;
 }
@@ -611,7 +720,7 @@
   font-size: 1.013rem;
 }
 .result-ing-chips--few .result-ing-chip-purpose {
-  font-size: 0.683rem;
+  font-size: 0.733rem;
 }
 
 /* 1개: 카드 하나가 가로를 꽉 채우는 히어로 상자 — 한 문장 요약(.result-headline) 다음으로
@@ -629,7 +738,7 @@
   font-size: 1.113rem;
 }
 .result-ing-chips--single .result-ing-chip-purpose {
-  font-size: 0.743rem;
+  font-size: 0.793rem;
 }
 
 /* ---- 1-1. 상품명 성분, 진짜 들어있나요? (마케팅 용어 ↔ 계열 묶음) ----
@@ -641,16 +750,95 @@
    (accent-dark 꽉 채운 카드)보다는 한 단계 차분하게 눌러서 "핵심 성분"과 위계가 안
    헷갈리게 했다. 팀원의 "비슷한 제품과 비교하면"(.result-family-rank-*, 아래)과는 다른
    기능이라 클래스 네임스페이스를 분리했다(family-* vs result-family-rank-*). */
-.family-block-list {
+/* 성분 칩 색·별표 범례 — 아코디언. 제목("성분 카드 색 차이는 무엇인가요?")을 눌러야
+   범례 항목·"N번째" 설명이 펼쳐진다(기본은 접힘). */
+.family-legend-title {
+  margin: 0 0 0.3rem;
+}
+.family-legend-toggle {
+  appearance: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  font-family: var(--font-noto);
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--ink);
+}
+.family-legend-toggle:hover,
+.family-legend-toggle:focus-visible {
+  color: var(--accent-dark);
+  outline: none;
+}
+.family-legend {
+  margin: 0 0 0.35rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.9rem;
+  white-space: nowrap;
+  overflow-x: auto;
+  font-family: var(--font-noto);
+  font-size: 0.73rem;
+  color: var(--ink-soft);
+}
+.family-legend-item {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.family-legend-swatch {
+  flex-shrink: 0;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 3px;
+  border: 1.5px solid var(--ink);
+}
+.family-legend-swatch--exact {
+  background: var(--accent-soft);
+  border-color: var(--accent-dark);
+}
+.family-legend-swatch--related {
+  background: var(--panel);
+  border-color: var(--ink-soft);
+  border-style: dashed;
+}
+.family-legend-swatch--key {
+  background: var(--accent-dark);
+  border-color: var(--ink);
+}
+.family-legend .family-chip-star {
+  font-size: 0.8rem;
+}
+.family-legend-item--note {
+  color: var(--ink-soft);
+}
+/* 2열 그리드 — 성분 3종 이상인 계열(family-block--full)은 두 칸을 다 차지하고, 1~2종인
+   계열은 한 칸만 차지해서 둘이 나란히 붙는다(MarketingFamilySection.tsx 참고). */
+.family-block-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* dense: 1~2종(반칸) 계열이 나중 순서라도 앞쪽 빈 칸을 채우도록 당겨온다 — 안 그러면
+     그 사이에 3종 이상(전체 폭) 계열이 끼는 순간 반칸 하나가 짝 없이 남아 빈 공간이 생긴다. */
+  grid-auto-flow: dense;
+  gap: 0.6rem;
 }
 .family-block {
+  grid-column: span 1;
   background: var(--accent-soft);
   border: 2px solid var(--accent-dark);
   border-radius: var(--radius-sm);
   padding: 0.65rem 0.8rem;
+}
+.family-block--full {
+  grid-column: 1 / -1;
 }
 .family-block-head {
   display: flex;
@@ -661,15 +849,19 @@
 }
 .family-block-name {
   font-family: var(--font-kr);
-  font-size: 0.78rem;
+  font-size: 0.83rem;
   letter-spacing: 0.02em;
   color: var(--ink);
 }
+/* "N종 확인"이 이 박스의 핵심 수치라 배지 자체를 또렷하게 — 아래 칩 안 성분명 나열은
+   반대로 톤을 낮춰서(.family-chip-name) 강약 대비를 만든다. */
 .family-badge {
   flex-shrink: 0;
-  font-size: 0.635rem;
+  font-family: var(--font-noto);
+  font-weight: 800;
+  font-size: 0.77rem;
   line-height: 1.5;
-  padding: 0.08rem 0.5rem;
+  padding: 0.08rem 0.6rem;
   border: 1.5px solid var(--ink);
   border-radius: 999px;
   white-space: nowrap;
@@ -709,16 +901,16 @@
 }
 .family-chip-name {
   font-family: var(--font-noto);
-  font-weight: 700;
-  font-size: 0.75rem;
-  color: var(--ink);
+  font-weight: 500;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
 }
 .family-chip-star {
   color: var(--accent-dark);
   margin-right: 0.15rem;
 }
 .family-chip-meta {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   color: var(--ink-soft);
 }
 /* 이 계열 성분이 제품의 핵심 성분(key_ingredient)이기도 할 때 — 정확/유연물질 구분보다
@@ -732,6 +924,7 @@
   box-shadow: 2px 2px 0 0 var(--ink);
 }
 .family-chip--key .family-chip-name {
+  font-weight: 700;
   color: #fff;
 }
 .family-chip--key .family-chip-star {
@@ -747,21 +940,34 @@
    위험을 알리되 공포감을 주는 색은 안 쓴다). 두 막대 다 이 제품 안에서 가장 큰 값 기준으로
    폭을 정규화해서, 길이만 비교해도 "이 피부타입에 좋은/유의할 성분이 상대적으로 많은지"가
    드러난다. */
+.skin-type-section-desc {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-noto);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
 .skin-type-bar-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.5rem;
 }
+/* 피부타입 하나당 테두리 있는 카드 한 장으로 묶는다 — 좋음/유의 막대가 1개일 때도 2개일
+   때도 "이 박스 안 막대는 전부 이 피부타입 것"이라는 게 한눈에 확실해지도록. */
 .skin-type-bar-row {
   display: flex;
   align-items: center;
   gap: 0.7rem;
+  padding: 0.55rem 0.7rem;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
 }
 .skin-type-bar-label {
   flex-shrink: 0;
-  width: 4.2rem;
+  width: 3.4rem;
   font-family: var(--font-kr);
-  font-size: 0.72rem;
+  font-size: 0.77rem;
   color: var(--ink);
 }
 .skin-type-bar-items {
@@ -769,19 +975,29 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 .skin-type-bar-item {
+  min-width: 0;
+}
+.skin-type-bar-item-btn {
+  appearance: none;
+  cursor: pointer;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  background: none;
+  border: none;
+  padding: 0.15rem 0;
+  font: inherit;
 }
 .skin-type-bar-track {
   flex: 1;
   height: 10px;
   border: 1.5px solid var(--ink);
   border-radius: 999px;
-  background: var(--panel);
+  background: var(--bg);
   overflow: hidden;
 }
 .skin-type-bar-fill {
@@ -797,8 +1013,34 @@
 .skin-type-bar-item-label {
   flex-shrink: 0;
   width: 3.6rem;
-  font-size: 0.68rem;
+  font-size: 0.73rem;
   color: var(--ink-soft);
+}
+.skin-type-bar-item-btn:hover .skin-type-bar-item-label,
+.skin-type-bar-item-btn:focus-visible .skin-type-bar-item-label {
+  color: var(--accent-dark);
+  text-decoration: underline;
+}
+.skin-type-bar-item-btn:focus-visible {
+  outline: 2px solid var(--accent-dark);
+  outline-offset: 2px;
+}
+/* 막대 클릭 시 펼쳐지는 실제 성분명 목록 — 칩 형태로 나열. */
+.skin-type-bar-ingredients {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.skin-type-bar-ingredients li {
+  padding: 0.2em 0.55em;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 0.71rem;
+  color: var(--ink);
 }
 
 /* ---- 2-1. 이 성분들, 무슨 일을 하나요? (배합목적 카운트) ----
@@ -814,10 +1056,16 @@
 }
 .purpose-count-header .result-section-title {
   margin-bottom: 0;
+  min-width: 0;
+}
+/* family-legend-toggle(아코디언 트리거)이 재사용하는 화살표 — 여기서 공용으로 둔다. */
+.purpose-count-chevron {
+  color: var(--accent-dark);
+  font-size: 0.7rem;
 }
 .purpose-count-badge {
   flex-shrink: 0;
-  font-size: 0.635rem;
+  font-size: 0.685rem;
   line-height: 1.5;
   padding: 0.08rem 0.5rem;
   border: 1.5px solid var(--ink);
@@ -840,26 +1088,80 @@
   background: var(--panel);
   box-shadow: 2px 2px 0 0 var(--ink);
 }
-.purpose-count-label {
+.purpose-count-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   margin: 0 0 0.3rem;
+  min-width: 0; /* 자식 label의 말줄임(ellipsis)이 실제로 작동하려면 필요 */
+}
+.purpose-count-label {
+  margin: 0;
+  min-width: 0;
   font-family: var(--font-kr);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* 배합목적 뜻풀이 — 라벨 옆 작은 느낌표, 호버/포커스하면 짧은 설명이 말풍선으로 뜬다. */
+.purpose-count-info {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent-dark);
+  color: var(--panel);
+  font-family: var(--font-noto);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+}
+.purpose-count-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%) translateY(4px);
+  width: max-content;
+  max-width: 13rem;
+  padding: 0.5em 0.7em;
+  background: var(--ink);
+  color: var(--bg);
+  font-family: var(--font-noto);
+  font-size: 0.73rem;
+  font-weight: 400;
+  line-height: 1.5;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 5;
+}
+.purpose-count-info:hover .purpose-count-tooltip,
+.purpose-count-info:focus-visible .purpose-count-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 .purpose-count-value {
   margin: 0 0 0.4rem;
   font-family: var(--font-noto);
   font-weight: 800;
-  font-size: 1.25rem;
+  font-size: 1.45rem;
   color: var(--accent-dark);
   line-height: 1;
 }
 .purpose-count-value-total {
   font-weight: 500;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
 }
 .purpose-count-bar-track {
@@ -878,7 +1180,7 @@
 .result-explain {
   margin: 0;
   font-family: var(--font-noto);
-  font-size: 0.863rem;
+  font-size: 0.913rem;
   line-height: 1.75;
   color: var(--ink);
 }
@@ -913,7 +1215,7 @@
   border: none;
   padding: 0.2rem 0;
   font-family: var(--font-kr);
-  font-size: 0.783rem;
+  font-size: 0.833rem;
   color: var(--ink-soft);
   text-align: left;
   cursor: pointer;
@@ -933,20 +1235,20 @@
   margin: 0;
   font-family: var(--font-kr);
   font-weight: bold;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   color: var(--accent-dark);
 }
 .result-family-rank-no-data {
   margin: 0;
   font-family: var(--font-noto);
-  font-size: 0.783rem;
+  font-size: 0.833rem;
   color: var(--ink-soft);
 }
 .result-family-rank-ingredient {
   margin: 0;
   font-family: var(--font-noto);
-  font-size: 0.783rem;
+  font-size: 0.833rem;
   color: var(--ink-soft);
 }
 .result-family-rank-pct {
@@ -968,7 +1270,7 @@
   justify-content: space-between;
   gap: 0.4rem 0.8rem;
   font-family: var(--font-noto);
-  font-size: 0.783rem;
+  font-size: 0.833rem;
   color: var(--ink);
 }
 .result-family-rank-avg {
@@ -988,7 +1290,7 @@
 }
 .result-family-rank-conc-label {
   font-family: var(--font-kr);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   letter-spacing: 0.02em;
   color: var(--ink-soft);
 }
@@ -1001,7 +1303,7 @@
 .result-family-rank-conc-note {
   flex-basis: 100%;
   font-family: var(--font-noto);
-  font-size: 0.72rem;
+  font-size: 0.77rem;
   color: var(--ink-soft);
 }
 
@@ -1025,13 +1327,13 @@
   margin: 0;
   font-family: var(--font-noto); /* 성분명·요약 문장과 같은 가독성 폰트로 통일 */
   font-weight: bold;
-  font-size: 0.843rem;
+  font-size: 0.893rem;
   color: var(--ink);
 }
 .result-caution-reason {
   margin: 0.3rem 0 0;
   font-family: var(--font-noto);
-  font-size: 0.783rem;
+  font-size: 0.833rem;
   line-height: 1.65;
   color: var(--ink-soft);
 }
@@ -1047,7 +1349,7 @@
   border-radius: 999px;
   font-family: var(--font-kr);
   font-weight: 400;
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   vertical-align: middle;
   color: var(--ink-soft);
   background: var(--panel);
@@ -1064,7 +1366,7 @@
 .ing-list-title {
   margin: 0 0 1rem;
   font-family: var(--font-kr); /* 카드 뒷면에서 유일하게 픽셀 폰트를 유지하는 제목 */
-  font-size: 1rem;
+  font-size: 1.1rem;
   letter-spacing: 0.06em;
   display: flex;
   align-items: center;
@@ -1128,7 +1430,7 @@
   width: 3.4rem;
   text-align: center;
   padding: 0.25rem 0;
-  font-size: 0.725rem;
+  font-size: 0.775rem;
   letter-spacing: 0.02em;
   border: 2px solid var(--ink);
   border-radius: var(--radius-sm);
@@ -1158,24 +1460,24 @@
 }
 .ing-name {
   margin: 0;
-  font-size: 0.925rem;
+  font-size: 0.975rem;
   font-weight: bold;
   line-height: 1.4;
 }
 .ing-name-en {
-  font-size: 0.775rem;
+  font-size: 0.825rem;
   font-weight: normal;
   color: var(--ink-soft);
 }
 .ing-reason {
   margin: 0.2rem 0 0;
-  font-size: 0.805rem;
+  font-size: 0.855rem;
   color: rgba(31, 37, 23, 0.75); /* --ink-soft(0.55)보다 진하게 */
 }
 .ing-pill {
   display: inline-block;
   margin-top: 0.35rem;
-  font-size: 0.745rem;
+  font-size: 0.795rem;
   background: var(--accent);
   border: 1.5px solid var(--ink);
   border-radius: 4px;
@@ -1187,7 +1489,7 @@
   width: 100%;
   box-sizing: border-box;
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.77rem;
   line-height: 1.6;
 }
 
@@ -1215,7 +1517,7 @@
 }
 .ing-detail-safety {
   margin: 0.3rem 0 0;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
 }
 
@@ -1227,13 +1529,13 @@
 }
 .ing-detail-section p {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.83rem;
   line-height: 1.7;
   color: var(--ink);
 }
 .ing-detail-section ul {
   margin: 0;
-  font-size: 0.905rem;
+  font-size: 0.955rem;
   line-height: 1.7;
   color: var(--ink);
 }
@@ -1242,7 +1544,7 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.78rem;
+  font-size: 0.83rem;
   letter-spacing: 0.04em;
 }
 .ing-detail-title .cursor {
@@ -1295,7 +1597,7 @@
   box-shadow: 3px 3px 0 0 var(--ink);
   padding: 0.6rem;
   font-family: var(--font-noto);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--ink);
   transition: background 0.12s;
 }
@@ -1315,7 +1617,7 @@
 }
 .raw-toggle-block .raw-panel-text {
   margin: 0.6rem 0 0;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   line-height: 1.8;
   color: var(--ink-soft);
   background: var(--bg);
@@ -1367,5 +1669,10 @@
   }
   .ing-detail {
     animation: none !important;
+  }
+  .term-arrow-overlay,
+  .term-arrow-path {
+    animation: none !important;
+    opacity: 1;
   }
 }

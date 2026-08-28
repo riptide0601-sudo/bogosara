@@ -58,20 +58,23 @@ def compute_matched_families(product: Product, db: Session, *, limit: int = 3) -
         select(IngredientFamily).where(IngredientFamily.family_id.in_(members_by_family.keys()))
     ).all()
 
-    from_name: list[tuple[int, IngredientFamily]] = []  # (product_name상 등장 위치, family)
+    from_name: list[tuple[int, IngredientFamily, str]] = []  # (등장 위치, family, 매칭된 용어)
     from_general: list[tuple[int, IngredientFamily]] = []  # (best label_rank, family)
 
     for family in families:
         fam_members = members_by_family[family.family_id]
         # marketing_terms는 "상품명 성분, 진짜 들어있나요?" 전용 필드라, "비슷한 제품과
         # 비교하면" 쪽에서만 만들어진 계열은 비어 있을 수 있다 — 그때는 항상 일반 매칭(2순위).
-        positions = [
-            product.product_name.find(term)
+        # 용어가 여러 개 매칭되면(예: "비타민씨"와 "비타민C" 둘 다) 상품명에서 더 먼저
+        # 나오는 쪽을 대표 용어로 쓴다 — 형광펜 표시가 그 위치 기준이라 하나로 정해야 한다.
+        matches = [
+            (product.product_name.find(term), term)
             for term in (family.marketing_terms or [])
             if term in product.product_name
         ]
-        if positions:
-            from_name.append((min(positions), family))
+        if matches:
+            best_pos, best_term = min(matches, key=lambda t: t[0])
+            from_name.append((best_pos, family, best_term))
         else:
             ranks = [
                 pi_by_ingredient[m.ingredient_id].label_rank
@@ -84,11 +87,13 @@ def compute_matched_families(product: Product, db: Session, *, limit: int = 3) -
     from_name.sort(key=lambda t: t[0])
     from_general.sort(key=lambda t: t[0])
 
-    ordered_families = [(f, True) for _, f in from_name] + [(f, False) for _, f in from_general]
+    ordered_families = [(f, True, term) for _, f, term in from_name] + [
+        (f, False, None) for _, f in from_general
+    ]
     ordered_families = ordered_families[:limit]
 
     result: list[MatchedFamily] = []
-    for family, from_product_name in ordered_families:
+    for family, from_product_name, matched_term in ordered_families:
         fam_members = sorted(
             members_by_family[family.family_id],
             key=lambda m: (
@@ -117,6 +122,7 @@ def compute_matched_families(product: Product, db: Session, *, limit: int = 3) -
                 family_id=family.family_id,
                 name=family.family_name,
                 from_product_name=from_product_name,
+                matched_term=matched_term,
                 ingredients=ingredients,
             )
         )

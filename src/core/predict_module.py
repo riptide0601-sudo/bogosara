@@ -162,6 +162,30 @@ def predict(
                     for result in engine_results
                 ]
             }
+        elif engine == "paddleocr":
+            # 텍스트만 담당하는 run_engine()과 별도로, 성분표 사진 위에 인식한 줄을 형광펜으로
+            # 표시하는 화면(성분 요약 페이지)을 위해 줄 단위 좌표(rec_boxes)까지 같이 받는다.
+            # run_engine()을 또 호출하면 같은 이미지를 두 번 추론하게 되므로 이 경로 하나로 합친다.
+            lines = ocr_engines.run_paddleocr_with_lines(image, language=language, gpu=_use_gpu())
+            raw_text = "\n".join(line["text"] for line in lines)
+            ingredients = _split_ingredients(raw_text)
+            width, height = image.size
+            text_regions = [
+                {
+                    "text": line["text"],
+                    # 프론트가 사진을 표시하는 크기에 그대로 곱하기만 하면 되도록, 픽셀 좌표
+                    # 대신 이미지 너비/높이 기준 0~1 비율로 정규화해서 내려준다.
+                    "box_pct": [
+                        line["box"][0] / width,
+                        line["box"][1] / height,
+                        line["box"][2] / width,
+                        line["box"][3] / height,
+                    ],
+                }
+                for line in lines
+            ]
+            data = {"ingredients": ingredients, "text_regions": text_regions}
+            result = {"ok": True, "text": raw_text, "elapsed_ms": None}
         else:
             result = ocr_engines.run_engine(
                 engine, image, language=language, gpu=_use_gpu()

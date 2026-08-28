@@ -556,13 +556,35 @@
   height: 100%;
   object-fit: cover;
 }
+/* 촬영 직후(analyzing/failed) 라이브 영상 대신 보여주는 정지 프레임 — 화면 전체가 아니라
+   .scan-page__frame(뷰파인더, position:relative) 안에 들어가서 그 프레임 비율(3:4)에 맞춰
+   잘린다. 업로드한 사진처럼 원본 비율이 화면과 안 맞아도 프레임 밖으로 삐져나오지 않는다. */
+.scan-page__captured {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* 촬영 프레임 — 이전엔 네 귀퉁이 브래킷(.scan-corner)만 있고 실제 테두리가 없어서
+   "여기 안에 맞추라"는 영역이 잘 안 보였다. 점선 테두리를 두르고, 바깥은
+   box-shadow(spread 큰 값)로 어둡게 죽여서 프레임 안쪽만 밝게 도드라지게 한다 —
+   overflow:hidden은 자기 자신의 box-shadow를 안 자르므로 이 트릭과 같이 써도 안전하다. */
 .scan-page__frame {
   position: relative;
   z-index: 2;
   width: min(78vw, 420px);
   aspect-ratio: 3 / 4;
   border-radius: 18px;
+  border: 2px dashed rgba(241, 238, 224, 0.75);
+  box-shadow: 0 0 0 2000px rgba(11, 12, 7, 0.5);
   overflow: hidden;
+}
+/* OCR 응답을 기다리는 동안 — 같은 스캔 라인을 더 빠르게 왕복시켜서 "지금 사진을 훑으며
+   읽는 중"이라는 느낌을 준다(뷰파인더 단계의 느긋한 조준 모션과 구분). ScanOverlay의
+   MIN_ANALYZING_MS(2000ms) 동안 두 번 이상 왕복하도록 0.7s(왕복 1.4s)로 잡았다. */
+.scan-line--analyzing {
+  animation-duration: 0.7s;
 }
 .scan-page__hint {
   position: absolute;
@@ -579,12 +601,21 @@
   padding: 0.5em 1em;
   border-radius: 999px;
 }
-.scan-page__shutter {
+/* 촬영 버튼 + 업로드 버튼을 한 줄로 묶는다 — 단, 묶음 전체를 가운데 정렬하면 촬영 버튼이
+   업로드 버튼 너비만큼 중앙에서 왼쪽으로 밀려 보인다. 그래서 컨테이너는 50% 지점에서
+   시작만 하고, 촬영 버튼에 자기 너비 절반만큼 음수 margin을 줘서 그 중심이 정확히 화면
+   정중앙(50%)에 오도록 고정한 뒤, 업로드 버튼은 그 오른쪽에 자연스럽게 이어 붙인다. */
+.scan-page__actions {
   position: absolute;
   z-index: 2;
   bottom: clamp(1.6rem, 5vh, 2.6rem);
   left: 50%;
-  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.scan-page__shutter {
+  margin-left: -2.2rem; /* 자기 너비(4.4rem)의 절반 — 이 버튼 중심을 화면 정중앙에 고정 */
   width: 4.4rem;
   height: 4.4rem;
   border-radius: 50%;
@@ -594,14 +625,60 @@
   transition: transform 0.12s ease;
 }
 .scan-page__shutter:hover {
-  transform: translateX(-50%) scale(1.05);
+  transform: scale(1.05);
 }
 .scan-page__shutter:active {
-  transform: translateX(-50%) scale(0.92);
+  transform: scale(0.92);
 }
 .scan-page__shutter:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+/* 카메라 촬영 대신 PC 파일을 고를 수 있는 보조 버튼 — 촬영 버튼 바로 옆(.scan-page__actions)에 둔다. */
+.scan-page__upload-btn {
+  appearance: none;
+  cursor: pointer;
+  white-space: nowrap;
+  background: rgba(11, 12, 7, 0.55);
+  border: 1.5px solid rgba(241, 238, 224, 0.4);
+  border-radius: 999px;
+  padding: 0.5em 0.9em;
+  font-size: 0.7rem;
+  color: #f1eee0;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.scan-page__upload-btn:hover,
+.scan-page__upload-btn:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
+  outline: none;
+}
+.scan-page__file-input {
+  display: none;
+}
+/* 화면 전체가 드롭 영역이라, 파일을 끌고 온 동안 "여기에 놓으면 된다"를 확실히 보여준다.
+   pointer-events:none — 실제 dragover/drop 리스너는 .scan-page(부모)에 있어서, 이 오버레이가
+   가로막지 않고 이벤트가 그대로 부모까지 버블링돼야 한다. */
+.scan-page__drop-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(109, 163, 46, 0.35);
+  border: 3px dashed var(--accent);
+  pointer-events: none;
+}
+.scan-page__drop-hint p {
+  margin: 0;
+  padding: 0.6em 1.2em;
+  background: rgba(11, 12, 7, 0.75);
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f1eee0;
 }
 .scan-page__status {
   z-index: 2;

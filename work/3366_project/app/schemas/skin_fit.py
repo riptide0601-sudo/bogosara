@@ -20,3 +20,5 @@ class SkinTypeCountRead(BaseModel):
     skin_type: str
     good_count: int
     caution_count: int
+    good_ingredients: list[str] = []
+    caution_ingredients: list[str] = []

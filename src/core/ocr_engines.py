@@ -167,6 +167,29 @@ def _run_paddleocr(image: Image.Image, language: str, gpu: bool) -> str:
     return "\n".join(lines)
 
 
+def run_paddleocr_with_lines(image: Image.Image, language: str = "kor+eng", gpu: bool = False) -> list[dict]:
+    """PaddleOCR로 텍스트를 인식하되, 인식된 줄 하나하나의 픽셀 좌표 박스도 같이 반환한다.
+
+    _run_paddleocr()는 4엔진 비교(run_all_engines)용 공통 인터페이스(텍스트만)를 맞추려고
+    rec_boxes를 버리는데, predict_module.py가 성분표 사진 위에 인식한 줄을 형광펜으로
+    표시하려면 그 좌표가 필요해서 별도 함수로 뺐다. rec_boxes는 [x1, y1, x2, y2](좌상단,
+    우하단) 픽셀 좌표 — image는 호출부가 이미 EXIF 보정·리사이즈까지 끝낸 상태로 넘긴다는
+    전제라, 여기 좌표는 곧 그 image의 픽셀 좌표계와 일치한다.
+    """
+    reader = _get_paddleocr_reader(_paddleocr_lang(language), gpu)
+    result = reader.predict(np.array(image.convert("RGB")))
+    lines = []
+    for page in result or []:
+        texts = page.get("rec_texts", [])
+        boxes = page.get("rec_boxes", [])
+        for text, box in zip(texts, boxes):
+            if not text.strip():
+                continue
+            x1, y1, x2, y2 = (float(v) for v in box)
+            lines.append({"text": text, "box": [x1, y1, x2, y2]})
+    return lines
+
+
 def _run_doctr(image: Image.Image, language: str, gpu: bool) -> str:
     # docTR 기본 사전학습 모델은 라틴 문자 위주라 한국어 인식률이 낮다.
     # 4개 엔진 비교 결과에서 이 특성 자체가 유의미한 데이터가 된다.

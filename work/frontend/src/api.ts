@@ -107,6 +107,7 @@ interface ApiMatchedFamily {
   family_id: number;
   name: string;
   from_product_name: boolean;
+  matched_term: string | null;
   ingredients: ApiMatchedFamilyIngredient[];
 }
 
@@ -256,6 +257,7 @@ function toMatchedFamilies(families: ApiMatchedFamily[] | undefined): MatchedFam
   return families.map((f) => ({
     name: f.name,
     from_product_name: f.from_product_name,
+    matched_term: f.matched_term,
     ingredients: f.ingredients.map((i) => ({
       name_kr: i.name_kr ?? '',
       label_rank: i.label_rank,
@@ -355,12 +357,212 @@ export async function fetchIngredientResult(productId: string): Promise<Ingredie
   return mapDetailToIngredientResult(detail);
 }
 
-/** App.tsx / ingredientResult.ts의 로더 시그니처에 맞춘 진입점. scan(OCR)은 아직 미연동. */
+/** App.tsx / ingredientResult.ts의 로더 시그니처에 맞춘 진입점. scan(OCR)은 ScanOverlay가
+ * 촬영 시점에 이미 /ocr/analyze를 호출해 결과를 들고 오므로, 여기서는 그 결과를 성분 요약
+ * 카드 형태로 변환만 한다(mapOcrResultToIngredientResult). */
 export async function loadIngredientResultFromApi(
   request: IngredientResultRequest,
 ): Promise<IngredientResult> {
   if (request.source === 'scan') {
-    throw new Error('OCR 스캔 연동은 아직 준비되지 않았습니다.');
+    return mapOcrResultToIngredientResult(request.ocr);
   }
   return fetchIngredientResult(request.productId);
+}
+
+// ---- OCR 스캔 (app/routers/ocr.py POST /ocr/analyze) ----
+
+/** app/schemas/ingredient.py IngredientDetail과 1:1 — ApiIngredient(검색 흐름)와 필드가
+ * 같아 그 타입들(ApiPurpose/ApiLlmSummary)을 그대로 재사용한다. */
+export interface OcrMatchedIngredient {
+  ingredient_id: number;
+  name_kr: string | null;
+  name_en: string | null;
+  safety_level: string | null;
+  summary: string | null;
+  purposes: ApiPurpose[];
+  llm_summary: ApiLlmSummary | null;
+}
+
+export interface OcrIngredientMatch {
+  label_rank: number;
+  matched_text: string;
+  /** 매칭된 표준 성분 상세 — DB에서 못 찾으면 null(전성분 리스트에서 그 토큰은 생략한다). */
+  ingredient: OcrMatchedIngredient | null;
+}
+
+/** OCR이 사진에서 인식한 줄 하나 — 성분 요약 페이지가 사진 위에 형광펜으로 표시하는 데 쓴다
+ * (app/schemas/ocr.py OcrTextRegion과 1:1). box_pct는 [x1,y1,x2,y2], 이미지 너비/높이 기준
+ * 0~1 비율(픽셀 아님) — PhotoPanel이 표시 중인 사진 크기에 맞춰 변환한다. paddleocr 엔진일
+ * 때만 채워지고, 다른 엔진이면 항상 빈 배열. */
+export interface OcrTextRegion {
+  text: string;
+  box_pct: [number, number, number, number];
+}
+
+export interface OcrAnalyzeResult {
+  engine: string;
+  raw_ingredients: string[];
+  results: OcrIngredientMatch[];
+  text_regions: OcrTextRegion[];
+}
+
+/** 촬영한 프레임(canvas.toBlob 결과)을 업로드해 OCR + DB 성분 매칭을 실행한다
+ * (ScanOverlay의 촬영 버튼 참고). raw_ingredients가 비어 있으면 "인식은 됐지만 아무 성분도
+ * 못 읽었다"는 뜻이라, 호출부가 그 경우를 실패로 취급한다. */
+export async function analyzeOcrImage(image: Blob, signal?: AbortSignal): Promise<OcrAnalyzeResult> {
+  const form = new FormData();
+  form.append('file', image, 'scan.png');
+  const res = await fetch(`${API_BASE_URL}/ocr/analyze`, { method: 'POST', body: form, signal });
+  if (!res.ok) {
+    let detail = '';
+    try {
+      detail = ((await res.json()) as { detail?: string })?.detail ?? '';
+    } catch {
+      // 본문이 JSON이 아니면(예: 프록시 에러 페이지) 그냥 상태 코드만 쓴다.
+    }
+    throw new Error(detail || `OCR 분석 실패: HTTP ${res.status}`);
+  }
+  return res.json() as Promise<OcrAnalyzeResult>;
+}
+
+export interface ScanSummary {
+  one_liner: string;
+  composition_text: string;
+}
+
+/** 스캔 결과 화면의 한줄요약/성분구성 설명 — 검색 흐름(product.summary/composition_text)은
+ * 미리 배치로 캐싱돼 있지만, 스캔은 등록된 Product가 없어 그 캐시가 없다. 그래서
+ * ResultView가 결과 화면에 진입한 "다음" 이 함수를 비동기로 호출해 그 자리에서 LLM을
+ * 돌린다(app/ocr_summary.py) — OCR 인식 자체(analyzeOcrImage)를 이것 때문에 더 기다리게
+ * 하지 않으려고 별도 요청으로 분리했다. 근거(성분)가 너무 적으면 백엔드가 422를 주는데,
+ * 그 경우 그냥 null을 반환해서 호출부가 기존 템플릿 문구를 그대로 쓰게 한다. */
+export async function fetchScanSummary(rawIngredients: string[]): Promise<ScanSummary | null> {
+  const res = await fetch(`${API_BASE_URL}/ocr/summarize`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw_ingredients: rawIngredients }),
+  });
+  if (res.status === 422) return null;
+  if (!res.ok) throw new Error(`스캔 요약 생성 실패: HTTP ${res.status}`);
+  return res.json() as Promise<ScanSummary>;
+}
+
+/** OCR로 매칭된 성분 하나 -> 카드 뒷면 전성분 리스트용 Ingredient. toIngredient(검색 흐름)와
+ * 거의 같은 매핑이지만, 스캔엔 제품별 큐레이션 데이터(relations, key_ingredients 기반
+ * display_grade)가 없어 그 부분만 다르다. DB에 없는 토큰(ingredient===null)은 표준 성분명이
+ * 아니라 카드로 만들 근거가 없어 호출부에서 건너뛴다. */
+function ocrMatchToIngredient(match: OcrIngredientMatch): Ingredient | null {
+  const ing = match.ingredient;
+  if (!ing) return null;
+  const llm = ing.llm_summary;
+  const shortPurposeLabel = pickShortPurposeLabel(ing.purposes);
+  return {
+    ingredient_id: ing.ingredient_id,
+    name_kr: ing.name_kr ?? '',
+    name_en: ing.name_en ?? '',
+    // 스캔은 core_ingredient_selector 큐레이션(핵심 성분 지정) 자체가 없어 항상 'good'.
+    display_grade: 'good',
+    label_rank: match.label_rank,
+    safety_level: ing.safety_level ?? '일반',
+    purposes: ing.purposes.map((p) => ({ name: p.purpose_name, description: p.description ?? '' })),
+    restricted: null,
+    // 시너지/악화 조합은 제품별 큐레이션이라 스캔엔 대응 데이터가 없다.
+    relations: [],
+    llm_summary: {
+      summary_text: llm?.summary_text || ing.summary || '',
+      benefit_text: llm?.benefit_text ?? '',
+      caution_text: llm?.caution_text ?? '',
+      usage_reason_text: llm?.usage_reason_text || (shortPurposeLabel ? `${shortPurposeLabel} 목적으로 배합.` : ''),
+      caution_group_text: llm?.caution_group_text ?? '',
+      combo_recommendation: llm?.combo_recommendation ?? '',
+    },
+  };
+}
+
+// app/purpose_counts.py의 _EXCLUDED_LABELS와 동일 — 순수 제형/기술 성분과 헤어/네일 전용
+// 목적은 "이 성분들, 무슨 일을 하나요?" 요약에서 제외한다.
+const PURPOSE_COUNT_EXCLUDED_LABELS = new Set([
+  '용제', '유화제', '유화안정제', '수성', '비수성', '수렴제', 'pH 조정제',
+  '금속이온봉쇄제', '피막형성제', '증량제', '결합제', '벌킹제', '불투명화제',
+  '비계면활성', '비계면활성제', '흡수제', '변색방지제', '변성제', '안티케이킹제',
+  '가소제', '감미제', '점도감소제',
+  '헤어컨디셔닝제', '모발컨디셔닝제', '모발고정제',
+]);
+
+/** "이 성분들, 무슨 일을 하나요?" — app/purpose_counts.py compute_purpose_counts()의 스캔용
+ * 라이브 집계판. 등록된 Product가 없어도 OCR로 매칭된 성분들의 purposes만으로 같은
+ * 라벨링(extractPurposeLabel)·제외 규칙을 그대로 재구현할 수 있다 — 유일한 차이는
+ * product.key_purposes 큐레이션이 없어 "우선순위 라벨" 정렬을 생략하고 개수 내림차순만
+ * 쓴다는 것. */
+function computeLivePurposeCounts(matches: OcrIngredientMatch[], limit = 6): PurposeCount[] {
+  const total = matches.filter((m) => m.ingredient).length;
+  if (total === 0) return [];
+
+  const idsByLabel = new Map<string, Set<number>>();
+  const descByLabel = new Map<string, string>();
+  for (const match of matches) {
+    if (!match.ingredient) continue;
+    for (const p of match.ingredient.purposes) {
+      const label = extractPurposeLabel(p.purpose_name);
+      if (PURPOSE_COUNT_EXCLUDED_LABELS.has(label)) continue;
+      if (!idsByLabel.has(label)) idsByLabel.set(label, new Set());
+      idsByLabel.get(label)!.add(match.ingredient.ingredient_id);
+      if (p.description && (!descByLabel.has(label) || p.purpose_name === label)) {
+        descByLabel.set(label, p.description);
+      }
+    }
+  }
+
+  return [...idsByLabel.entries()]
+    .sort((a, b) => b[1].size - a[1].size)
+    .slice(0, limit)
+    .map(([label, ids]) => ({
+      label,
+      count: ids.size,
+      total,
+      description: descByLabel.get(label) ?? null,
+    }));
+}
+
+/**
+ * OcrAnalyzeResult -> IngredientResult 변환. 스캔은 등록된 Product가 없어서 LLM이 미리
+ * 만들어둔 한줄요약/핵심성분/성분설명, 그리고 제품명 기반 기능(계열 매칭·올리브영 링크·
+ * 유사 제품 추천)은 대응할 데이터가 없다 — 전부 빈 값으로 두면 각 섹션이 기존의 "근거
+ * 없으면 숨긴다" 규칙에 따라 자연스럽게 안 보인다. 반대로 카드 뒷면 전성분 리스트와
+ * "이 성분들, 무슨 일을 하나요?"는 매칭된 성분들만으로 실제 값을 채울 수 있다.
+ */
+export function mapOcrResultToIngredientResult(ocr: OcrAnalyzeResult): IngredientResult {
+  const ingredients = ocr.results
+    .map(ocrMatchToIngredient)
+    .filter((ing): ing is Ingredient => ing !== null);
+
+  // ResultView.tsx가 결과 화면 진입 직후 fetchScanSummary()를 비동기로 호출해 이 문장을
+  // 실제 LLM 한줄요약으로 갈아끼운다 — 그 전까지 잠깐 보이는 이 자리라 "확인했어요"(완료형)가
+  // 아니라 "확인하고 있어요"(진행형)로 둬서, 별도 로딩 문구 없이 이 문장 자체가 "아직
+  // 요약 중"이라는 걸 나타내게 한다.
+  const summary =
+    ingredients.length > 0
+      ? `촬영한 전성분표에서 표준 성분 ${ingredients.length}종을 확인하고 있어요.`
+      : '촬영한 전성분표에서 표준 성분을 찾지 못했어요.';
+
+  return {
+    product: {
+      product_id: null,
+      product_name: '스캔한 제품',
+      raw_ingredients: ocr.raw_ingredients.join(', '),
+      summary,
+      key_ingredients: [],
+      ingredient_explanation: '',
+      image_url: null,
+      category_description: '',
+      oliveyoung_url: '',
+      skin_score_summary: '',
+      skin_type_counts: [],
+      cautions: [],
+      recommended_products: [],
+      ingredient_families: [],
+      purpose_counts: computeLivePurposeCounts(ocr.results),
+    },
+    ingredients,
+  };
 }

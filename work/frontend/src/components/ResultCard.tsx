@@ -31,7 +31,13 @@ interface ResultCardProps {
  * `ingredientEntryPoint`로 두 진입 경로('list' / 'chip')를 구분해 handleBackNav의 동작과
  * 상세 뷰의 "뒤로" 버튼 라벨을 갈라 보여준다.
  */
-export default function ResultCard({ product, ingredients, isScan, skinRisk, familyRank }: ResultCardProps) {
+export default function ResultCard({
+  product,
+  ingredients,
+  isScan,
+  skinRisk,
+  familyRank,
+}: ResultCardProps) {
   const [flipped, setFlipped] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [ingredientEntryPoint, setIngredientEntryPoint] = useState<'list' | 'chip' | null>(null);

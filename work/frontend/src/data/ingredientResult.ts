@@ -1,4 +1,5 @@
 import { loadIngredientResultFromApi } from '../api';
+import type { OcrAnalyzeResult } from '../api';
 import type { Product } from './mockProducts';
 
 export type IngredientGrade = 'star' | 'good' | 'base';
@@ -70,6 +71,9 @@ export interface MatchedFamily {
   name: string;
   /** true면 상품명에 이 계열 용어가 실제로 등장(1순위), false면 상품명엔 없지만 전성분에서 발견(2순위). */
   from_product_name: boolean;
+  /** from_product_name=true일 때 상품명 안에서 실제로 발견된 원문 그대로의 용어(예: "비타민씨") —
+   * 상품명에서 이 부분을 형광펜 표시하는 데 쓴다. false면 항상 null. */
+  matched_term: string | null;
   ingredients: MatchedFamilyIngredient[];
 }
 
@@ -79,6 +83,8 @@ export interface PurposeCount {
   label: string;
   count: number;
   total: number;
+  /** purpose.description — 없으면 느낌표 아이콘 자체를 안 보여준다(없는 설명을 지어내지 않음). */
+  description: string | null;
 }
 
 /** "피부 타입별 참고" 막대바 한 줄(app/skin_fit.py compute_skin_type_counts 참고).
@@ -87,6 +93,9 @@ export interface SkinTypeCount {
   skin_type: string;
   good_count: number;
   caution_count: number;
+  /** 막대를 눌렀을 때 바로 펼쳐 보여줄 실제 성분명 — good_count/caution_count와 같은 근거. */
+  good_ingredients: string[];
+  caution_ingredients: string[];
 }
 
 export interface IngredientResultProduct {
@@ -127,7 +136,9 @@ export interface IngredientResult {
 
 export type IngredientResultRequest =
   | { source: 'search'; productId: string; productName: string }
-  | { source: 'scan'; imageDataUrl: string };
+  // ocr — ScanOverlay가 촬영 시점에 이미 POST /ocr/analyze(또는 임시 목업)를 실행해 들고 온
+  // 결과. loadIngredientResult는 이 결과를 변환만 한다(api.ts mapOcrResultToIngredientResult).
+  | { source: 'scan'; imageDataUrl: string; ocr: OcrAnalyzeResult };
 
 /** ResultView가 쓰는 단일 진입점 — 실제 로딩 로직(API 호출)은 api.ts에 있다. */
 export function loadIngredientResult(request: IngredientResultRequest): Promise<IngredientResult> {

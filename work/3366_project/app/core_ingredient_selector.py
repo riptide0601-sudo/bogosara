@@ -97,6 +97,11 @@ def load_purpose_db_from_db(db: "Session") -> dict:
         )
     ).all()
     for name_kr, synonyms in synonym_rows:
+        # synonyms 컬럼이 SQL NULL은 아니어도 JSON null 값을 담은 행이 있어서(isnot(None)
+        # 필터는 SQL NULL만 걸러내고, JSON null은 역직렬화되면 파이썬 None이 된다),
+        # 여기서 한 번 더 방어한다.
+        if not synonyms:
+            continue
         purposes = purpose_db.get(name_kr)
         if not purposes:
             continue
