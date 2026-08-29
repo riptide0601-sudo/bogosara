@@ -17,6 +17,14 @@ function formatSavedAt(iso: string): string {
   return new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+/** ingredient_skin_score.caution 원문은 "EU 화장품규정 지정 향료 알레르겐 26종 중 하나.
+ * 산화 시 알레르기 유발력 증가. 피부타입과 무관하게 개인 감작 위험 존재"처럼 문장 여러 개가
+ * 이어질 수 있어서, "주의" 카드엔 핵심만 보이도록 첫 문장만 잘라서 보여준다. */
+function shortenReason(reason: string): string {
+  const firstSentence = reason.split('.')[0].trim();
+  return firstSentence || reason;
+}
+
 interface RoutineViewProps {
   onBack: () => void;
   onSelectProduct: (productId: string) => void;
@@ -584,15 +592,14 @@ export default function RoutineView({
                     ))}
                     {note.risk_ingredients.map((ing) => (
                       <li className="result-caution-item" key={`risk-${ing.ingredient_id}`}>
-                        <p className="result-caution-name routine-ingredient-trigger" tabIndex={0}>
+                        <p className="result-caution-name">
                           ⚠ {ing.name_kr} · <span className="routine-ingredient-status routine-ingredient-status--risk">주의</span>
-                          {ing.reason && (
-                            <span className="routine-ingredient-tooltip" role="tooltip">
-                              {ing.reason}
-                            </span>
-                          )}
                         </p>
-                        {ing.description && <p className="result-caution-reason">{ing.description}</p>}
+                        {/* ing.description(ingredient.summary)은 "이 원료는 다음의 구조를 갖는
+                            OO이다" 같은 화학 구조 정의문이라 "주의" 카드엔 안 어울린다 — 왜
+                            주의해야 하는지 실제 근거인 ing.reason(ingredient_skin_score.caution)을
+                            첫 문장만 잘라서 보여준다. */}
+                        {ing.reason && <p className="result-caution-reason">{shortenReason(ing.reason)}</p>}
                       </li>
                     ))}
                   </ul>
