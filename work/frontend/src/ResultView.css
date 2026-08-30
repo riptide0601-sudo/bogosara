@@ -245,11 +245,12 @@
 }
 
 /* ---- 사진 밑 추천 제품 칸 — 뒤집기 없이 항상 보이는 정적인 목록 ---- */
-/* margin-top:auto로 사진 상자 아래 남는 공간을 전부 위쪽으로 밀어내, 이 칸이 .photo-panel
-   맨 아래(=오른쪽 .flip-card-inner 아래쪽)에 붙는다. 모바일(스택 레이아웃)에서는 이 여백을
-   기대할 필요가 없어 미디어 쿼리에서 고정 간격으로 되돌린다. */
+/* 예전엔 margin-top:auto로 사진 상자 아래 남는 공간을 전부 위쪽으로 밀어내 이 칸을
+   .photo-panel 맨 아래(=오른쪽 .flip-card-inner 아래쪽)에 붙였는데, 오른쪽 카드가 섹션이
+   많아 길어질수록(특히 스캔 결과) 저장 버튼과 이 칸 사이 여백이 지나치게 벌어져 보였다.
+   .photo-panel의 기본 gap(0.7rem)만으로 붙게 두고 별도 여백을 더하지 않는다. */
 .photo-reco-section {
-  margin-top: auto;
+  margin-top: 0;
 }
 .photo-reco-title {
   margin: 0 0 0.5rem;
@@ -355,9 +356,23 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
   backface-visibility: hidden;
-  overflow-y: auto;
-  padding: 1.4rem 1.3rem;
+  /* 스크롤은 이 카드가 아니라 안쪽 .flip-card-scroll이 담당한다(아래 참고) — 여기서
+     overflow-y:auto를 직접 걸면 border-radius 모서리에 세로 스크롤바가 걸려 위쪽이
+     잘려 보이고(둥근 모서리 vs 사각 스크롤 트랙 충돌), 툴팁처럼 화면 밖으로 살짝 나가는
+     숨은 요소(.purpose-count-tooltip 등)도 그대로 가로 스크롤을 만들어버린다. 이 바깥
+     레이어는 그냥 카드 모양대로 잘라내기(clip)만 한다. */
+  overflow: hidden;
   transition: border-color 0.12s, box-shadow 0.12s;
+}
+/* 실제 스크롤 담당 — border-radius가 없는 사각 상자라 네이티브 스크롤바가 카드 모서리에
+   걸리지 않고 상자 안에 깔끔하게 들어간다. flex:1로 .flip-card-face(column flex)의 남는
+   높이를 전부 차지하고, 그 안에서만 세로로 스크롤한다(가로는 항상 hidden). */
+.flip-card-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.4rem 1.3rem;
 }
 
 .flip-card-front {
@@ -553,9 +568,9 @@
   gap: 0.3rem;
   margin: 0 0 0.3rem;
   font-family: var(--font-kr);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   letter-spacing: 0.02em;
-  color: var(--ink-soft);
+  color: var(--accent-dark);
   text-decoration: none;
 }
 .result-oliveyoung-link:hover,
@@ -621,8 +636,10 @@
    기본기(base/few/single 세 단계)를 한 단계씩 줄여서 카드 앞면 스크롤을 최소화했다.
    개수가 몇 개든(고정 상한 없음) 한쪽으로 쏠려 보이지 않도록:
    - justify-content: center — 마지막 줄에 개수가 덜 차도 그 줄 안에서 가운데 정렬된다.
-   - flex: 1 1 4.2rem + max-width — 개수가 적을 때 상자가 살짝 커지면서 빈 공간을 채우고,
-     개수가 많아지면 기본 크기(4.2rem)에 가깝게 줄어든다. */
+   - width: max-content + min/max-width — 상자 너비가 "남는 공간을 똑같이 나눠 갖기"가
+     아니라 성분명 길이(내용) 기준으로 정해진다. 짧은 이름은 min-width 근처로 작게, 긴
+     이름(예: 소듐아세틸레이티드하이알루로네이트)은 좁은 상자 안에서 여러 줄로 잘게
+     줄바꿈되는 대신 max-width까지 가로로 늘어난다(.result-ing-chip 참고). */
 .result-key-ing-desc {
   margin: 0 0 0.5rem;
   font-family: var(--font-noto);
@@ -640,8 +657,14 @@
   gap: 0.45rem;
 }
 .result-ing-chip {
-  flex: 1 1 4.2rem;
-  max-width: 5.8rem;
+  /* flex-grow를 0으로 둬서(예전엔 1) 상자 너비가 "한 줄에 남는 공간을 똑같이 나눠 갖기"가
+     아니라 성분명 길이(내용) 기준으로 정해지게 한다 — 짧은 이름은 min-width 근처로 작게,
+     긴 이름(예: 소듐아세틸레이티드하이알루로네이트)은 4줄까지 줄바꿈되던 것 대신 max-width
+     안에서 최대한 가로로 늘어난다. */
+  flex: 0 1 auto;
+  width: max-content;
+  min-width: 4.2rem;
+  max-width: 9rem;
   min-height: 5.6rem;
   background: var(--accent-dark); /* 약간 진한 연두 — 글씨가 흰색이라 accent(연한 연두)보다 대비가 필요하다 */
   border: 2px solid var(--ink);
@@ -708,8 +731,8 @@
 
 /* 2~3개: 기본보다 한 단계 크게 */
 .result-ing-chips--few .result-ing-chip {
-  flex-basis: 5.4rem;
-  max-width: 7rem;
+  min-width: 5.4rem;
+  max-width: 10.5rem;
   min-height: 6.2rem;
   padding: 0.65rem 0.45rem;
 }
@@ -726,7 +749,8 @@
 /* 1개: 카드 하나가 가로를 꽉 채우는 히어로 상자 — 한 문장 요약(.result-headline) 다음으로
    눈에 띄어야 하니 확실히 큼직하게, 다만 요약 문장보다는 작게 유지한다. */
 .result-ing-chips--single .result-ing-chip {
-  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
   max-width: 18rem;
   min-height: 6.6rem;
   padding: 0.85rem 0.7rem;
@@ -1009,6 +1033,13 @@
 }
 .skin-type-bar-fill--caution {
   background: var(--sub);
+}
+/* "수분 · 보습 밸런스"(마이페이지 조합 분석, RoutineView.tsx)의 "보습" 막대 전용 — 저
+   --caution(연한 세이지)은 원래 "피부 타입별 참고"의 실제 유의 신호용이라, 의미 없이
+   재사용하면 보습 막대가 너무 옅어 보인다. 수분(--good, accent-dark)과 구분되면서도
+   더 진하게 보이도록 accent를 쓴다. */
+.skin-type-bar-fill--moisture {
+  background: var(--accent);
 }
 .skin-type-bar-item-label {
   flex-shrink: 0;
@@ -1646,9 +1677,6 @@
     height: auto;
     max-width: 220px;
     margin: 0 auto;
-  }
-  .photo-reco-section {
-    margin-top: 0.2rem;
   }
   .flip-card {
     height: auto;

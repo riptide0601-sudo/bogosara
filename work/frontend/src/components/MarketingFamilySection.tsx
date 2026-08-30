@@ -3,6 +3,10 @@ import type { MatchedFamily } from '../data/ingredientResult';
 
 interface MarketingFamilySectionProps {
   families: MatchedFamily[];
+  /** 스캔 진입은 상품명이 없어 상품명 유래 매칭(from_product_name)이 항상 false다 —
+   * 제목·설명을 "상품명" 언급 없이 다르게 보여준다(사용자 확정: "우리가 아는 그 성분 진짜
+   * 들어있나?"). */
+  isScan?: boolean;
 }
 
 /**
@@ -33,7 +37,7 @@ interface MarketingFamilySectionProps {
  * 설명이라, "성분 카드 색 차이는 무엇인가요?"를 누르면 펼쳐지는 아코디언으로 접어뒀다 —
  * 기본은 접힘. 계열 박스 자체는 아코디언과 무관하게 항상 보인다.
  */
-export default function MarketingFamilySection({ families }: MarketingFamilySectionProps) {
+export default function MarketingFamilySection({ families, isScan = false }: MarketingFamilySectionProps) {
   const [legendOpen, setLegendOpen] = useState(false);
 
   if (families.length === 0) return null;
@@ -41,10 +45,13 @@ export default function MarketingFamilySection({ families }: MarketingFamilySect
   return (
     <div className="result-section">
       <h3 className="result-section-title">
-        <span className="cursor">▶</span>상품명 성분, 진짜 들어있나요?
+        <span className="cursor">▶</span>
+        {isScan ? '우리가 아는 그 성분 진짜 들어있나?' : '상품명 성분, 진짜 들어있나요?'}
       </h3>
       <p className="result-section-desc">
-        상품명에 등장하는 성분 이름이 실제 전성분에도 들어있는지 계열별로 확인해요.
+        {isScan
+          ? '히알루론산·콜라겐처럼 많이 찾는 성분(계열)이 실제 전성분에도 들어있는지 확인해요.'
+          : '상품명에 등장하는 성분 이름이 실제 전성분에도 들어있는지 계열별로 확인해요.'}
       </p>
       <p className="family-legend-title">
         <button

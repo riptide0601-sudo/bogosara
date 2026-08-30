@@ -540,7 +540,7 @@ export default function RoutineView({
                         <div className="skin-type-bar-item">
                           <div className="skin-type-bar-track">
                             <div
-                              className="skin-type-bar-fill skin-type-bar-fill--caution"
+                              className="skin-type-bar-fill skin-type-bar-fill--moisture"
                               style={{
                                 width: `${(displayAnalysis.occlusion_count / Math.max(1, displayAnalysis.hydration_count + displayAnalysis.occlusion_count)) * 100}%`,
                               }}

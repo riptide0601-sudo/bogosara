@@ -73,6 +73,17 @@ def _call_vllm(prompt: str, *, max_tokens: int = 600) -> str:
     return resp.choices[0].message.content or ""
 
 
+def get_key_ingredients(db: Session, raw_ingredients: list[str]) -> list[str]:
+    """OCR 원문 성분 목록에서 "핵심 성분" 이름을 순서대로 뽑는다 — app/core_ingredient_selector.
+    analyze_product()(검색 흐름의 "핵심 성분" 카드와 동일한 필터+정렬 알고리즘, order_index
+    기준)를 OCR 원문에 직접 돌린다. 검색 흐름은 이 큐레이션을 배치로 미리 계산해
+    product.key_ingredients에 저장해두지만(scripts/generate_target_products.py), 스캔은
+    등록된 Product가 없어 그 캐시가 없다 — 요청마다 이 함수가 그 자리에서 계산한다."""
+    purpose_db = load_purpose_db_from_db(db)
+    analysis = analyze_product(", ".join(raw_ingredients), purpose_db)
+    return analysis["ingredients"]
+
+
 def _build_input(db: Session, raw_ingredients: list[str]) -> dict:
     """OCR 원문 성분 목록 -> prompts/product_summary.md 입력.
 

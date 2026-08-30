@@ -67,23 +67,16 @@ class SkinRiskResult:
     total_ingredient_count: int = 0  # 제품 전성분 개수 (참고용)
 
 
-def compute_skin_risk(product_id: str, skin_type: str, db: Session) -> SkinRiskResult:
-    """제품 성분 중 해당 피부 타입에 위험한 것으로 등록된 성분을 찾아 반환한다.
+def compute_skin_risk_for_ingredients(
+    ingredient_ids: list[int], skin_type: str, db: Session
+) -> SkinRiskResult:
+    """compute_skin_risk()의 핵심 로직 — 제품 ID 대신 성분 ID 목록을 직접 받는다.
 
-    ingredient_skin_score 테이블엔 이제 "위험 성분"만 들어있으므로(평가 결과 마이너스였던
-    것만 남김), 단순히 제품 성분 ID와 겹치는 행을 찾기만 하면 된다. 점수 합산·정규화 없음.
+    스캔(OCR) 흐름은 등록된 product_id가 없어서, 성분 ID만으로 바로 계산할 수 있게
+    분리했다. compute_skin_risk()는 이제 이 함수의 얇은 래퍼다.
     """
     if skin_type not in SKIN_TYPES:
         raise ValueError(f"알 수 없는 피부 타입입니다: {skin_type} (허용값: {SKIN_TYPES})")
-
-    ingredient_ids = list(
-        db.scalars(
-            select(ProductIngredient.ingredient_id).where(
-                ProductIngredient.product_id == product_id
-            )
-        )
-    )
-    total_ingredient_count = len(ingredient_ids)
 
     # skin_type == 조회한 피부타입인 행 + skin_type == '전체'(피부타입 무관 위험, 예: 향료
     # 알레르겐)인 행을 모두 가져온다. 향료류처럼 "피부가 건성이든 지성이든 상관없이
@@ -112,8 +105,33 @@ def compute_skin_risk(product_id: str, skin_type: str, db: Session) -> SkinRiskR
         skin_type=skin_type,
         has_risk=len(risk_ingredients) > 0,
         risk_ingredients=risk_ingredients,
-        total_ingredient_count=total_ingredient_count,
+        total_ingredient_count=len(ingredient_ids),
     )
+
+
+def compute_skin_risk(product_id: str, skin_type: str, db: Session) -> SkinRiskResult:
+    """제품 성분 중 해당 피부 타입에 위험한 것으로 등록된 성분을 찾아 반환한다.
+
+    ingredient_skin_score 테이블엔 이제 "위험 성분"만 들어있으므로(평가 결과 마이너스였던
+    것만 남김), 단순히 제품 성분 ID와 겹치는 행을 찾기만 하면 된다. 점수 합산·정규화 없음.
+    """
+    ingredient_ids = list(
+        db.scalars(
+            select(ProductIngredient.ingredient_id).where(
+                ProductIngredient.product_id == product_id
+            )
+        )
+    )
+    return compute_skin_risk_for_ingredients(ingredient_ids, skin_type, db)
+
+
+def compute_all_skin_risks_for_ingredients(
+    ingredient_ids: list[int], db: Session
+) -> list[SkinRiskResult]:
+    return [
+        compute_skin_risk_for_ingredients(ingredient_ids, skin_type, db)
+        for skin_type in SKIN_TYPES
+    ]
 
 
 def compute_all_skin_risks(product_id: str, db: Session) -> list[SkinRiskResult]:
@@ -138,26 +156,23 @@ class SkinTypeCount:
     caution_ingredients: list[str] = field(default_factory=list)
 
 
-def compute_skin_type_counts(product_id: str, db: Session) -> list[SkinTypeCount]:
-    """"피부 타입별 참고" 막대바용 — 피부타입마다 좋은/유의 성분이 몇 개(와 어떤 성분인지)를
-    구조화된 형태로 반환한다(summarize_skin_score_matches의 문장 버전과 같은 근거, 형태만 다름).
-    매칭이 하나도 없는 피부타입은 목록에서 아예 빠진다(0/0을 굳이 안 보여줌).
-    "전체"(피부타입 무관, 향료 알레르겐 등)는 이 막대바에서는 제외한다 — 4개 피부타입별
-    비교가 목적이라 "전체" 항목이 섞이면 오히려 헷갈린다는 피드백으로 뺐다.
-    """
+def compute_skin_type_counts_for_ingredients(
+    ingredient_ids: list[int], db: Session
+) -> list[SkinTypeCount]:
+    """compute_skin_type_counts()의 핵심 로직 — 제품 ID 대신 성분 ID 목록을 직접 받는다.
+    스캔(OCR) 흐름처럼 등록된 product_id가 없을 때 쓴다."""
+    if not ingredient_ids:
+        return []
+
     rows = db.execute(
         select(
             IngredientSkinScore.skin_type,
             IngredientSkinScore.is_risk,
-            ProductIngredient.ingredient_id,
+            IngredientSkinScore.ingredient_id,
             Ingredient.name_kr,
         )
-        .join(
-            ProductIngredient,
-            ProductIngredient.ingredient_id == IngredientSkinScore.ingredient_id,
-        )
         .join(Ingredient, Ingredient.ingredient_id == IngredientSkinScore.ingredient_id)
-        .where(ProductIngredient.product_id == product_id)
+        .where(IngredientSkinScore.ingredient_id.in_(ingredient_ids))
         .distinct()
     ).all()
 
@@ -183,6 +198,23 @@ def compute_skin_type_counts(product_id: str, db: Session) -> list[SkinTypeCount
     ]
     result.sort(key=lambda item: _SUMMARY_SKIN_TYPE_ORDER.get(item.skin_type, 99))
     return result
+
+
+def compute_skin_type_counts(product_id: str, db: Session) -> list[SkinTypeCount]:
+    """"피부 타입별 참고" 막대바용 — 피부타입마다 좋은/유의 성분이 몇 개(와 어떤 성분인지)를
+    구조화된 형태로 반환한다(summarize_skin_score_matches의 문장 버전과 같은 근거, 형태만 다름).
+    매칭이 하나도 없는 피부타입은 목록에서 아예 빠진다(0/0을 굳이 안 보여줌).
+    "전체"(피부타입 무관, 향료 알레르겐 등)는 이 막대바에서는 제외한다 — 4개 피부타입별
+    비교가 목적이라 "전체" 항목이 섞이면 오히려 헷갈린다는 피드백으로 뺐다.
+    """
+    ingredient_ids = list(
+        db.scalars(
+            select(ProductIngredient.ingredient_id).where(
+                ProductIngredient.product_id == product_id
+            )
+        )
+    )
+    return compute_skin_type_counts_for_ingredients(ingredient_ids, db)
 
 
 def summarize_skin_score_matches(product_ids: list[str], db: Session) -> dict[str, str]:

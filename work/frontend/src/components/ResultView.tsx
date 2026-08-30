@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { loadIngredientResult, type IngredientResult, type IngredientResultRequest } from '../data/ingredientResult';
 import type { Product } from '../data/mockProducts';
-import { fetchProductFamilyRank, fetchScanSummary, fetchSkinFit, type FamilyRankInfo } from '../api';
+import { fetchProductFamilyRank, fetchSkinFit, type ApiSkinRisk, type FamilyRankInfo } from '../api';
 import { ApiError } from '../api/client';
 import { getSkinProfile, saveResult } from '../api/users';
 import { useAuth } from '../context/AuthContext';
@@ -68,16 +68,6 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
   const [saveError, setSaveError] = useState<string | null>(null);
   const [skinRisk, setSkinRisk] = useState<SkinRiskInfo>({ status: 'signed-out' });
   const [familyRank, setFamilyRank] = useState<FamilyRankState>({ status: 'idle' });
-  // 스캔 결과의 한줄요약/성분구성 설명 — 검색 흐름과 달리 미리 캐싱된 값이 없어(등록된
-  // Product가 없음) 결과 화면에 이미 들어온 "다음"에 비동기로 LLM을 호출해 채운다
-  // (fetchScanSummary). 로딩 중엔 ResultSummaryPanel이 기존 템플릿 문구("확인하고
-  // 있어요" 진행형, api.ts 참고)를 그대로 보여주고, 완료되면 data.product.summary/
-  // ingredient_explanation을 실제 생성문으로 갈아끼운다. 이 요청을 딱 한 번만 보내면
-  // 되므로 상태값 대신 ref로 "이미 시작했는지"만 추적한다 — 예전에 useState로 추적하며
-  // 그 상태를 effect 의존성에 넣었더니, 상태 변화 자체가 effect를 다시 트리거하고
-  // React가 재실행 전 "이전" effect의 cleanup(cancelled=true)부터 부르는 바람에 방금
-  // 시작한 진짜 요청의 완료 콜백까지 취소돼버리는 버그가 있었다.
-  const scanSummaryRequestedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +75,6 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
     setData(null);
     setSaved(false);
     setSaveError(null);
-    scanSummaryRequestedRef.current = false;
 
     loadIngredientResult(request)
       .then((result) => {
@@ -104,52 +93,53 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
     };
   }, [request]);
 
-  // 스캔 결과 화면이 뜬 다음(status==='done') OCR raw_ingredients로 요약을 비동기 생성한다.
-  // data를 의존성에 넣지 않는다 — 이 effect 자신이 setData로 summary를 채워 넣는데, data를
-  // 넣으면 그 갱신이 자기 자신을 다시 트리거해서 무한 호출로 이어진다.
+  // "비슷한 제품과 비교하면" — 검색 흐름은 GET /products/{id}/family-rank로 조회하지만,
+  // 스캔은 ScanOverlay가 결과 화면으로 넘어오기 전에 이미 받아둔 request.composition.
+  // family_ranks를 그대로 쓴다(추가 호출 없음) — 결과 화면이 뜨는 순간 이미 완성돼 있다.
   useEffect(() => {
-    if (request.source !== 'scan' || status !== 'done' || scanSummaryRequestedRef.current) return;
-    scanSummaryRequestedRef.current = true;
+    if (request.source === 'scan') {
+      const rankData = request.composition?.family_ranks ?? [];
+      setFamilyRank(rankData.length > 0 ? { status: 'ok', data: rankData } : { status: 'none' });
+      return;
+    }
 
     let cancelled = false;
+    setFamilyRank({ status: 'loading' });
 
-    fetchScanSummary(request.ocr.raw_ingredients)
-      .then((summary) => {
-        if (cancelled || !summary) return;
-        setData((prev) =>
-          prev
-            ? {
-                ...prev,
-                product: {
-                  ...prev.product,
-                  summary: summary.one_liner || prev.product.summary,
-                  ingredient_explanation: summary.composition_text,
-                },
-              }
-            : prev,
-        );
+    fetchProductFamilyRank(request.productId)
+      .then((data) => {
+        if (cancelled) return;
+        setFamilyRank(data.length > 0 ? { status: 'ok', data } : { status: 'none' });
       })
       .catch((err) => {
         if (cancelled) return;
-        console.error('[보고사라][결과 화면] 스캔 요약 생성 실패', err);
+        console.error('[보고사라][결과 화면] 계열 비교 조회 실패', err);
+        setFamilyRank({ status: 'error' });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [request, status]);
+  }, [request]);
 
-  // 로그인한 유저의 마이페이지 피부 타입 기준 개인화된 위험 성분 — search 진입(실제 product_id가
-  // 있는 경우)에만 의미가 있다. skin-fit은 skin_type을 생략하면 4개 타입 전부 내려주므로,
-  // 별도 API 호출 없이 유저의 skin_types와 클라이언트에서 대조한다.
+  // 로그인한 유저의 마이페이지 피부 타입 기준 개인화된 위험 성분 — skin-fit은 skin_type을
+  // 생략하면 4개 타입 전부 내려주므로, 별도 API 호출 없이 유저의 skin_types와 클라이언트에서
+  // 대조한다. 검색 흐름은 그 "4개 타입 전부"를 GET /products/{id}/skin-fit으로 조회하고,
+  // 스캔은 ScanOverlay가 미리 받아둔 request.composition.skin_risks를 그대로 쓴다(같은 모양의
+  // 데이터라 소스만 다르다).
   useEffect(() => {
-    if (request.source !== 'search' || !user) {
+    if (!user) {
       setSkinRisk({ status: 'signed-out' });
       return;
     }
 
     let cancelled = false;
     setSkinRisk({ status: 'loading' });
+
+    const fetchAllRisks = (): Promise<ApiSkinRisk[]> =>
+      request.source === 'scan'
+        ? Promise.resolve(request.composition?.skin_risks ?? [])
+        : fetchSkinFit(request.productId);
 
     getSkinProfile()
       .then((profile) => {
@@ -158,7 +148,7 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
           setSkinRisk({ status: 'no-skin-type' });
           return null;
         }
-        return fetchSkinFit(request.productId).then((all) => {
+        return fetchAllRisks().then((all) => {
           if (cancelled) return;
           const mySkinTypes = new Set(profile.skin_types);
           const risks = all
@@ -183,32 +173,6 @@ export default function ResultView({ request, onBack, onOpenMyPage, onSelectProd
       cancelled = true;
     };
   }, [request, user]);
-
-  // "비슷한 제품과 비교하면" — search 진입(실제 product_id가 있는 경우)에만 조회한다.
-  useEffect(() => {
-    if (request.source !== 'search') {
-      setFamilyRank({ status: 'idle' });
-      return;
-    }
-
-    let cancelled = false;
-    setFamilyRank({ status: 'loading' });
-
-    fetchProductFamilyRank(request.productId)
-      .then((data) => {
-        if (cancelled) return;
-        setFamilyRank(data.length > 0 ? { status: 'ok', data } : { status: 'none' });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        console.error('[보고사라][결과 화면] 계열 비교 조회 실패', err);
-        setFamilyRank({ status: 'error' });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [request]);
 
   const isScan = request.source === 'scan';
 

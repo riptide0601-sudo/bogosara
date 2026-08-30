@@ -69,10 +69,12 @@ def _with_skin_score_summary(products: list[Product], db: Session) -> list[Produ
     return result
 
 
-def _build_similar_products(
-    product_id: str, db: Session, *, min_score: float, limit: int
+def _similarity_reads_from_scores(
+    scored: list[tuple[str, float]], db: Session
 ) -> list[ProductSimilarityRead]:
-    scored = find_similar_products(product_id, db, min_score=min_score, limit=limit)
+    """(product_id, score) 목록 -> ProductSimilarityRead 목록. find_similar_products()(검색
+    흐름)와 find_similar_products_for_ingredients()(스캔 흐름, app/routers/ocr.py) 둘 다 이
+    변환을 공유한다."""
     if not scored:
         return []
     products_by_id = {
@@ -86,6 +88,13 @@ def _build_similar_products(
         for pid, score in scored
         if pid in products_by_id
     ]
+
+
+def _build_similar_products(
+    product_id: str, db: Session, *, min_score: float, limit: int
+) -> list[ProductSimilarityRead]:
+    scored = find_similar_products(product_id, db, min_score=min_score, limit=limit)
+    return _similarity_reads_from_scores(scored, db)
 
 
 def _relations_by_ingredient_id(
@@ -373,6 +382,95 @@ def _compute_family_rank(db: Session, family_id: int, product_id: str) -> Family
         family_name=family.family_name,
         representative_ingredient=rep_name,
         representative_concentration=this_concentration,
+        label_rank=this_rank_value,
+        rank=rank,
+        total_count=total_count,
+        average_label_rank=round(average, 1),
+        top_percentile=math.ceil(rank / total_count * 100),
+        average_concentration_percent=average_concentration_percent,
+        concentration_sample_count=len(concentration_percents),
+    )
+
+
+def _compute_family_rank_for_ingredient(
+    db: Session,
+    family_id: int,
+    this_rank_value: int,
+    this_ingredient_name: str,
+    this_matched_text: str | None,
+) -> FamilyRankRead:
+    """_compute_family_rank()의 스캔(OCR)용 버전 — 등록된 product_id 대신, 이미 계산해둔
+    (label_rank, 대표 성분명, matched_text)을 그 자리에서 큐레이션 그룹(product_family_member)
+    비교에 "가상 참가자"로 끼워넣는다. DB에는 아무것도 쓰지 않는다 — 순위/평균 계산에만 참여.
+
+    큐레이션된 32개 제품끼리의 순위·평균은 원래 로직 그대로(이 함수가 새로 손대지 않음) —
+    거기에 이 성분의 순위가 몇 등쯤 되는지만 얹어서 보여준다. 계열 평균(대표 성분 순위·함량)
+    자체는 이 스캔 결과를 포함하지 않은, 기존 큐레이션 제품들만의 값이다.
+    """
+    family = db.get(IngredientFamily, family_id)
+
+    member_ids = db.scalars(
+        select(IngredientFamilyMember.ingredient_id).where(
+            IngredientFamilyMember.family_id == family_id
+        )
+    ).all()
+
+    curated_product_ids = db.scalars(
+        select(ProductFamilyMember.product_id).where(ProductFamilyMember.family_id == family_id)
+    ).all()
+
+    rep_rank_stmt = (
+        select(ProductIngredient.product_id, func.min(ProductIngredient.label_rank).label("rep_rank"))
+        .where(
+            ProductIngredient.product_id.in_(curated_product_ids),
+            ProductIngredient.ingredient_id.in_(member_ids),
+            ProductIngredient.label_rank.isnot(None),
+        )
+        .group_by(ProductIngredient.product_id)
+    )
+    rows = db.execute(rep_rank_stmt).all()
+    if not rows:
+        return FamilyRankRead(family_name=family.family_name, has_data=False)
+
+    ranks = [r.rep_rank for r in rows]
+    # 큐레이션된 32개 제품 사이에 이 스캔 결과를 끼워넣었을 때 몇 등인지 — 자기 자신은
+    # 큐레이션 목록에 없으니 total_count는 "기존 + 나" 1개를 더한다.
+    rank = sum(1 for r in ranks if r < this_rank_value) + 1
+    total_count = len(ranks) + 1
+    average = sum(ranks) / len(ranks)
+
+    detail_rows = db.execute(
+        select(
+            ProductIngredient.product_id,
+            ProductIngredient.label_rank,
+            ProductIngredient.matched_text,
+        ).where(
+            ProductIngredient.product_id.in_(curated_product_ids),
+            ProductIngredient.ingredient_id.in_(member_ids),
+            ProductIngredient.label_rank.isnot(None),
+        )
+    ).all()
+    rep_rank_by_product = {r.product_id: r.rep_rank for r in rows}
+    rep_matched_text_by_product: dict[str, str] = {}
+    for d in detail_rows:
+        if d.label_rank == rep_rank_by_product.get(d.product_id):
+            rep_matched_text_by_product.setdefault(d.product_id, d.matched_text)
+
+    concentration_percents = [
+        pct
+        for text in rep_matched_text_by_product.values()
+        if (pct := concentration_to_percent(extract_concentration(text))) is not None
+    ]
+    average_concentration_percent = (
+        round(sum(concentration_percents) / len(concentration_percents), 4)
+        if concentration_percents
+        else None
+    )
+
+    return FamilyRankRead(
+        family_name=family.family_name,
+        representative_ingredient=this_ingredient_name,
+        representative_concentration=extract_concentration(this_matched_text),
         label_rank=this_rank_value,
         rank=rank,
         total_count=total_count,

@@ -569,16 +569,39 @@
 /* 촬영 프레임 — 이전엔 네 귀퉁이 브래킷(.scan-corner)만 있고 실제 테두리가 없어서
    "여기 안에 맞추라"는 영역이 잘 안 보였다. 점선 테두리를 두르고, 바깥은
    box-shadow(spread 큰 값)로 어둡게 죽여서 프레임 안쪽만 밝게 도드라지게 한다 —
-   overflow:hidden은 자기 자신의 box-shadow를 안 자르므로 이 트릭과 같이 써도 안전하다. */
+   overflow:hidden은 자기 자신의 box-shadow를 안 자르므로 이 트릭과 같이 써도 안전하다.
+   (78vw/420px → 88vw/460px: 풀스크린까지는 아니고 기존보다 살짝만 더 크게 — 세로로 긴
+   3:4 비율은 유지해서 가로로 퍼지지 않게 한다.) */
 .scan-page__frame {
   position: relative;
   z-index: 2;
-  width: min(78vw, 420px);
+  width: min(88vw, 460px);
   aspect-ratio: 3 / 4;
   border-radius: 18px;
   border: 2px dashed rgba(241, 238, 224, 0.75);
   box-shadow: 0 0 0 2000px rgba(11, 12, 7, 0.5);
   overflow: hidden;
+}
+/* 촬영/업로드 직후('captured' 단계) 한 번 번쩍하는 흰 플래시 — 실제 카메라 셔터 느낌으로
+   "방금 찍혔다"를 확실히 인지시킨다. 화면 전체를 덮고(z-index:4, 닫기 버튼보다 아래) 바로
+   꺼지므로 아래 사진/프레임을 가리는 시간은 아주 짧다. animation-fill-mode:forwards로
+   끝난 뒤 opacity:0에 그대로 머문다 — 별도 JS로 지울 필요 없이 'captured' phase가 끝나면
+   이 요소 자체가 DOM에서 사라진다. */
+.scan-page__flash {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: #fff;
+  pointer-events: none;
+  animation: scanCaptureFlash 0.4s ease-out forwards;
+}
+@keyframes scanCaptureFlash {
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 /* OCR 응답을 기다리는 동안 — 같은 스캔 라인을 더 빠르게 왕복시켜서 "지금 사진을 훑으며
    읽는 중"이라는 느낌을 준다(뷰파인더 단계의 느긋한 조준 모션과 구분). ScanOverlay의
@@ -681,7 +704,17 @@
   color: #f1eee0;
 }
 .scan-page__status {
+  /* .scan-page__frame가 phase==='live'인 동안 항상 같이 떠 있어서(카메라 참조 유지 목적,
+     ScanOverlay.tsx 참고), 이 메시지도 일반 흐름에 두면 프레임과 나란히 놓여 가운데 정렬이
+     깨진다 — 화면 하단에 절대 위치시켜 프레임은 그대로 가운데 유지하고 이 메시지만 그
+     아래 겹쳐 보이게 한다. .scan-page__hint보다 더 아래(.scan-page__actions 자리)를 쓴다 —
+     에러 상태에선 촬영/업로드 버튼이 안 뜨니 그 자리가 비어 있고, 메시지가 여러 줄+버튼이라
+     hint 자리에 두면 프레임 하단 테두리와 겹친다. */
+  position: absolute;
   z-index: 2;
+  bottom: clamp(2rem, 6vh, 3rem);
+  left: 50%;
+  transform: translateX(-50%);
   max-width: 34ch;
   text-align: center;
   font-size: 0.92rem;
@@ -701,6 +734,448 @@
   padding: 0.3rem 0.6rem;
   font-size: 0.8rem;
   color: var(--ink);
+}
+
+/* =========================================================
+   OCR 분석 대기 화면 (analyzing) — 2단 레이아웃(사진 + 분석 패널). 구조·모션은
+   ocr-analyzing.html(디자인 참고 파일)을 따르되, 색·폰트·카드 스타일은 참고 파일을
+   따라가지 않고 이 프로젝트의 기존 디자인 토큰(index.css/ResultView.css)을 그대로 쓴다.
+   .scan-page 자체는 카메라 뷰파인더용 다크 테마라, analyzing 단계만 결과 화면과 같은
+   라이트 카드 톤으로 갈아입힌다.
+
+   박스 위치·크기는 결과 화면(ResultView.css의 .result-view/.result-layout/.photo-panel/
+   .flip-card-face)과 숫자까지 그대로 맞췄다 — 컨테이너 최대폭(1200px)/패딩, 그리드
+   칼럼비(280px:1fr)와 간격, 사진 종횡비(3:4), 오른쪽 패널의 높이·오버플로 규칙(카드처럼
+   패널 자체가 100% 채우고 내부만 스크롤), 860px 반응형 기준점까지 전부 동일하다. 분석
+   대기 화면 → 결과 화면은 하드 네비게이션(공유 엘리먼트 전환 없음)이라, 같은 뷰포트에서
+   두 화면의 박스가 같은 자리·크기에 있어야 전환이 "자연스럽게 이어지는" 것처럼 보인다.
+   ========================================================= */
+.scan-page--analyzing {
+  background: var(--bg);
+  color: var(--ink);
+  align-items: stretch;
+  overflow: hidden;
+}
+.scan-page--analyzing .scan-page__close {
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  color: var(--ink);
+}
+.scan-page--analyzing .scan-page__close:hover {
+  background: var(--accent);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* .result-view와 같은 박스 모델(최대폭 1200px/높이 100vh/패딩). padding-top에는
+   .result-view의 기본 패딩 위에 결과 화면 상단바(뒤로가기 버튼 높이 38px + 위아래 여백,
+   .result-topbar/.result-topbar--below-hamburger)만큼을 더해서, 사진/패널이 결과 화면과
+   같은 y좌표에서 시작하게 한다. */
+.scan-analyzing-viewport {
+  width: 100%;
+  max-width: 1200px;
+  height: 100vh;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: calc(clamp(1.5rem, 4vw, 2.5rem) + 2.75rem + 38px + 0.5rem) clamp(1.5rem, 4vw, 2.5rem)
+    clamp(1.25rem, 3vw, 2rem);
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 860px) {
+  .scan-page--analyzing {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+  .scan-analyzing-viewport {
+    height: auto;
+    display: block;
+    padding-bottom: clamp(3rem, 8vw, 5rem);
+  }
+}
+
+/* .result-layout과 동일한 그리드(칼럼비/간격/860px 기준점). */
+.scan-analyzing-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  gap: clamp(1.25rem, 3vw, 2rem);
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+@media (max-width: 860px) {
+  .scan-analyzing-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* .photo-panel과 동일 — height:100%, 세로 flex. */
+.scan-analyzing-photo-col {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+@media (max-width: 860px) {
+  .scan-analyzing-photo-col {
+    height: auto;
+    /* max-width만으로는(grid stretch + aspect-ratio 자식 조합에서) 그리드 트랙 폭 전체가 아닌
+       내용 기반의 더 좁은 값으로 계산되는 경우가 있어, width도 같이 못박아 확실히 220px로 만든다. */
+    width: 220px;
+    max-width: 220px;
+    margin: 0 auto;
+  }
+}
+/* .photo-panel-img와 동일 — width:100%, 종횡비 3:4, 같은 테두리·라운드·그림자. */
+.scan-analyzing-photo-frame {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius);
+  border: var(--border-w) solid var(--ink);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  overflow: hidden;
+  background: var(--sub);
+}
+.scan-analyzing-photo-cap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-family: var(--font-noto);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.scan-analyzing-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-dark);
+  animation: scanAnalyzingBlink 1.2s infinite;
+}
+@keyframes scanAnalyzingBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* ---- 오른쪽 분석 패널 (ScanAnalyzingPanel) ---- */
+/* .flip-card-face와 동일 — 그리드 칸을 100% 채우고, 넘치는 내용은 패널 자체가
+   overflow-y:auto로 안에서 스크롤한다(페이지 자체는 데스크톱에서 스크롤 없음). */
+.scan-analyzing-panel {
+  /* 그리드 아이템의 기본 min-width:auto는 내용(특히 nowrap 칩)의 고유 너비가 트랙을 밀어
+     넓히게 둔다 — 0으로 낮춰서 좁은 화면에서도 안쪽 콘텐츠가 폭을 넘지 않고 줄바꿈되게 한다. */
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--panel);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-off) var(--shadow-off) 0 0 var(--ink);
+  padding: 1.4rem 1.3rem;
+}
+@media (max-width: 860px) {
+  .scan-analyzing-panel {
+    height: clamp(390px, 77vh, 700px);
+  }
+}
+.scan-analyzing-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-noto);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border: 1.5px solid var(--accent-dark);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+}
+.scan-analyzing-spinner {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-dark);
+  border-top-color: transparent;
+  animation: scanAnalyzingSpin 0.9s linear infinite;
+}
+@keyframes scanAnalyzingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.scan-analyzing-headline {
+  margin: 0;
+  font-family: var(--font-noto);
+  font-size: clamp(1.15rem, 3.6vw, 1.5rem);
+  font-weight: 800;
+  line-height: 1.38;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.scan-analyzing-num {
+  color: var(--accent-dark);
+  font-variant-numeric: tabular-nums;
+}
+.scan-analyzing-caret {
+  display: inline-block;
+  width: 3px;
+  height: 0.95em;
+  margin-left: 2px;
+  background: var(--accent-dark);
+  vertical-align: -0.12em;
+  animation: scanAnalyzingCaret 1s steps(1) infinite;
+}
+@keyframes scanAnalyzingCaret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.scan-analyzing-progress {
+  margin: 1.3rem 0 0.4rem;
+}
+.scan-analyzing-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.4rem;
+}
+.scan-analyzing-progress-step {
+  font-family: var(--font-noto);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.scan-analyzing-progress-pct {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--accent-dark);
+  font-variant-numeric: tabular-nums;
+}
+.scan-analyzing-track {
+  height: 8px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+  background: var(--bg);
+  overflow: hidden;
+}
+.scan-analyzing-fill {
+  position: relative;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent-dark);
+  overflow: hidden;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.15, 1);
+}
+.scan-analyzing-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: scanAnalyzingShimmer 1.3s linear infinite;
+}
+@keyframes scanAnalyzingShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.scan-analyzing-steps {
+  margin: 1.2rem 0 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.scan-analyzing-step {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.45rem 0.15rem;
+  opacity: 0.42;
+  transition: opacity 0.3s;
+}
+.scan-analyzing-step.is-active {
+  opacity: 1;
+}
+.scan-analyzing-step.is-done {
+  opacity: 0.9;
+}
+.scan-analyzing-step-ic {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  background: var(--panel);
+  transition: 0.25s;
+}
+.scan-analyzing-step.is-active .scan-analyzing-step-ic {
+  border-color: var(--accent-dark);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.scan-analyzing-step.is-done .scan-analyzing-step-ic {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+.scan-analyzing-step-ic svg {
+  width: 11px;
+  height: 11px;
+  stroke: #fff;
+  stroke-width: 3;
+  fill: none;
+}
+.scan-analyzing-step-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-dark);
+  animation: scanAnalyzingPulse 1s infinite;
+}
+@keyframes scanAnalyzingPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+}
+.scan-analyzing-step-txt {
+  font-family: var(--font-noto);
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.scan-analyzing-step-sub {
+  font-family: var(--font-noto);
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+  margin-top: 0.1rem;
+}
+
+.scan-analyzing-chip-zone {
+  border-top: 1.5px dashed rgba(31, 37, 23, 0.28);
+  padding-top: 1.1rem;
+}
+.scan-analyzing-chip-zone-title {
+  margin: 0 0 0.7rem;
+  font-family: var(--font-noto);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.scan-analyzing-chip-count {
+  font-weight: 800;
+  color: var(--accent-dark);
+  font-variant-numeric: tabular-nums;
+}
+.scan-analyzing-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-height: 4.4rem;
+  align-content: flex-start;
+}
+.scan-analyzing-chip {
+  font-family: var(--font-noto);
+  font-size: 0.73rem;
+  font-weight: 600;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+  background: var(--panel);
+  color: var(--ink);
+  /* OCR이 가끔 인접한 줄을 하나로 합쳐 비정상적으로 긴 토큰을 뱉을 때(특히 매칭 안 된
+     원문 그대로 보여주는 경우) 그 한 칩이 화면 폭을 뚫고 레이아웃 전체를 깨는 걸 막는다. */
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: scanAnalyzingChipIn 0.4s cubic-bezier(0.34, 1.36, 0.4, 1) both;
+}
+.scan-analyzing-chip.is-matched {
+  background: var(--accent-soft);
+  border-color: var(--accent-dark);
+  color: var(--ink);
+}
+.scan-analyzing-chip.is-unmatched {
+  border-style: dashed;
+  border-color: var(--ink-soft);
+  color: var(--ink-soft);
+}
+@keyframes scanAnalyzingChipIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.scan-analyzing-chip-ghost {
+  height: 1.85rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--bg) 25%, var(--sub) 37%, var(--bg) 63%);
+  background-size: 400% 100%;
+  animation: scanAnalyzingSkeleton 1.4s ease infinite;
+}
+@keyframes scanAnalyzingSkeleton {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.scan-analyzing-hint {
+  margin-top: 1.3rem;
+  font-family: var(--font-noto);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-analyzing-spinner,
+  .scan-analyzing-caret,
+  .scan-analyzing-fill::after,
+  .scan-analyzing-live-dot,
+  .scan-analyzing-step-dot,
+  .scan-analyzing-chip,
+  .scan-analyzing-chip-ghost {
+    animation: none !important;
+  }
+  /* animation:none만 주면 애니메이션 없이 opacity:0.85(시작값)에 그대로 멈춰 화면을 계속
+     가리게 되므로, 아예 안 보이게 opacity도 같이 고정한다. */
+  .scan-page__flash {
+    animation: none !important;
+    opacity: 0 !important;
+  }
 }
 
 .scan-actions {

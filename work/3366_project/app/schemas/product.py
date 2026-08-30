@@ -12,6 +12,18 @@ from app.schemas.purpose_count import PurposeCount
 from app.schemas.skin_fit import SkinTypeCountRead
 
 _OLIVEYOUNG_SEARCH_URL = "https://www.oliveyoung.co.kr/store/search/getSearchMain.do?query={query}"
+_OLIVEYOUNG_DETAIL_URL = "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo={goods_no}"
+
+# 올리브영 실제 상품 상세페이지(goodsNo)로 바로 연결하고 싶은 지정 상품만 예외로 등록한다
+# (app/similarity.py MANUAL_SIMILAR_OVERRIDES와 같은 패턴) — 올리브영 검색 결과 페이지를
+# 직접 브라우저로 열어 제품명이 정확히 일치하는 첫 검색 결과의 goodsNo를 수동으로 확인해
+# 채운 값이다(전 상품 자동 매칭은 안 함 — DB에 goodsNo 자체가 없고, 검색 결과를 그때그때
+# 스크래핑하는 건 올리브영이 단순 HTTP 요청을 차단하기도 해서 배치로 미리 사람이 확인).
+_OLIVEYOUNG_GOODS_NO_OVERRIDES: dict[str, str] = {
+    "p-5df90152f23a": "A000000200353",  # 오어스 히알루론시카 7초 세럼 인 앰플 105ml
+    "p-d70a49bcc485": "A000000258292",  # 토리든 다이브인 저분자 히알루론산 토너 300ml
+    "p-cb5c0bb61e60": "A000000202469",  # 더마토리 히알샷 베리어 B5 앰플 50ml
+}
 
 
 class ProductBase(BaseModel):
@@ -54,8 +66,12 @@ class ProductRead(ProductBase):
     @computed_field
     @property
     def oliveyoung_url(self) -> str:
-        # 올리브영에 등록된 상품별 직접 링크(고유 goodsNo)를 DB에 갖고 있지 않아서,
-        # 제품명으로 올리브영 검색 결과 페이지를 가리키는 URL을 그때그때 만들어 준다.
+        # 올리브영에 등록된 상품별 직접 링크(고유 goodsNo)를 DB에 갖고 있지 않아서, 기본은
+        # 제품명으로 올리브영 검색 결과 페이지를 가리키는 URL을 그때그때 만들어 준다 —
+        # 지정 상품(_OLIVEYOUNG_GOODS_NO_OVERRIDES)만 실제 상세페이지로 바로 연결한다.
+        goods_no = _OLIVEYOUNG_GOODS_NO_OVERRIDES.get(self.product_id)
+        if goods_no:
+            return _OLIVEYOUNG_DETAIL_URL.format(goods_no=goods_no)
         return _OLIVEYOUNG_SEARCH_URL.format(query=quote(self.product_name))
 
     @computed_field

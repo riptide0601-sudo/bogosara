@@ -167,6 +167,49 @@ MANUAL_SIMILAR_OVERRIDES: dict[str, list[str]] = {
 }
 
 
+def _purpose_vector_for_ingredients(
+    ingredient_ids: set[int], idf: dict[int, float], db: Session
+) -> PurposeVector:
+    rows = db.execute(
+        select(IngredientPurpose.purpose_id).where(
+            IngredientPurpose.ingredient_id.in_(ingredient_ids)
+        )
+    ).all()
+    tf: dict[int, int] = defaultdict(int)
+    for (purpose_id,) in rows:
+        tf[purpose_id] += 1
+    return {purpose_id: count * idf.get(purpose_id, 0.0) for purpose_id, count in tf.items()}
+
+
+def find_similar_products_for_ingredients(
+    ingredient_ids: list[int],
+    key_ingredient_ids: list[int],
+    db: Session,
+    min_score: float = 0.5,
+    limit: int = 10,
+) -> list[tuple[str, float]]:
+    """find_similar_products()의 스캔용 버전 — 등록된 product_id가 없는 임시(ad-hoc) 성분
+    집합(OCR로 매칭된 성분들)을 대상으로 같은 similarity_score()/전체 제품 집합을 써서 유사
+    제품을 찾는다. key_ingredient_ids는 ingredient_ids의 부분집합이어야 한다(app/ocr_summary.py
+    get_key_ingredients가 뽑은 이름을 ingredient_id로 변환한 것, app/routers/ocr.py 참고)."""
+    all_sets = _all_ingredient_sets(db)
+    tf = _purpose_term_frequencies(db)
+    idf = _idf_weights(tf)
+
+    all_ids = set(ingredient_ids)
+    key_ids = frozenset(i for i in key_ingredient_ids if i in all_ids)
+    target = ProductIngredientSets(
+        key_ids=key_ids,
+        rest_ids=frozenset(all_ids - key_ids),
+        purpose_vector=_purpose_vector_for_ingredients(all_ids, idf, db),
+    )
+
+    scored = [(other_id, similarity_score(target, other_sets)) for other_id, other_sets in all_sets.items()]
+    scored = [pair for pair in scored if pair[1] >= min_score]
+    scored.sort(key=lambda pair: pair[1], reverse=True)
+    return scored[:limit]
+
+
 def find_similar_products(
     product_id: str,
     db: Session,

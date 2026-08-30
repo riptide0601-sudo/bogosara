@@ -313,20 +313,24 @@ export default function ResultSummaryPanel({
       {/* 올리브영 검색 결과 페이지 링크 — 상품별 직접 링크(goodsNo)는 DB에 없어서
           백엔드가 제품명으로 만든 검색 페이지 URL이다(app/schemas/product.py computed_field).
           스캔은 실제 제품명이 없어 이 URL 자체가 없다(api.ts mapOcrResultToIngredientResult
-          참고) — isScan으로 숨긴다. */}
+          참고) — isScan으로 숨긴다.
+          stopPropagation — 이 링크가 결과 카드(ResultCard) 앞면 안에 있고, 그 앞면 자체가
+          클릭하면 전성분 뒷면으로 뒤집히는 큰 클릭 영역이라, 없으면 새 탭으로 링크가 열림과
+          동시에 카드도 같이 뒤집혀 버린다. */}
       {!isScan && (
         <a
           className="result-oliveyoung-link"
           href={oliveyoung_url}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
         >
           <span className="cursor">▶</span>올리브영에서 찾아보기 ↗
         </a>
       )}
 
       {/* 1-1. 상품명 성분, 진짜 들어있나요? — 마케팅 용어 ↔ 계열 묶음 (지정 상품만, 근거 없으면 숨김) */}
-      <MarketingFamilySection families={ingredient_families} />
+      <MarketingFamilySection families={ingredient_families} isScan={isScan} />
 
       {/* 2. 핵심 성분 — 선정 기준(app/core_ingredient_selector.py) 두 단계를 그대로 설명한다:
           1) 필터 — "피부에 실제로 무엇을 하는가"가 핵심 원칙이라, 용제·점증제·방부제 같은

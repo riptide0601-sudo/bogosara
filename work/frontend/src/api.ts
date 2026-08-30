@@ -191,6 +191,18 @@ const GENERIC_PURPOSE_LABELS = new Set(['피부컨디셔닝제', '헤어컨디�
 // 괄호 안 내용이 그 자체로 분류 태그일 뿐 라벨로는 무의미한 경우 — 앞의 본 이름을 대신 쓴다.
 const NON_LABEL_PAREN_VALUES = new Set(['기타', '기능성화장품']);
 
+// app/purpose_counts.py의 _EXCLUDED_LABELS와 동일 — 순수 제형/기술 성분과 헤어/네일 전용
+// 목적. "이 성분들, 무슨 일을 하나요?" 요약뿐 아니라 pickShortPurposeLabel(핵심 성분 칩
+// 라벨)에서도 쓴다 — 안 그러면 "용제"/"변성제"처럼 DB 순서상 먼저 나온 기술적 배합목적이
+// "보습제" 같은 진짜 의미 있는 배합목적보다 먼저 골라지는 문제가 있었다.
+const PURPOSE_COUNT_EXCLUDED_LABELS = new Set([
+  '용제', '유화제', '유화안정제', '수성', '비수성', '수렴제', 'pH 조정제',
+  '금속이온봉쇄제', '피막형성제', '증량제', '결합제', '벌킹제', '불투명화제',
+  '비계면활성', '비계면활성제', '흡수제', '변색방지제', '변성제', '안티케이킹제',
+  '가소제', '감미제', '점도감소제',
+  '헤어컨디셔닝제', '모발컨디셔닝제', '모발고정제',
+]);
+
 /** "피부컨디셔닝제(보습제)" -> "보습제", "주름개선(기능성화장품)" -> "주름개선", "헤어컨디셔닝제" -> 그대로. */
 function extractPurposeLabel(purposeName: string): string {
   const match = purposeName.match(/^(.*?)\(([^)]*)\)\s*$/);
@@ -202,13 +214,17 @@ function extractPurposeLabel(purposeName: string): string {
 /**
  * 핵심 성분 카드 밑 짧은 라벨 — DB에 별도 "짧은 라벨" 컬럼은 없고, ingredient_purpose로 엮인
  * purpose.purpose_name에서 뽑는다. 여러 성분에 똑같이 반복되는 일반 분류명("피부컨디셔닝제" 등)
- * 말고 더 구체적인 라벨(예: "보습제", "주름개선")이 있으면 그걸 우선한다. DB에 아직 일반
- * 분류명만 걸려있는 성분은 그 이름 그대로 나온다 — LLM이 더 나은 한 단어를 골라줄 수 있는 지점.
+ * 과 순수 제형/기술 목적("용제"/"변성제" 등, PURPOSE_COUNT_EXCLUDED_LABELS) 말고 더 구체적인
+ * 라벨(예: "보습제", "주름개선")이 있으면 그걸 우선한다 — 안 그러면 DB에 먼저 걸린 기술적
+ * 배합목적이 실제 피부 효능보다 먼저 골라진다(예: 판테놀이 "보습제" 대신 "용제"로 표시).
+ * 필터링 후 아무것도 안 남으면(전부 기술적 목적뿐이었으면) 그때만 원래 첫 번째 값을 쓴다.
  */
 function pickShortPurposeLabel(purposes: ApiPurpose[]): string {
   if (purposes.length === 0) return '';
   const labels = purposes.map((p) => extractPurposeLabel(p.purpose_name));
-  const specific = labels.find((label) => !GENERIC_PURPOSE_LABELS.has(label));
+  const specific = labels.find(
+    (label) => !GENERIC_PURPOSE_LABELS.has(label) && !PURPOSE_COUNT_EXCLUDED_LABELS.has(label),
+  );
   return specific ?? labels[0];
 }
 
@@ -364,7 +380,7 @@ export async function loadIngredientResultFromApi(
   request: IngredientResultRequest,
 ): Promise<IngredientResult> {
   if (request.source === 'scan') {
-    return mapOcrResultToIngredientResult(request.ocr);
+    return Promise.resolve(mapOcrResultToIngredientResult(request.ocr, request.composition, request.summary));
   }
   return fetchIngredientResult(request.productId);
 }
@@ -447,11 +463,55 @@ export async function fetchScanSummary(rawIngredients: string[]): Promise<ScanSu
   return res.json() as Promise<ScanSummary>;
 }
 
+/** POST /ocr/composition 응답 — app/schemas/ocr.py OcrCompositionResponse와 1:1.
+ * ingredient_families/skin_type_counts는 검색 흐름과 같은 타입(MatchedFamily/SkinTypeCount)을
+ * 그대로 쓰고, family_ranks/skin_risks는 검색 흐름의 FamilyRankInfo/ApiSkinRisk를 재사용한다 —
+ * 백엔드가 같은 스키마(FamilyRankRead/SkinRiskRead)로 응답하기 때문. */
+export interface OcrCompositionResult {
+  ingredient_families: MatchedFamily[];
+  family_ranks: FamilyRankInfo[];
+  skin_type_counts: SkinTypeCount[];
+  skin_risks: ApiSkinRisk[];
+  key_ingredients: string[];
+  /** "이런 제품은 어때요?" — 검색 흐름의 recommended_products(similar_products 상위 3개,
+   * mapDetailToIngredientResult 참고)와 같은 방식으로 이미 top 3만 Product로 변환해서 준다. */
+  recommended_products: Product[];
+}
+
+/** 스캔 결과 화면의 성분 계열/비슷한 제품과 비교하면/피부 타입별 참고/내 피부 타입 기준 —
+ * 검색 흐름처럼 product_id로 각각 따로 조회하는 대신, OCR로 매칭된 성분 목록을 그대로
+ * 되돌려보내 한 번에 계산해서 받는다(app/routers/ocr.py get_ocr_composition). LLM 호출이
+ * 없어 fetchScanSummary보다 훨씬 빠르다 — ResultView.tsx가 이 둘을 병렬로 호출한다. */
+export async function fetchOcrComposition(
+  rawIngredients: string[],
+  matches: OcrIngredientMatch[],
+): Promise<OcrCompositionResult> {
+  const matched = matches
+    .filter((m): m is OcrIngredientMatch & { ingredient: OcrMatchedIngredient } => m.ingredient !== null)
+    .map((m) => ({
+      ingredient_id: m.ingredient.ingredient_id,
+      label_rank: m.label_rank,
+      matched_text: m.matched_text,
+    }));
+
+  const res = await fetch(`${API_BASE_URL}/ocr/composition`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw_ingredients: rawIngredients, matched }),
+  });
+  if (!res.ok) throw new Error(`스캔 성분 구성 조회 실패: HTTP ${res.status}`);
+  const raw = (await res.json()) as Omit<OcrCompositionResult, 'recommended_products'> & {
+    similar_products: ApiProductSimilarity[];
+  };
+  // similar_products는 이미 score 내림차순이므로 앞 3개가 곧 Top3(mapDetailToIngredientResult와 동일).
+  return { ...raw, recommended_products: raw.similar_products.slice(0, 3).map((s) => toProduct(s.product)) };
+}
+
 /** OCR로 매칭된 성분 하나 -> 카드 뒷면 전성분 리스트용 Ingredient. toIngredient(검색 흐름)와
  * 거의 같은 매핑이지만, 스캔엔 제품별 큐레이션 데이터(relations, key_ingredients 기반
  * display_grade)가 없어 그 부분만 다르다. DB에 없는 토큰(ingredient===null)은 표준 성분명이
  * 아니라 카드로 만들 근거가 없어 호출부에서 건너뛴다. */
-function ocrMatchToIngredient(match: OcrIngredientMatch): Ingredient | null {
+function ocrMatchToIngredient(match: OcrIngredientMatch, keyNames?: Set<string>): Ingredient | null {
   const ing = match.ingredient;
   if (!ing) return null;
   const llm = ing.llm_summary;
@@ -460,8 +520,9 @@ function ocrMatchToIngredient(match: OcrIngredientMatch): Ingredient | null {
     ingredient_id: ing.ingredient_id,
     name_kr: ing.name_kr ?? '',
     name_en: ing.name_en ?? '',
-    // 스캔은 core_ingredient_selector 큐레이션(핵심 성분 지정) 자체가 없어 항상 'good'.
-    display_grade: 'good',
+    // 결과 화면 진입 직후(키 이름을 아직 모를 때)는 항상 'good' — /ocr/composition이 돌아오면
+    // ResultView.tsx가 keyNames를 채워 이 함수를 다시 호출해 'star'로 갈아끼운다.
+    display_grade: ing.name_kr && keyNames?.has(ing.name_kr) ? 'star' : 'good',
     label_rank: match.label_rank,
     safety_level: ing.safety_level ?? '일반',
     purposes: ing.purposes.map((p) => ({ name: p.purpose_name, description: p.description ?? '' })),
@@ -479,15 +540,38 @@ function ocrMatchToIngredient(match: OcrIngredientMatch): Ingredient | null {
   };
 }
 
-// app/purpose_counts.py의 _EXCLUDED_LABELS와 동일 — 순수 제형/기술 성분과 헤어/네일 전용
-// 목적은 "이 성분들, 무슨 일을 하나요?" 요약에서 제외한다.
-const PURPOSE_COUNT_EXCLUDED_LABELS = new Set([
-  '용제', '유화제', '유화안정제', '수성', '비수성', '수렴제', 'pH 조정제',
-  '금속이온봉쇄제', '피막형성제', '증량제', '결합제', '벌킹제', '불투명화제',
-  '비계면활성', '비계면활성제', '흡수제', '변색방지제', '변성제', '안티케이킹제',
-  '가소제', '감미제', '점도감소제',
-  '헤어컨디셔닝제', '모발컨디셔닝제', '모발고정제',
-]);
+/** OCR 매칭 결과 -> 카드 뒷면 전성분 리스트. keyIngredientNames를 넘기면(보통 /ocr/composition
+ * 이후) 해당 성분들만 display_grade:'star'로 — ResultView.tsx가 composition 응답을 받은
+ * 뒤 이걸로 data.ingredients를 다시 만들어 별표를 채운다. */
+export function mapOcrResultsToIngredients(
+  matches: OcrIngredientMatch[],
+  keyIngredientNames: string[] = [],
+): Ingredient[] {
+  const keyNames = new Set(keyIngredientNames);
+  return matches
+    .map((m) => ocrMatchToIngredient(m, keyNames))
+    .filter((ing): ing is Ingredient => ing !== null);
+}
+
+/** "핵심 성분" 카드용 — toKeyIngredients(검색 흐름)의 스캔 버전. /ocr/composition이 내려주는
+ * key_ingredients는 이름 문자열만(core_ingredient_selector 큐레이션, app/ocr_summary.py
+ * get_key_ingredients) 있어서, 이미 OCR로 매칭해둔 성분에서 같은 이름을 찾아 배합목적을
+ * 붙인다. */
+export function toKeyIngredientsFromOcr(
+  keyIngredientNames: string[],
+  matches: OcrIngredientMatch[],
+): IngredientResultKeyIngredient[] {
+  const byName = new Map(
+    matches
+      .filter((m): m is OcrIngredientMatch & { ingredient: OcrMatchedIngredient } => m.ingredient !== null)
+      .map((m) => [m.ingredient.name_kr, m.ingredient]),
+  );
+  return keyIngredientNames.flatMap((name) => {
+    const ing = byName.get(name);
+    if (!ing) return [];
+    return [{ name, purpose: pickShortPurposeLabel(ing.purposes) }];
+  });
+}
 
 /** "이 성분들, 무슨 일을 하나요?" — app/purpose_counts.py compute_purpose_counts()의 스캔용
  * 라이브 집계판. 등록된 Product가 없어도 OCR로 매칭된 성분들의 purposes만으로 같은
@@ -525,24 +609,26 @@ function computeLivePurposeCounts(matches: OcrIngredientMatch[], limit = 6): Pur
 }
 
 /**
- * OcrAnalyzeResult -> IngredientResult 변환. 스캔은 등록된 Product가 없어서 LLM이 미리
- * 만들어둔 한줄요약/핵심성분/성분설명, 그리고 제품명 기반 기능(계열 매칭·올리브영 링크·
- * 유사 제품 추천)은 대응할 데이터가 없다 — 전부 빈 값으로 두면 각 섹션이 기존의 "근거
- * 없으면 숨긴다" 규칙에 따라 자연스럽게 안 보인다. 반대로 카드 뒷면 전성분 리스트와
- * "이 성분들, 무슨 일을 하나요?"는 매칭된 성분들만으로 실제 값을 채울 수 있다.
+ * OcrAnalyzeResult -> IngredientResult 변환. 스캔은 등록된 Product가 없어서 성분 계열/순위/
+ * 피부타입/핵심성분(DB, /ocr/composition)과 LLM 한줄요약/성분구성 설명(/ocr/summarize)을
+ * 배치로 미리 캐싱해둘 수 없다 — 대신 ScanOverlay가 결과 화면으로 넘어오기 "전에" 이 둘을
+ * 먼저 받아서 여기로 넘긴다(runAnalysis 참고). 그래서 이 함수는 비동기 호출 없이, 이미 받은
+ * 값을 채워 넣기만 한다 — 결과 화면이 뜨는 순간 이미 완성된 내용을 보여주기 위해서다
+ * (예전엔 이 함수가 빈 값으로 초기화하고 ResultView.tsx가 화면 진입 후 따로 불러왔는데,
+ * "OCR 끝→결과 화면 전환"과 "화면 안 내용이 다 채워지는 시점"이 안 맞아 보인다는 피드백으로
+ * 지금 방식으로 바꿨다). composition/summary가 null이면(호출 실패) 그 부분만 빈 값 — 각
+ * 섹션이 기존의 "근거 없으면 숨긴다" 규칙에 따라 자연스럽게 안 보인다.
  */
-export function mapOcrResultToIngredientResult(ocr: OcrAnalyzeResult): IngredientResult {
-  const ingredients = ocr.results
-    .map(ocrMatchToIngredient)
-    .filter((ing): ing is Ingredient => ing !== null);
+export function mapOcrResultToIngredientResult(
+  ocr: OcrAnalyzeResult,
+  composition: OcrCompositionResult | null,
+  summary: ScanSummary | null,
+): IngredientResult {
+  const ingredients = mapOcrResultsToIngredients(ocr.results, composition?.key_ingredients);
 
-  // ResultView.tsx가 결과 화면 진입 직후 fetchScanSummary()를 비동기로 호출해 이 문장을
-  // 실제 LLM 한줄요약으로 갈아끼운다 — 그 전까지 잠깐 보이는 이 자리라 "확인했어요"(완료형)가
-  // 아니라 "확인하고 있어요"(진행형)로 둬서, 별도 로딩 문구 없이 이 문장 자체가 "아직
-  // 요약 중"이라는 걸 나타내게 한다.
-  const summary =
+  const fallbackSummary =
     ingredients.length > 0
-      ? `촬영한 전성분표에서 표준 성분 ${ingredients.length}종을 확인하고 있어요.`
+      ? `촬영한 전성분표에서 표준 성분 ${ingredients.length}종을 확인했어요.`
       : '촬영한 전성분표에서 표준 성분을 찾지 못했어요.';
 
   return {
@@ -550,17 +636,17 @@ export function mapOcrResultToIngredientResult(ocr: OcrAnalyzeResult): Ingredien
       product_id: null,
       product_name: '스캔한 제품',
       raw_ingredients: ocr.raw_ingredients.join(', '),
-      summary,
-      key_ingredients: [],
-      ingredient_explanation: '',
+      summary: summary?.one_liner || fallbackSummary,
+      key_ingredients: composition ? toKeyIngredientsFromOcr(composition.key_ingredients, ocr.results) : [],
+      ingredient_explanation: summary?.composition_text ?? '',
       image_url: null,
       category_description: '',
       oliveyoung_url: '',
       skin_score_summary: '',
-      skin_type_counts: [],
+      skin_type_counts: composition?.skin_type_counts ?? [],
       cautions: [],
-      recommended_products: [],
-      ingredient_families: [],
+      recommended_products: composition?.recommended_products ?? [],
+      ingredient_families: composition?.ingredient_families ?? [],
       purpose_counts: computeLivePurposeCounts(ocr.results),
     },
     ingredients,

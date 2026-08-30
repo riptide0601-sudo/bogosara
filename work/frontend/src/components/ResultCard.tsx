@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Ingredient, IngredientResultProduct } from '../data/ingredientResult';
 import type { FamilyRankState, SkinRiskInfo } from './ResultView';
 import ResultSummaryPanel from './ResultSummaryPanel';
@@ -57,6 +57,30 @@ export default function ResultCard({
     }
   };
 
+  // 앞면 전체가 "눌러서 뒤집기" 큰 클릭 영역이라, 섹션 텍스트를 드래그로 선택하려다 마우스를
+  // 뗀 순간(mouseup)도 그 자리에서 click 이벤트가 그대로 발생해 카드가 같이 뒤집혀버렸다 —
+  // 드래그로 끝난 클릭인지 판별해서 그 경우만 뒤집기를 건너뛴다: (1) mousedown~click 사이
+  // 포인터가 일정 거리 이상 움직였거나, (2) 드래그로 실제 텍스트가 선택된 상태면 둘 다 "이건
+  // 클릭이 아니라 드래그"로 본다. 키보드(Enter/Space)로 뒤집는 handleFrontKeyDown은 이 로직과
+  // 무관하게 그대로 동작한다.
+  const frontDragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const DRAG_THRESHOLD_PX = 6;
+
+  const handleFrontMouseDown = (e: React.MouseEvent) => {
+    frontDragStartRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleFrontClick = (e: React.MouseEvent) => {
+    const start = frontDragStartRef.current;
+    frontDragStartRef.current = null;
+    const moved =
+      !!start &&
+      (Math.abs(e.clientX - start.x) > DRAG_THRESHOLD_PX || Math.abs(e.clientY - start.y) > DRAG_THRESHOLD_PX);
+    const hasSelection = (window.getSelection()?.toString().length ?? 0) > 0;
+    if (moved || hasSelection) return;
+    flipToBack();
+  };
+
   const handleSelectFromList = (ingredient: Ingredient) => {
     setSelectedIngredient(ingredient);
     setIngredientEntryPoint('list');
@@ -97,38 +121,43 @@ export default function ResultCard({
           tabIndex={0}
           aria-expanded={flipped}
           aria-label={`카드를 눌러 전성분 ${totalCount}개 보기`}
-          onClick={flipToBack}
+          onMouseDown={handleFrontMouseDown}
+          onClick={handleFrontClick}
           onKeyDown={handleFrontKeyDown}
         >
-          <ResultSummaryPanel
-            product={product}
-            totalCount={totalCount}
-            isScan={isScan}
-            skinRisk={skinRisk}
-            familyRank={familyRank}
-            isFlipped={flipped}
-            onFlip={flipToBack}
-            onSelectIngredient={handleSelectFromChip}
-          />
+          <div className="flip-card-scroll">
+            <ResultSummaryPanel
+              product={product}
+              totalCount={totalCount}
+              isScan={isScan}
+              skinRisk={skinRisk}
+              familyRank={familyRank}
+              isFlipped={flipped}
+              onFlip={flipToBack}
+              onSelectIngredient={handleSelectFromChip}
+            />
+          </div>
         </div>
 
         {/* 뒷면: 전성분 나열 + 배합목적 설명. 성분을 클릭하면 상세 뷰가 이 면 전체를 차지한다. */}
         <div className="flip-card-face flip-card-back">
-          {selectedIngredient ? (
-            <IngredientDetail
-              ingredient={selectedIngredient}
-              onBack={handleBackNav}
-              backLabel={ingredientEntryPoint === 'chip' ? '요약으로' : undefined}
-            />
-          ) : (
-            <>
-              <button type="button" className="flip-back-btn" onClick={handleBackNav}>
-                <span className="cursor">◀</span>요약으로
-              </button>
-              <IngredientList ingredients={ingredients} onSelect={handleSelectFromList} />
-              <RawIngredientsPanel rawIngredients={product.raw_ingredients} />
-            </>
-          )}
+          <div className="flip-card-scroll">
+            {selectedIngredient ? (
+              <IngredientDetail
+                ingredient={selectedIngredient}
+                onBack={handleBackNav}
+                backLabel={ingredientEntryPoint === 'chip' ? '요약으로' : undefined}
+              />
+            ) : (
+              <>
+                <button type="button" className="flip-back-btn" onClick={handleBackNav}>
+                  <span className="cursor">◀</span>요약으로
+                </button>
+                <IngredientList ingredients={ingredients} onSelect={handleSelectFromList} />
+                <RawIngredientsPanel rawIngredients={product.raw_ingredients} />
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -4,21 +4,30 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
 from app.ingredient_matching import match_ingredient_ids
+from app.marketing_families import compute_matched_families_for_ingredients
 from app.models.ingredient import Ingredient
-from app.ocr_summary import generate_scan_summary
+from app.ocr_summary import generate_scan_summary, get_key_ingredients
 from app.routers.ingredients import _detail_query, _to_detail
+from app.routers.products import _compute_family_rank_for_ingredient, _similarity_reads_from_scores
+from app.schemas.ingredient_family import FamilyRankRead
+from app.similarity import find_similar_products_for_ingredients
 from app.schemas.ocr import (
     OcrAnalyzeResponse,
+    OcrCompositionRequest,
+    OcrCompositionResponse,
     OcrIngredientResult,
     OcrSummarizeRequest,
     OcrSummarizeResponse,
     OcrTextRegion,
 )
+from app.schemas.skin_fit import SkinRiskRead, SkinTypeCountRead
+from app.skin_fit import compute_all_skin_risks_for_ingredients, compute_skin_type_counts_for_ingredients
 
 # src/core (OCR 모듈)는 이 백엔드와 별도 폴더에 있는 형제 프로젝트라 sys.path에 추가해야 import된다.
 _OCR_CORE_DIR = Path(__file__).resolve().parents[4] / "src" / "core"
@@ -110,3 +119,77 @@ async def summarize_scan(payload: OcrSummarizeRequest, db: Session = Depends(get
     if summary is None:
         raise HTTPException(status_code=422, detail="요약을 생성할 근거가 부족합니다.")
     return OcrSummarizeResponse(**summary)
+
+
+@router.post("/composition", response_model=OcrCompositionResponse)
+async def get_ocr_composition(payload: OcrCompositionRequest, db: Session = Depends(get_db)):
+    """스캔 결과 화면의 "상품명 성분, 진짜 들어있나요?"(성분 계열)/"비슷한 제품과 비교하면"
+    (순위)/"피부 타입별 참고"/"내 피부 타입 기준" 섹션 — 검색 흐름(GET /products/{id},
+    /family-rank, /skin-fit)은 전부 등록된 product_id로 조회하는데, 스캔은 그게 없어서
+    이 엔드포인트 하나로 한 번에 계산해서 돌려준다.
+
+    전부 LLM이 아니라 DB 조회/집계라 /ocr/summarize보다 훨씬 빠르다 — 프론트는 결과 화면
+    진입 직후 이 엔드포인트와 /ocr/summarize를 동시에(병렬로) 호출해서, 이 응답이 먼저
+    와도 요약 텍스트를 기다리지 않고 바로 채워 보여줄 수 있다.
+    """
+    if not payload.matched:
+        return OcrCompositionResponse()
+
+    ingredient_ids = [m.ingredient_id for m in payload.matched]
+    matched_text_by_id = {m.ingredient_id: m.matched_text for m in payload.matched}
+
+    key_ingredients = get_key_ingredients(db, payload.raw_ingredients)
+    key_ingredient_names = set(key_ingredients)
+
+    matched_ingredients = db.scalars(
+        select(Ingredient).where(Ingredient.ingredient_id.in_(ingredient_ids))
+    ).all()
+    name_to_id = {ing.name_kr: ing.ingredient_id for ing in matched_ingredients if ing.name_kr}
+    key_ingredient_ids = [name_to_id[name] for name in key_ingredients if name in name_to_id]
+
+    ingredient_refs = [(m.ingredient_id, m.label_rank, m.matched_text) for m in payload.matched]
+    ingredient_families = compute_matched_families_for_ingredients(
+        ingredient_refs, key_ingredient_names, db
+    )
+
+    # 계열 하나당 순위 하나 — ingredients는 label_rank 오름차순 정렬돼 있어서(compute_
+    # matched_families_for_ingredients 참고) 맨 앞이 이 계열의 대표(가장 앞쪽) 성분이다.
+    family_ranks: list[FamilyRankRead] = []
+    for family in ingredient_families:
+        if not family.ingredients or family.ingredients[0].label_rank is None:
+            continue
+        rep = family.ingredients[0]
+        family_ranks.append(
+            _compute_family_rank_for_ingredient(
+                db,
+                family.family_id,
+                rep.label_rank,
+                rep.name_kr or "",
+                matched_text_by_id.get(rep.ingredient_id),
+            )
+        )
+
+    skin_type_counts = [
+        SkinTypeCountRead.model_validate(c, from_attributes=True)
+        for c in compute_skin_type_counts_for_ingredients(ingredient_ids, db)
+    ]
+    skin_risks = [
+        SkinRiskRead.model_validate(r, from_attributes=True)
+        for r in compute_all_skin_risks_for_ingredients(ingredient_ids, db)
+    ]
+
+    # "이런 제품은 어때요?" — 검색 흐름과 같은 min_score/limit(app/routers/products.py
+    # _build_similar_products 참고), 대상만 등록된 product_id 대신 이 스캔의 매칭 성분들.
+    scored = find_similar_products_for_ingredients(
+        ingredient_ids, key_ingredient_ids, db, min_score=0.5, limit=10
+    )
+    similar_products = _similarity_reads_from_scores(scored, db)
+
+    return OcrCompositionResponse(
+        ingredient_families=ingredient_families,
+        family_ranks=family_ranks,
+        skin_type_counts=skin_type_counts,
+        skin_risks=skin_risks,
+        key_ingredients=key_ingredients,
+        similar_products=similar_products,
+    )

@@ -1,23 +1,42 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { analyzeOcrImage } from '../api';
+import {
+  analyzeOcrImage,
+  fetchOcrComposition,
+  fetchScanSummary,
+  type OcrAnalyzeResult,
+  type OcrCompositionResult,
+  type ScanSummary,
+} from '../api';
 import Overlay from './Overlay';
+import ScanAnalyzingPanel, { REVEAL_MS } from './ScanAnalyzingPanel';
 
 interface ScanOverlayProps {
   onClose: () => void;
 }
 
-/** live: 라이브 뷰파인더. analyzing: 촬영 직후 OCR 응답을 기다리는 중(정지 프레임 + 스캔
- * 모션). failed: OCR은 끝났지만 아무 성분도 못 읽어서 실패 모달을 띄운 상태. */
-type ScanPhase = 'live' | 'analyzing' | 'failed';
+/** live: 라이브 뷰파인더. captured: 방금 찍거나 올린 사진을 뷰파인더와 같은 자리(프레임)에
+ * 잠깐 정지 화면으로 보여주는 확인 순간 — 화면이 곧바로 분석 대기 레이아웃으로 확 바뀌지
+ * 않고, "이 사진이 찍혔다"는 게 한 박자 눈에 들어오게 한다. analyzing: 그 다음, 실제 OCR
+ * 응답을 기다리는 중(2단 레이아웃 — 진행 바/체크리스트/성분 칩). failed: OCR은 끝났지만
+ * 아무 성분도 못 읽어서 실패 모달을 띄운 상태. */
+type ScanPhase = 'live' | 'captured' | 'analyzing' | 'failed';
 
 type CameraError = 'denied' | 'not-found' | 'insecure' | 'unknown';
 
-/** OCR 응답이 실제로는 순식간(수백ms)에 오거나 실패해도, "스캐너가 사진을 훑고 판단하는"
- * 모먼트가 최소 이만큼은 눈에 보이게 강제한다 — 안 그러면 analyzing 단계가 깜빡이듯 지나가서
- * 뭘 하고 있었는지 인지가 안 된다. 스캔 라인(App.css .scan-line--analyzing, 왕복 1.4s)이
- * 최소 한 번 이상 오갈 시간. */
+/** OCR 인식 자체가 실패한 경우(성분을 하나도 못 읽음)에만 쓰는 최소 대기 — 응답이 순식간에
+ * 와도 "스캐너가 사진을 훑고 판단하는" 모먼트가 최소 이만큼은 눈에 보이게 강제한다. 인식에
+ * 성공한 경우는 뒤이어 성분 계열/LLM 요약까지 기다리는 시간이 이미 이보다 훨씬 길어서 별도로
+ * 안 쓴다(아래 runAnalysis 참고). */
 const MIN_ANALYZING_MS = 2000;
+// 성분 계열/순위/피부타입/핵심성분 + LLM 요약까지 전부 준비된 뒤, "완료" 체크가 눈에 보일
+// 잠깐의 여유를 주고 나서 결과 화면으로 넘어간다.
+const FINISH_MS = 450;
+// 촬영/업로드 직후 'captured' 단계(정지 사진을 뷰파인더 프레임 그대로 잠깐 보여주는 확인
+// 순간)를 최소 이만큼 유지한다 — OCR 응답이 이보다 빨리 와도 화면이 너무 갑자기 바뀌지
+// 않게, 반대로 느려도 이 시간 이상 무작정 기다리진 않는다(OCR 호출과 병렬로 흘러간다).
+// 550ms는 조용한 이미지 교체만으로는 놓치기 쉬워서 900ms로 늘리고, 플래시 효과를 더했다.
+const CAPTURE_FLASH_MS = 900;
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -72,6 +91,16 @@ export function ScanOverlay({ onClose }: ScanOverlayProps) {
   const [phase, setPhase] = useState<ScanPhase>('live');
   const [capturedDataUrl, setCapturedDataUrl] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  // analyzing 단계 오른쪽 패널(ScanAnalyzingPanel)에 실제 OCR 응답이 오는 순간 넘겨준다 —
+  // null인 동안은 패널이 장식용 진행 애니메이션만 보여주다가, 값이 들어오면 그 성분으로
+  // 갈아끼운다(runAnalysis 참고).
+  const [analyzeResult, setAnalyzeResult] = useState<OcrAnalyzeResult | null>(null);
+  // 성분 계열/순위/피부타입/핵심성분 + LLM 한줄요약/성분구성 설명까지 전부 준비됐는지 —
+  // true가 될 때까지 결과 화면으로 안 넘어간다(runAnalysis 참고). 대기 화면에 뜨는 시간과
+  // 실제로 결과 화면 내용이 채워지는 시점이 안 맞는다는 피드백으로, 다 준비된 뒤에만
+  // 넘어가도록 바꿨다 — 그 전엔(비동기로 나중에 채워지지 않고) 결과 화면이 이미 완성된
+  // 상태로 뜬다.
+  const [finalizeReady, setFinalizeReady] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -142,8 +171,12 @@ export function ScanOverlay({ onClose }: ScanOverlayProps) {
   // 성공/실패 분기는 출처와 무관하게 동일하다).
   const runAnalysis = async (blob: Blob | null, dataUrl: string) => {
     setCapturedDataUrl(dataUrl);
-    setPhase('analyzing');
-    const analyzingStartedAt = Date.now();
+    setAnalyzeResult(null);
+    setFinalizeReady(false);
+    // 방금 찍은/올린 사진을 뷰파인더와 같은 프레임 자리에 정지 화면으로 잠깐 보여준다 —
+    // 곧바로 분석 대기 레이아웃(2단 구성)으로 화면이 확 바뀌지 않고 한 박자 쉬어 간다.
+    setPhase('captured');
+    const capturedAt = Date.now();
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -166,19 +199,60 @@ export function ScanOverlay({ onClose }: ScanOverlayProps) {
     }
     if (outcome === 'aborted') return; // 그 사이 사용자가 닫았거나 언마운트됨 — 무시.
 
-    // OCR 응답이 순식간에 와도 "스캐너가 사진을 훑고 판단하는" 모먼트가 최소한은 보이도록
-    // 남은 시간만큼 더 기다린다 — 실제로 오래 걸렸다면 이미 충분히 지났으니 더 안 기다린다.
-    await wait(Math.max(0, MIN_ANALYZING_MS - (Date.now() - analyzingStartedAt)));
-    if (controller.signal.aborted) return; // 대기하는 사이 닫혔을 수도 있다.
+    // 'captured' 정지 화면이 최소한은 보이도록, OCR이 그새 끝났어도 남은 시간만큼 더
+    // 기다린 뒤에야 분석 대기 화면으로 넘어간다(OCR 호출과 병렬로 흘러가서 실제 시간은
+    // 안 늘어난다 — 이미 CAPTURE_FLASH_MS 이상 걸렸으면 더 안 기다린다).
+    await wait(Math.max(0, CAPTURE_FLASH_MS - (Date.now() - capturedAt)));
+    if (controller.signal.aborted) return;
+
+    setPhase('analyzing');
+    const analyzingStartedAt = Date.now();
 
     // raw_ingredients가 비어 있으면 OCR 자체는 응답했지만 글자를 하나도 못 읽었다는 뜻 —
     // 이 경우도 사용자 입장에선 "인식 실패"다.
-    if (outcome.ok && outcome.result.raw_ingredients.length > 0) {
-      navigate('/scan-result', { state: { image: dataUrl, ocr: outcome.result } });
-      onClose();
-    } else {
+    if (!outcome.ok || outcome.result.raw_ingredients.length === 0) {
+      // OCR 응답이 순식간에 와도 "스캐너가 사진을 훑고 판단하는" 모먼트가 최소한은 보이게.
+      await wait(Math.max(0, MIN_ANALYZING_MS - (Date.now() - analyzingStartedAt)));
+      if (controller.signal.aborted) return;
       setPhase('failed');
+      return;
     }
+
+    const ocrResult = outcome.result;
+    // 오른쪽 패널에 실제 OCR 데이터를 넘겨 성분 칩 리빌 애니메이션을 시작한다.
+    setAnalyzeResult(ocrResult);
+    const ocrRespondedAt = Date.now();
+
+    // 결과 화면이 뜨자마자 이미 완성된 내용을 보여주기 위해, 성분 계열/순위/피부타입/
+    // 핵심성분(DB 조회)과 LLM 한줄요약/성분구성 설명(실시간 호출)을 여기서 먼저 받아둔다 —
+    // 하나가 실패해도 다른 하나는 쓸 수 있게 각각 따로 catch해서 null로 대체한다.
+    const [compositionResult, summaryResult]: [OcrCompositionResult | null, ScanSummary | null] =
+      await Promise.all([
+        fetchOcrComposition(ocrResult.raw_ingredients, ocrResult.results).catch((err) => {
+          console.error('[보고사라][스캔] 성분 구성 조회 실패:', err);
+          return null;
+        }),
+        fetchScanSummary(ocrResult.raw_ingredients).catch((err) => {
+          console.error('[보고사라][스캔] 스캔 요약 생성 실패:', err);
+          return null;
+        }),
+      ]);
+    if (controller.signal.aborted) return;
+
+    // 오른쪽 패널의 성분 칩 리빌 애니메이션(REVEAL_MS)이 끝까지 재생될 시간을 확보한다 —
+    // 위 호출들이 아주 빨리 끝나도 리빌이 중간에 뚝 끊기지 않게.
+    const revealElapsed = Date.now() - ocrRespondedAt;
+    await wait(Math.max(0, REVEAL_MS - revealElapsed));
+    if (controller.signal.aborted) return;
+
+    setFinalizeReady(true);
+    await wait(FINISH_MS); // "완료" 체크가 눈에 보일 잠깐의 여유.
+    if (controller.signal.aborted) return;
+
+    navigate('/scan-result', {
+      state: { image: dataUrl, ocr: ocrResult, composition: compositionResult, summary: summaryResult },
+    });
+    onClose();
   };
 
   const handleCapture = async () => {
@@ -244,7 +318,7 @@ export function ScanOverlay({ onClose }: ScanOverlayProps) {
 
   return (
     <div
-      className="scan-page"
+      className={`scan-page${phase === 'analyzing' ? ' scan-page--analyzing' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -253,15 +327,6 @@ export function ScanOverlay({ onClose }: ScanOverlayProps) {
         ×
       </button>
 
-      <video
-        ref={videoRef}
-        className="scan-page__video"
-        autoPlay
-        playsInline
-        muted
-        style={{ opacity: phase === 'live' && streamReady && !error ? 1 : 0 }}
-      />
-
       {/* PC에서 파일을 끌어다 화면 위로 올렸을 때 — "여기에 놓으면 된다"는 걸 확실히 보여준다. */}
       {dragActive && (
         <div className="scan-page__drop-hint" aria-hidden="true">
@@ -269,62 +334,87 @@ export function ScanOverlay({ onClose }: ScanOverlayProps) {
         </div>
       )}
 
-      {errorCopy ? (
-        <p className={`scan-page__status${error ? ' scan-page__status--error' : ''}`} role="alert">
-          {errorCopy.title} · {errorCopy.body}
-          {errorCopy.canRetry && (
+      {phase === 'live' ? (
+        <>
+          {/* 카메라 영상을 화면 전체가 아니라 이 프레임 "안에만" 담는다 — video가 프레임의
+              자식이라 프레임 크기(3:4 박스)에 맞춰 잘리고(object-fit:cover), 프레임 밖은
+              그냥 어두운 배경만 보인다. ref는 phase==='live'인 동안(에러/재시도 상태 포함)
+              항상 이 자리에 붙어 있어야 카메라 스트림 연결이 끊기지 않는다 — 그래서 에러
+              메시지는 이 프레임을 대체하지 않고 그 아래(actions 자리)에 따로 보여준다. */}
+          <div className="scan-page__frame">
+            <video
+              ref={videoRef}
+              className="scan-page__video"
+              autoPlay
+              playsInline
+              muted
+              style={{ opacity: streamReady && !error ? 1 : 0 }}
+            />
+            {!errorCopy && (
+              <>
+                <span className="scan-corner tl" />
+                <span className="scan-corner tr" />
+                <span className="scan-corner bl" />
+                <span className="scan-corner br" />
+                <span className="scan-line" />
+              </>
+            )}
+          </div>
+          {errorCopy ? (
+            <p className="scan-page__status scan-page__status--error" role="alert">
+              {errorCopy.title} · {errorCopy.body}
+              {errorCopy.canRetry && (
+                <>
+                  {' '}
+                  <button type="button" onClick={() => setRetryToken((n) => n + 1)}>
+                    다시 시도
+                  </button>
+                </>
+              )}
+            </p>
+          ) : (
             <>
-              {' '}
-              <button type="button" onClick={() => setRetryToken((n) => n + 1)}>
-                다시 시도
-              </button>
+              <p className="scan-page__hint">전성분표를 프레임 안에 맞춰주세요</p>
+              <div className="scan-page__actions">
+                <button
+                  type="button"
+                  className="scan-page__shutter"
+                  onClick={handleCapture}
+                  disabled={!streamReady}
+                  aria-label="촬영하기"
+                />
+                <button
+                  type="button"
+                  className="scan-page__upload-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  사진 업로드
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="scan-page__file-input"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileSelected(file);
+                  e.target.value = ''; // 같은 파일을 다시 골라도 onChange가 또 뜨도록 초기화
+                }}
+              />
             </>
           )}
-        </p>
-      ) : phase === 'live' ? (
-        <>
-          <div className="scan-page__frame">
-            <span className="scan-corner tl" />
-            <span className="scan-corner tr" />
-            <span className="scan-corner bl" />
-            <span className="scan-corner br" />
-            <span className="scan-line" />
-          </div>
-          <p className="scan-page__hint">전성분표를 프레임 안에 맞춰주세요</p>
-          <div className="scan-page__actions">
-            <button
-              type="button"
-              className="scan-page__shutter"
-              onClick={handleCapture}
-              disabled={!streamReady}
-              aria-label="촬영하기"
-            />
-            <button
-              type="button"
-              className="scan-page__upload-btn"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              사진 업로드
-            </button>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="scan-page__file-input"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileSelected(file);
-              e.target.value = ''; // 같은 파일을 다시 골라도 onChange가 또 뜨도록 초기화
-            }}
-          />
         </>
-      ) : phase === 'analyzing' ? (
+      ) : phase === 'captured' ? (
+        // 방금 찍은/올린 사진을 라이브 뷰파인더와 같은 자리·크기(.scan-page__frame)에 정지
+        // 화면으로 잠깐 보여준다 — 셔터/업로드 버튼 없이, 화면이 분석 대기 레이아웃으로 확
+        // 바뀌기 전에 "이 사진이 찍혔다"가 한 박자 눈에 들어오게 한다(CAPTURE_FLASH_MS).
+        // 조용히 사진만 바뀌면(특히 550ms 안팎으로는) 놓치기 쉬워서, 진짜 카메라 셔터처럼
+        // 흰 플래시가 한 번 번쩍하고 꺼지는 애니메이션을 같이 준다 — 이 phase로 "새로" 들어올
+        // 때마다 DOM이 새로 마운트되므로 키 없이도 매번 처음부터 재생된다.
         <>
-          {/* 촬영/업로드한 사진을 화면 전체가 아니라 뷰파인더 프레임 "안에" 담아 보여준다 —
-              라이브 카메라 미리보기와 달리 이 사진은 프레임 비율(3:4)에 맞춰 잘려서 프레임
-              테두리 안에서만 보인다(사진 원본 비율이 화면 비율과 달라도 프레임 밖으로 안 삐져나옴). */}
-          <div className="scan-page__frame scan-page__frame--analyzing">
+          <div className="scan-page__flash" aria-hidden="true" />
+          <div className="scan-page__frame">
             {capturedDataUrl && (
               <img className="scan-page__captured" src={capturedDataUrl} alt="촬영하거나 업로드한 전성분표 사진" />
             )}
@@ -332,10 +422,38 @@ export function ScanOverlay({ onClose }: ScanOverlayProps) {
             <span className="scan-corner tr" />
             <span className="scan-corner bl" />
             <span className="scan-corner br" />
-            <span className="scan-line scan-line--analyzing" />
           </div>
-          <p className="scan-page__hint">전성분표를 읽고 있어요…</p>
+          <p className="scan-page__hint">촬영 완료!</p>
         </>
+      ) : phase === 'analyzing' ? (
+        // 왼쪽 사진 + 오른쪽 분석 패널(진행 바/단계 체크리스트/성분 칩) 2단 레이아웃 —
+        // ocr-analyzing.html(디자인 참고용)의 구조·모션을 우리 디자인 토큰으로 옮기되, 박스
+        // 위치·크기는 결과 화면(.result-view/.result-layout, ResultView.css)과 동일하게 맞춰서
+        // 분석 대기 → 결과 화면 전환이 사진/카드가 같은 자리에 있는 것처럼 자연스럽게 이어지게 한다.
+        <div className="scan-analyzing-viewport">
+          <div className="scan-analyzing-grid">
+            <div className="scan-analyzing-photo-col">
+              {/* 촬영/업로드한 사진을 화면 전체가 아니라 뷰파인더 프레임 "안에" 담아 보여준다 —
+                  프레임 비율(3:4)에 맞춰 잘려서 테두리 안에서만 보인다(사진 원본 비율이 프레임과
+                  달라도 밖으로 안 삐져나옴). */}
+              <div className="scan-analyzing-photo-frame">
+                {capturedDataUrl && (
+                  <img className="scan-page__captured" src={capturedDataUrl} alt="촬영하거나 업로드한 전성분표 사진" />
+                )}
+                <span className="scan-corner tl" />
+                <span className="scan-corner tr" />
+                <span className="scan-corner bl" />
+                <span className="scan-corner br" />
+                <span className="scan-line scan-line--analyzing" />
+              </div>
+              <p className="scan-analyzing-photo-cap">
+                <span className="scan-analyzing-live-dot" aria-hidden="true" />
+                촬영한 전성분표를 읽는 중
+              </p>
+            </div>
+            <ScanAnalyzingPanel result={analyzeResult} ready={finalizeReady} />
+          </div>
+        </div>
       ) : phase === 'failed' ? (
         <div className="scan-page__frame">
           {capturedDataUrl && (

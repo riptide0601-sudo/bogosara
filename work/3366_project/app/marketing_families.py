@@ -17,6 +17,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.ingredient import Ingredient
 from app.models.ingredient_family import IngredientFamily
 from app.models.ingredient_family_member import IngredientFamilyMember
 from app.models.product import Product
@@ -123,6 +124,98 @@ def compute_matched_families(product: Product, db: Session, *, limit: int = 3) -
                 name=family.family_name,
                 from_product_name=from_product_name,
                 matched_term=matched_term,
+                ingredients=ingredients,
+            )
+        )
+    return result
+
+
+def compute_matched_families_for_ingredients(
+    ingredient_refs: list[tuple[int, int | None, str | None]],
+    key_ingredient_names: set[str],
+    db: Session,
+    *,
+    limit: int = 3,
+) -> list[MatchedFamily]:
+    """compute_matched_families()의 스캔(OCR)용 버전.
+
+    등록된 Product가 없어 "상품명에 마케팅 용어가 실제로 등장하는지"(1순위, 형광펜 연결)는
+    계산할 수 없다 — 그래서 항상 2순위 로직(전성분 구성만으로 판단)만 쓴다: 계열 성분이
+    어디든(순위 무관) 1개라도 있으면 후보, 후보들을 "그 계열 성분 중 가장 앞쪽(label_rank
+    최소)" 기준으로 정렬해서 상위 limit개만 남긴다 — 검색 흐름과 동일한 규칙.
+
+    ingredient_refs: /ocr/analyze가 이미 DB에 매칭해준 (ingredient_id, label_rank,
+    matched_text) 튜플 목록. key_ingredient_names는 "핵심 성분" 배지(★) 판정 기준 —
+    core_ingredient_selector로 뽑은 이름 집합을 그대로 넘기면 된다(ocr_summary.py 참고).
+    """
+    ingredient_ids = [ref[0] for ref in ingredient_refs]
+    if not ingredient_ids:
+        return []
+
+    label_rank_by_id = {ref[0]: ref[1] for ref in ingredient_refs}
+    matched_text_by_id = {ref[0]: ref[2] for ref in ingredient_refs}
+
+    members = db.scalars(
+        select(IngredientFamilyMember)
+        .where(IngredientFamilyMember.ingredient_id.in_(ingredient_ids))
+    ).all()
+    if not members:
+        return []
+
+    members_by_family: dict[int, list[IngredientFamilyMember]] = {}
+    for m in members:
+        members_by_family.setdefault(m.family_id, []).append(m)
+
+    families = db.scalars(
+        select(IngredientFamily).where(IngredientFamily.family_id.in_(members_by_family.keys()))
+    ).all()
+
+    ranked: list[tuple[int, IngredientFamily]] = []
+    for family in families:
+        fam_members = members_by_family[family.family_id]
+        ranks = [
+            label_rank_by_id[m.ingredient_id]
+            for m in fam_members
+            if label_rank_by_id.get(m.ingredient_id) is not None
+        ]
+        best_rank = min(ranks) if ranks else 10**9
+        ranked.append((best_rank, family))
+    ranked.sort(key=lambda t: t[0])
+    ranked = ranked[:limit]
+
+    ingredient_name_by_id = {
+        i.ingredient_id: i.name_kr
+        for i in db.scalars(
+            select(Ingredient).where(Ingredient.ingredient_id.in_(ingredient_ids))
+        ).all()
+    }
+
+    result: list[MatchedFamily] = []
+    for _, family in ranked:
+        fam_members = sorted(
+            members_by_family[family.family_id],
+            key=lambda m: (
+                label_rank_by_id.get(m.ingredient_id) is None,
+                label_rank_by_id.get(m.ingredient_id, 10**9),
+            ),
+        )
+        ingredients = [
+            MatchedFamilyIngredient(
+                ingredient_id=m.ingredient_id,
+                name_kr=ingredient_name_by_id.get(m.ingredient_id),
+                label_rank=label_rank_by_id.get(m.ingredient_id),
+                dosage=_parse_dosage(matched_text_by_id.get(m.ingredient_id)),
+                match_type=m.match_type or "정확(어근일치)",
+                is_key_ingredient=ingredient_name_by_id.get(m.ingredient_id) in key_ingredient_names,
+            )
+            for m in fam_members
+        ]
+        result.append(
+            MatchedFamily(
+                family_id=family.family_id,
+                name=family.family_name,
+                from_product_name=False,
+                matched_term=None,
                 ingredients=ingredients,
             )
         )

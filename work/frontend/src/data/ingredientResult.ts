@@ -1,5 +1,5 @@
 import { loadIngredientResultFromApi } from '../api';
-import type { OcrAnalyzeResult } from '../api';
+import type { OcrAnalyzeResult, OcrCompositionResult, ScanSummary } from '../api';
 import type { Product } from './mockProducts';
 
 export type IngredientGrade = 'star' | 'good' | 'base';
@@ -136,9 +136,19 @@ export interface IngredientResult {
 
 export type IngredientResultRequest =
   | { source: 'search'; productId: string; productName: string }
-  // ocr — ScanOverlay가 촬영 시점에 이미 POST /ocr/analyze(또는 임시 목업)를 실행해 들고 온
-  // 결과. loadIngredientResult는 이 결과를 변환만 한다(api.ts mapOcrResultToIngredientResult).
-  | { source: 'scan'; imageDataUrl: string; ocr: OcrAnalyzeResult };
+  // ocr — ScanOverlay가 촬영 시점에 이미 POST /ocr/analyze를 실행해 들고 온 결과. composition/
+  // summary도 ScanOverlay가 결과 화면으로 넘어오기 "전에" 미리 받아둔 것(성분 계열/순위/
+  // 피부타입/핵심성분 + LLM 한줄요약/성분구성 설명) — 페이지가 뜨자마자 완성된 내용이
+  // 보이게 하려고, 로딩 중간에 내용이 나중에 채워지는 대신 처음부터 다 채워서 넘어온다
+  // (ScanOverlay.tsx runAnalysis 참고). 실패했으면 null(loadIngredientResult가 그 경우
+  // 데이터 없는 상태로 렌더한다 — api.ts mapOcrResultToIngredientResult).
+  | {
+      source: 'scan';
+      imageDataUrl: string;
+      ocr: OcrAnalyzeResult;
+      composition: OcrCompositionResult | null;
+      summary: ScanSummary | null;
+    };
 
 /** ResultView가 쓰는 단일 진입점 — 실제 로딩 로직(API 호출)은 api.ts에 있다. */
 export function loadIngredientResult(request: IngredientResultRequest): Promise<IngredientResult> {

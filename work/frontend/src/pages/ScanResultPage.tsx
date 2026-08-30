@@ -2,19 +2,22 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import BackgroundSparkles from '../components/BackgroundSparkles';
 import ResultView from '../components/ResultView';
 import SiteSidebar from '../components/SiteSidebar';
-import type { OcrAnalyzeResult } from '../api';
+import type { OcrAnalyzeResult, OcrCompositionResult, ScanSummary } from '../api';
 import type { Product } from '../data/mockProducts';
 
 interface ScanRouteState {
   image?: string;
   ocr?: OcrAnalyzeResult;
+  // ScanOverlay가 결과 화면으로 넘어오기 전에 이미 받아둔 값 — 실패했으면 null(runAnalysis 참고).
+  composition?: OcrCompositionResult | null;
+  summary?: ScanSummary | null;
 }
 
 /** 스캔 캡처 완료(/scan-result, ScanOverlay가 넘긴 router state) 진입점. */
 export default function ScanResultPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { image, ocr } = (location.state as ScanRouteState | null) ?? {};
+  const { image, ocr, composition, summary } = (location.state as ScanRouteState | null) ?? {};
 
   // 캡처 직후가 아니면(예: 새로고침, 낯선 진입) 랜딩으로 돌려보낸다. ocr까지 있어야
   // ResultView가 실제로 결과를 그릴 수 있다(ScanOverlay는 인식 성공 시에만 넘어온다).
@@ -25,7 +28,13 @@ export default function ScanResultPage() {
       <BackgroundSparkles />
       <SiteSidebar />
       <ResultView
-        request={{ source: 'scan', imageDataUrl: image, ocr }}
+        request={{
+          source: 'scan',
+          imageDataUrl: image,
+          ocr,
+          composition: composition ?? null,
+          summary: summary ?? null,
+        }}
         onBack={() => navigate(-1)}
         onOpenMyPage={() => navigate('/mypage')}
         onSelectProduct={(product: Product) => navigate(`/product/${product.id}`)}
