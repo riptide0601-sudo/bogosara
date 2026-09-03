@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import MagnifierIcon from '../icons/MagnifierIcon';
+import ScannerIcon from '../icons/ScannerIcon';
 import '../LandingHero.css';
 
 interface LandingHeroProps {
@@ -110,6 +112,39 @@ function HeroMiddle({ onSearchClick, onScanClick }: LandingHeroProps) {
   return (
     <div className="lh-hero-middle">
       <HeroWordmark onSearchClick={onSearchClick} onScanClick={onScanClick} />
+
+      {/* SEARCH/SCAN 진입 카드 — 커서 연출(파인 포인터 전용)과 별개로 모든 기기에서 항상 보여서
+          명확한 진입점을 제공한다. */}
+      <div className="lh-entry-row">
+        <button
+          type="button"
+          className="lh-entry-card"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSearchClick();
+          }}
+        >
+          <MagnifierIcon />
+          <span>
+            <span className="lh-entry-label">SEARCH</span>
+            <span className="lh-entry-sub">제품명으로 찾기</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className="lh-entry-card"
+          onClick={(e) => {
+            e.stopPropagation();
+            onScanClick();
+          }}
+        >
+          <ScannerIcon />
+          <span>
+            <span className="lh-entry-label">SCAN</span>
+            <span className="lh-entry-sub">전성분표 촬영하기</span>
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
